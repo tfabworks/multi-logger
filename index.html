@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0877c9" />
+  <title>AkaDako Cloud Logger</title>
+  <script src="https://s-link.education/js/s-link.js"></script>
+  <style>
+    :root {
+      --blue: #0877c9;
+      --blue-dark: #07599a;
+      --navy: #143a5a;
+      --sky: #e8f7ff;
+      --yellow: #ffd23f;
+      --orange: #ff8b2c;
+      --green: #19a978;
+      --red: #ee5c5c;
+      --ink: #17324a;
+      --muted: #64788a;
+      --line: #cfe2ef;
+      --paper: #ffffff;
+      --shadow: 0 12px 30px rgba(20, 58, 90, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 8% 3%, rgba(255, 210, 63, 0.28) 0 80px, transparent 81px),
+        radial-gradient(circle at 94% 8%, rgba(8, 119, 201, 0.14) 0 120px, transparent 121px),
+        linear-gradient(180deg, #f6fcff 0%, #eaf6fb 100%);
+    }
+
+    button, select { font: inherit; }
+
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .page {
+      width: min(1240px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 20px 0 34px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 16px;
+      padding: 16px 22px;
+      color: white;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--blue) 0%, #00a5d8 100%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 230px;
+      height: 230px;
+      right: -80px;
+      top: -100px;
+      border: 26px solid rgba(255, 255, 255, 0.13);
+      border-radius: 50%;
+    }
+
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: clamp(9px, 1.2vw, 15px);
+      z-index: 1;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.45rem);
+      line-height: 1.12;
+      letter-spacing: 0.02em;
+    }
+
+    .ai-badge {
+      flex: none;
+      padding: clamp(6px, .9vw, 11px) clamp(9px, 1.2vw, 15px);
+      border-radius: clamp(12px, 1.4vw, 18px);
+      color: white;
+      background: linear-gradient(160deg, #4b5661, #2b333b);
+      box-shadow: 0 5px 0 rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.18);
+      font-size: clamp(1.05rem, 2vw, 1.6rem);
+      font-weight: 950;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .connection-panel {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 8px 13px;
+      border: 2px solid rgba(255,255,255,.42);
+      border-radius: 999px;
+      background: rgba(0,0,0,.11);
+      font-size: .88rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #e9eef2;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.16);
+    }
+
+    .status-chip.connected .status-dot {
+      background: #56ef9d;
+      box-shadow: 0 0 0 4px rgba(86,239,157,.22);
+    }
+
+    .primary-btn {
+      min-height: 44px;
+      padding: 8px 17px;
+      border: 0;
+      border-radius: 14px;
+      color: var(--blue-dark);
+      background: white;
+      box-shadow: 0 4px 0 rgba(0,0,0,.12);
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 0 rgba(0,0,0,.13); }
+    .primary-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.12); }
+    .primary-btn:disabled { opacity: .6; cursor: wait; }
+
+    /* 幅が足りるうちは全項目を1段に並べ、足りなくなったら横スクロールさせる */
+    .sensor-tabs {
+      display: flex;
+      gap: clamp(4px, .62vw, 10px);
+      margin: 8px 0;
+      /* 上: 浮き上がった枠線と影のぶん / 下: 選択中タブの吹き出しのぶん */
+      padding: 9px 0 15px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sensor-btn {
+      --sensor-color: var(--blue);
+      position: relative;
+      flex: 1 0 clamp(58px, 5.6vw, 92px);
+      min-height: clamp(74px, 7.4vw, 94px);
+      padding: clamp(6px, .7vw, 10px) clamp(3px, .5vw, 8px) clamp(6px, .65vw, 9px);
+      border: 3px solid transparent;
+      border-radius: clamp(13px, 1.5vw, 20px);
+      color: var(--ink);
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 6px 16px rgba(20,58,90,.09);
+      cursor: pointer;
+      font-weight: 900;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .sensor-btn:hover { transform: translateY(-2px); }
+
+    .sensor-btn[aria-selected="true"] {
+      border-color: var(--sensor-color);
+      background: white;
+      transform: translateY(-3px);
+      box-shadow: 0 9px 20px rgba(20,58,90,.15);
+    }
+
+    .sensor-btn[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -11px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-right: 3px solid var(--sensor-color);
+      border-bottom: 3px solid var(--sensor-color);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    /* 「AI」は現時点では押しても何も起きないダミー。
+       吹き出し（ボタン本体）はほかのタブと同じ白のまま、アイコンだけ濃いグレーにする */
+    .sensor-btn--ai {
+      --sensor-color: #3a4550;
+    }
+
+    .sensor-icon {
+      display: grid;
+      place-items: center;
+      width: clamp(31px, 3.4vw, 47px);
+      height: clamp(31px, 3.4vw, 47px);
+      margin: 0 auto 5px;
+      border-radius: clamp(10px, 1.1vw, 15px);
+      color: white;
+      background: var(--sensor-color);
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,.12);
+    }
+
+    .sensor-icon svg { width: 62%; height: 62%; }
+    .sensor-name { display: block; margin-top: 2px; white-space: nowrap; font-size: clamp(.7rem, .95vw, 1.03rem); }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .side-card, .chart-card {
+      border: 1px solid rgba(207,226,239,.95);
+      border-radius: 24px;
+      background: rgba(255,255,255,.94);
+      box-shadow: var(--shadow);
+    }
+
+    .side-card {
+      display: flex;
+      flex-direction: column;
+      padding: 18px;
+    }
+
+    .current-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 11px;
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .current-label::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--active-color, var(--blue));
+    }
+
+    .ai-panel { display: grid; gap: 8px; }
+
+    .motion-preview { margin-bottom: 13px; }
+
+    .ai-video {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border: 2px solid #dceef6;
+      border-radius: 19px;
+      background: #0d1b26;
+      object-fit: cover;
+      transform: scaleX(-1);   /* 鏡にうつしたほうが自分の動きと合う */
+    }
+
+    .ai-status {
+      margin: 0;
+      min-height: 1.2em;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .value-box {
+      padding: 17px 10px 15px;
+      border-radius: 19px;
+      text-align: center;
+      background: linear-gradient(180deg, #f7fcff, #edf8fc);
+      border: 2px solid #dceef6;
+    }
+
+    .value {
+      display: inline-block;
+      min-width: 4ch;
+      font-size: clamp(2.55rem, 6vw, 4.3rem);
+      line-height: .95;
+      font-weight: 950;
+      letter-spacing: -.05em;
+      color: var(--active-color, var(--blue));
+      font-variant-numeric: tabular-nums;
+    }
+
+    .value.value--compact {
+      font-size: clamp(2.1rem, 4.8vw, 3.5rem);
+    }
+
+    .value.value--narrow {
+      font-size: clamp(1.9rem, 4.25vw, 3.15rem);
+      letter-spacing: -.065em;
+    }
+
+    .unit {
+      margin-left: 5px;
+      color: var(--ink);
+      font-size: 1.02rem;
+      font-weight: 900;
+    }
+
+    .reading-meta {
+      min-height: 21px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .mini-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin: 12px 0 15px;
+    }
+
+    .mini-stats.stats--stacked {
+      grid-template-columns: 1fr;
+    }
+
+    .mini-stat {
+      padding: 8px 4px;
+      border-radius: 12px;
+      background: #f3f8fb;
+      text-align: center;
+    }
+
+    .mini-stats.stats--stacked .mini-stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      text-align: left;
+    }
+
+    .mini-stat span { display: block; color: var(--muted); font-size: .66rem; font-weight: 800; }
+    .mini-stat strong { display: block; margin-top: 3px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+    .mini-stats.stats--stacked .mini-stat strong {
+      margin-top: 0;
+      font-size: .94rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 9px;
+      margin-top: auto;
+    }
+
+    /* グラフ／表 の切り替え。アクティブ側は選択中センサーの色で塗る */
+    .view-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      border: 2px solid var(--line);
+      border-radius: 15px;
+      background: #f3f8fb;
+    }
+
+    .view-btn {
+      min-height: 38px;
+      border: 0;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 900;
+      cursor: pointer;
+      transition: background .14s ease, color .14s ease;
+    }
+
+    .view-btn:hover { color: var(--blue-dark); }
+
+    .view-btn.is-active {
+      color: white;
+      background: var(--active-color, var(--blue));
+      box-shadow: 0 2px 0 rgba(0,0,0,.14);
+    }
+
+    /* display を持つ要素にも hidden 属性を効かせる */
+    [hidden] { display: none !important; }
+
+    .oxygen-panel {
+      display: grid;
+      gap: 7px;
+      padding: 10px 11px 11px;
+      border: 2px dashed #dceef6;
+      border-radius: 15px;
+      background: #f7fcff;
+    }
+
+    .oxygen-status {
+      margin: 0;
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .oxygen-status.calibrated { color: var(--green); }
+
+    .calibrate-btn {
+      width: 100%;
+      min-height: 40px;
+      border: 2px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink);
+      background: white;
+      font-size: .82rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .calibrate-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    .calibrate-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .record-btn {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: 15px;
+      color: white;
+      background: var(--green);
+      box-shadow: 0 4px 0 #0e8058;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .record-btn.running {
+      background: var(--red);
+      box-shadow: 0 4px 0 #b63b3b;
+    }
+
+    .record-btn:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }
+
+    .interval-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+    }
+
+    .interval-row select {
+      min-height: 36px;
+      padding: 4px 26px 4px 9px;
+      border: 2px solid var(--line);
+      border-radius: 11px;
+      color: var(--ink);
+      background: white;
+      font-weight: 800;
+    }
+
+    .chart-card {
+      min-width: 0;
+      padding: 17px 17px 14px;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+    }
+
+    .chart-title-group h2 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+    }
+
+    .chart-title-group p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .sample-count {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--sky);
+      font-size: .75rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 430px;
+      min-height: 310px;
+      overflow: hidden;
+      border: 2px solid #dcebf4;
+      border-radius: 18px;
+      background:
+        linear-gradient(rgba(8,119,201,.025), rgba(8,119,201,.025)),
+        #fff;
+    }
+
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      text-align: center;
+      padding: 25px;
+    }
+
+    .empty-state.hidden { display: none; }
+
+    .table-wrap {
+      position: relative;
+      width: 100%;
+      height: 430px;
+      min-height: 310px;
+      overflow: auto;
+      border: 2px solid #dcebf4;
+      border-radius: 18px;
+      background: white;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .data-table th, .data-table td {
+      padding: 8px 14px;
+      border-bottom: 1px solid #edf5f9;
+      text-align: right;
+      font-size: .88rem;
+      white-space: nowrap;
+    }
+
+    .data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: var(--blue-dark);
+      background: var(--sky);
+      box-shadow: inset 0 -2px 0 #cfe2ef;
+      font-size: .76rem;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .data-table th:first-child, .data-table td:first-child { width: 5em; color: var(--muted); }
+    .data-table tbody tr:nth-child(even) { background: #f8fcfd; }
+    .data-table td:last-child { color: var(--active-color, var(--blue)); font-weight: 900; }
+
+    .table-empty {
+      position: absolute;
+      inset: 44px 0 0;
+      display: grid;
+      place-items: center;
+      padding: 25px;
+      text-align: center;
+      color: var(--blue-dark);
+      font-weight: 900;
+      line-height: 1.7;
+    }
+
+    /* マイク・カメラ用。display:none にすると映像が止まるブラウザがあるので、極小で置いておく */
+    .hidden-media {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: 2px;
+      height: 2px;
+      opacity: .01;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .empty-bubble {
+      max-width: 360px;
+      padding: 20px 24px;
+      border-radius: 22px;
+      background: rgba(232,247,255,.94);
+      border: 2px dashed #8dc6e6;
+      color: var(--blue-dark);
+      font-weight: 900;
+      line-height: 1.7;
+    }
+
+    .action-bar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 13px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 47px;
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      color: var(--ink);
+      background: white;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform .14s ease, background .14s ease;
+    }
+
+    .action-btn:hover { transform: translateY(-1px); background: #f7fbfd; }
+    .action-btn svg { width: 20px; height: 20px; }
+    .action-btn.delete { color: #bd3e3e; border-color: #f1c2c2; }
+    .action-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+
+    .notice {
+      margin: 14px 4px 0;
+      color: var(--muted);
+      font-size: .73rem;
+      line-height: 1.7;
+    }
+
+    dialog {
+      width: min(390px, calc(100% - 32px));
+      padding: 0;
+      border: 0;
+      border-radius: 23px;
+      color: var(--ink);
+      background: white;
+      box-shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    dialog::backdrop { background: rgba(8, 33, 52, .55); backdrop-filter: blur(3px); }
+
+    .dialog-body { padding: 27px; text-align: center; }
+    .dialog-icon {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 14px;
+      border-radius: 20px;
+      color: var(--blue-dark);
+      background: var(--yellow);
+      font-size: 2rem;
+      font-weight: 950;
+    }
+    .dialog-body h3 { margin: 0 0 8px; font-size: 1.35rem; }
+    .dialog-body p { margin: 0 0 19px; color: var(--muted); font-weight: 700; }
+    .dialog-close {
+      width: 100%;
+      min-height: 45px;
+      border: 0;
+      border-radius: 13px;
+      color: white;
+      background: var(--blue);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .dialog-body a {
+      color: var(--blue);
+      font-weight: 900;
+      word-break: break-all;
+    }
+
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .dialog-cancel {
+      min-height: 45px;
+      border: 2px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink);
+      background: white;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .dialog-cancel:hover { border-color: var(--blue); color: var(--blue-dark); }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 20;
+      max-width: calc(100% - 32px);
+      padding: 12px 18px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(20,58,90,.94);
+      box-shadow: 0 8px 30px rgba(0,0,0,.2);
+      font-size: .84rem;
+      font-weight: 800;
+      opacity: 0;
+      transform: translate(-50%, 18px);
+      pointer-events: none;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .midi-diag {
+      margin: 10px auto 0;
+      padding: 11px 14px;
+      border: 2px solid #f0c9c9;
+      border-radius: 15px;
+      background: #fff6f6;
+      font-size: .8rem;
+    }
+
+    .midi-diag summary { color: #b34747; font-weight: 900; cursor: pointer; }
+
+    .midi-diag pre {
+      margin: 9px 0 0;
+      overflow-x: auto;
+      color: var(--ink);
+      font-size: .74rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    @media (max-width: 840px) {
+      .hero { align-items: flex-start; flex-direction: column; }
+      .connection-panel { justify-content: flex-start; }
+      .action-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard { grid-template-columns: 1fr; }
+      .side-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, .7fr); gap: 14px; }
+      .reading-panel { min-width: 0; }
+      .control-stack { margin-top: 0; align-content: end; }
+      .canvas-wrap { height: 390px; }
+    }
+
+    @media (max-width: 580px) {
+      .page { width: min(100% - 16px, 1240px); padding-top: 8px; }
+      .hero { padding: 15px; border-radius: 19px; }
+      .side-card { display: block; }
+      .control-stack { margin-top: 13px; }
+      .canvas-wrap { height: 330px; }
+      .action-bar { grid-template-columns: 1fr; }
+      .chart-head { align-items: flex-start; }
+    }
+
+    /* スマートフォン縦。1段には収まらないので、横スクロールで全項目に届くようにする */
+    @media (max-width: 528px) {
+      .sensor-btn { flex: 0 0 66px; }
+      .sensor-name { font-size: .74rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="title-wrap">
+        <span class="ai-badge" aria-hidden="true">AI計測</span>
+        <h1>AkaDako Cloud Logger</h1>
+      </div>
+      <div class="connection-panel">
+        <div id="statusChip" class="status-chip" aria-live="polite">
+          <span class="status-dot"></span>
+          <span id="statusText">未接続</span>
+        </div>
+        <button id="connectBtn" class="primary-btn" type="button">S-LINK接続</button>
+      </div>
+    </header>
+
+    <nav class="sensor-tabs" aria-label="表示するセンサー">
+      <button class="sensor-btn sensor-btn--ai" data-sensor="ai" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><text x="16" y="16.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="900">AI</text></svg>
+        </span>
+        <span class="sensor-name">AI</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#ef5b5b" data-sensor="temperature" aria-selected="true" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M13 5a3 3 0 0 1 6 0v13.1a7 7 0 1 1-6 0V5Z" stroke="currentColor" stroke-width="2.6"/><path d="M16 10v12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="24" r="2.8" fill="currentColor"/></svg>
+        </span>
+        <span class="sensor-name">温度</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#f6a900" data-sensor="brightness" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="6" stroke="currentColor" stroke-width="2.5"/><path d="M16 3v4M16 25v4M3 16h4M25 16h4M6.8 6.8l2.8 2.8M22.4 22.4l2.8 2.8M25.2 6.8l-2.8 2.8M9.6 22.4l-2.8 2.8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">照度</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#7b61d1" data-sensor="distance" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M5 9v14M27 9v14M8 16h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="m11 12-4 4 4 4M21 12l4 4-4 4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">距離</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#0799cf" data-sensor="humidity" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M16 3S7 13.2 7 20a9 9 0 0 0 18 0C25 13.2 16 3 16 3Z" stroke="currentColor" stroke-width="2.5"/><path d="M11.5 21.5a4.7 4.7 0 0 0 4.5 3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">湿度</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#18a06d" data-sensor="pressure" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M6 22a10 10 0 1 1 20 0" stroke="currentColor" stroke-width="2.5"/><path d="m16 20 5-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M8 25h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="20" r="2" fill="currentColor"/></svg>
+        </span>
+        <span class="sensor-name">気圧</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#7fae1b" data-sensor="gravity" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="7.5" r="4.5" stroke="currentColor" stroke-width="2.5"/><path d="M16 14.5v8.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="m11.5 18.5 4.5 4.5 4.5-4.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 28h20" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">重力</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#5a6fd8" data-sensor="tilt" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M4 25h24" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M6 25 24 8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M14 25a11 11 0 0 1 3.2-7.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="19.5" cy="12.5" r="2.6" fill="currentColor"/></svg>
+        </span>
+        <span class="sensor-name">傾き</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#9b51e0" data-sensor="motion" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><rect x="3.5" y="9.5" width="17" height="13" rx="3.2" stroke="currentColor" stroke-width="2.5"/><path d="m20.5 15 7.5-4.5v11L20.5 17" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M8 16h6" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">動き</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#ff7043" data-sensor="volume" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M5 12.5h4.5L15 8v16l-5.5-4.5H5Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M19.5 12.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M23.5 9a10 10 0 0 1 0 14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">音量</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#12b0a0" data-sensor="waterTemperature" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M11.9 4.6a2.9 2.9 0 0 1 5.8 0v11.6a5.8 5.8 0 1 1-5.8 0V4.6Z" stroke="currentColor" stroke-width="2.5"/><circle cx="14.8" cy="21.8" r="2.5" fill="currentColor"/><path d="M21.5 12.5q1.6-1.7 3.2 0t3.2 0M21.5 18q1.6-1.7 3.2 0t3.2 0M21.5 23.5q1.6-1.7 3.2 0t3.2 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </span>
+        <span class="sensor-name">水温</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#d8489a" data-sensor="oxygen" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="11.5" cy="12" r="6.6" stroke="currentColor" stroke-width="2.5"/><circle cx="20.5" cy="20" r="6.6" stroke="currentColor" stroke-width="2.5"/></svg>
+        </span>
+        <span class="sensor-name">酸素</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#1492c8" data-sensor="current" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><text x="16" y="16.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Helvetica Neue', Arial, sans-serif" font-size="29" font-weight="900">A</text></svg>
+        </span>
+        <span class="sensor-name">電流</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#e07d10" data-sensor="voltage" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><text x="16" y="16.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Helvetica Neue', Arial, sans-serif" font-size="29" font-weight="900">V</text></svg>
+        </span>
+        <span class="sensor-name">電圧</span>
+      </button>
+
+      <button class="sensor-btn" style="--sensor-color:#3a9d4e" data-sensor="power" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><text x="16" y="16.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Helvetica Neue', Arial, sans-serif" font-size="29" font-weight="900">W</text></svg>
+        </span>
+        <span class="sensor-name">電力</span>
+      </button>
+    </nav>
+
+    <section class="dashboard">
+      <aside id="sideCard" class="side-card" style="--active-color:#ef5b5b">
+        <div class="reading-panel">
+          <div class="current-label"><span id="currentSensorName">温度</span><span id="currentLabelSuffix"> の現在値</span></div>
+          <div id="valueBox" class="value-box">
+            <span id="currentValue" class="value">--</span><span id="currentUnit" class="unit">℃</span>
+            <div id="readingMeta" class="reading-meta">接続後に測定できます</div>
+          </div>
+          <div id="aiPanel" class="ai-panel" hidden>
+            <video id="aiVideo" class="ai-video" playsinline muted></video>
+            <p id="aiStatus" class="ai-status"></p>
+          </div>
+          <div id="miniStats" class="mini-stats" aria-label="統計値">
+            <div class="mini-stat"><span>最小</span><strong id="minValue">--</strong></div>
+            <div class="mini-stat"><span>平均</span><strong id="avgValue">--</strong></div>
+            <div class="mini-stat"><span>最大</span><strong id="maxValue">--</strong></div>
+          </div>
+          <div id="motionPreview" class="motion-preview" hidden>
+            <video id="motionPreviewVideo" class="ai-video" playsinline muted></video>
+          </div>
+        </div>
+        <div class="control-stack">
+          <div class="view-toggle" role="group" aria-label="表示のしかた">
+            <button id="chartViewBtn" class="view-btn is-active" type="button" aria-pressed="true">グラフ</button>
+            <button id="tableViewBtn" class="view-btn" type="button" aria-pressed="false">表</button>
+          </div>
+          <button id="recordBtn" class="record-btn" type="button" disabled>● 記録をはじめる</button>
+          <label class="interval-row">記録間隔
+            <select id="intervalSelect">
+              <option value="500">0.5秒</option>
+              <option value="1000" selected>1秒</option>
+              <option value="2000">2秒</option>
+              <option value="5000">5秒</option>
+            </select>
+          </label>
+          <div id="oxygenPanel" class="oxygen-panel" hidden>
+            <p id="oxygenStatus" class="oxygen-status">未校正です</p>
+            <button id="calibrateBtn" class="calibrate-btn" type="button">大気で再校正（20.9%）</button>
+          </div>
+        </div>
+      </aside>
+
+      <article class="chart-card">
+        <div class="chart-head">
+          <div class="chart-title-group">
+            <h2 id="chartTitle">温度の変化</h2>
+            <p id="chartDescription">横軸：時刻　縦軸：温度（℃）</p>
+          </div>
+          <div id="sampleCount" class="sample-count">データ 0件</div>
+        </div>
+
+        <div id="canvasWrap" class="canvas-wrap">
+          <canvas id="chartCanvas" aria-label="センサー値の折れ線グラフ"></canvas>
+          <div id="emptyState" class="empty-state">
+            <div class="empty-bubble">S-LINKに接続して「記録をはじめる」を押すと、ここにグラフが描かれます。</div>
+          </div>
+        </div>
+
+        <div id="tableWrap" class="table-wrap" hidden>
+          <table class="data-table">
+            <thead>
+              <tr><th scope="col">番号</th><th scope="col">時刻</th><th scope="col" id="tableValueHead">温度（℃）</th></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div id="tableEmpty" class="table-empty">「記録をはじめる」を押すと、ここに数値が並びます。</div>
+        </div>
+
+        <div class="action-bar">
+          <button id="downloadBtn" class="action-btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ダウンロード
+          </button>
+          <button id="copyBtn" class="action-btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            コピー
+          </button>
+          <button id="deleteBtn" class="action-btn delete" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            削除
+          </button>
+          <button id="shareBtn" class="action-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="18" cy="5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="2"/><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" stroke="currentColor" stroke-width="2"/></svg>
+            共有
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <details id="midiDiag" class="midi-diag" hidden>
+      <summary>接続できないときの情報（MIDIポート一覧）</summary>
+      <pre id="midiDiagBody"></pre>
+    </details>
+
+    <p class="notice">※ S-LINKへの接続にはWeb MIDI対応ブラウザが必要です。ローカルファイルで接続できない場合は、Live ServerなどのWebサーバーから開いてください。</p>
+  </main>
+
+  <dialog id="sensorDialog" aria-labelledby="sensorDialogTitle">
+    <div class="dialog-body">
+      <div class="dialog-icon" aria-hidden="true">?</div>
+      <h3 id="sensorDialogTitle">センサーの準備</h3>
+      <p id="sensorDialogText"></p>
+      <div class="dialog-actions">
+        <button id="sensorDialogCancel" class="dialog-cancel" type="button">キャンセル</button>
+        <button id="sensorDialogOk" class="dialog-close" type="button">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="shareDialog" aria-labelledby="shareDialogTitle">
+    <div class="dialog-body">
+      <div class="dialog-icon" aria-hidden="true">!</div>
+      <h3 id="shareDialogTitle">共有機能</h3>
+      <p>現在、準備中です</p>
+      <button id="dialogCloseBtn" class="dialog-close" type="button">とじる</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <video id="motionVideo" class="hidden-media" playsinline muted></video>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // ===== 換算定数 =====
+      // 酸素 (TFW-AD-OXY1 / 空気亜鉛電池) : アナログA1 の 0〜100 を大気=20.9% として1点校正する。
+      //   参照 https://graph.699.jp/  (センサー定義 id:20 の targetValueForCorrectionOnStart: 20.9)
+      const OXYGEN_AIR_PERCENT = 20.9;
+      const OXYGEN_MIN_LEVEL = 0.5;   // これ未満は未接続／未安定とみなし、校正の基準にしない
+
+      // 電流・電圧・電力 (TFW-AD-PWR1) : 参照 https://e-meter.699.jp/
+      const MIN_VOLTAGE_LEVEL = 0.1;
+      const MIN_CURRENT_LEVEL = 0.1;
+      const VOLTAGE_COEFF = 0.2;    // アナログレベル(0〜100) × 0.2 → 0〜20V
+      const CURRENT_COEFF = 0.02;   // アナログレベル(0〜100) × 0.02 → 0〜2A
+
+      // 生徒向けにそのまま見せてよい案内メッセージを持つエラー
+      class SensorNoticeError extends Error {
+        constructor(message) {
+          super(message);
+          this.name = "SensorNoticeError";
+        }
+      }
+
+      // board.analog() は同期。0〜100 のスケール値を返す
+      function analogLevel(connector) {
+        const level = Number(board.analog(SLINK.AnalogRead[connector]));
+        return Number.isFinite(level) ? level : 0;
+      }
+
+      function readOxygen() {
+        const level = analogLevel("A1");
+        if (oxygenCorrectionRate === null) {
+          if (level < OXYGEN_MIN_LEVEL) {
+            throw new SensorNoticeError("酸素センサーの値を待っています（コネクターA1をご確認ください）");
+          }
+          // 大気中 (20.9%) を基準にスパン校正する
+          oxygenCorrectionRate = OXYGEN_AIR_PERCENT / level;
+          updateOxygenPanel();
+        }
+        return level * oxygenCorrectionRate;
+      }
+
+      function readPowerLevels() {
+        const voltageLevel = analogLevel("A1");
+        const currentLevel = analogLevel("A2");
+        const voltage = voltageLevel > MIN_VOLTAGE_LEVEL ? voltageLevel * VOLTAGE_COEFF : 0;
+        const current = currentLevel > MIN_CURRENT_LEVEL ? currentLevel * CURRENT_COEFF : 0;
+        return { voltage, current, power: voltage * current };
+      }
+
+      // ===== パソコンのマイク・カメラ =============================================
+      // 音量: マイク入力のRMSを 0〜100 に、動き: カメラ画像の前フレームとの差を 0〜100 にする。
+      // 計算式は ../akadako-sheet/index.html にそろえてある。
+      const MOTION_WIDTH = 160;
+      const MOTION_HEIGHT = 120;
+      const MOTION_SCALE = 100 / 25;   // 平均輝度差 25 で 100 になるようにする
+      const MOTION_STALE_MS = 1600;    // これ以上フレームが来ていなければ「測れていない」とみなす
+
+      // generation: 許可ダイアログを待っている間に別のセンサーへ切り替わったかを見分けるための世代番号
+      const mic = { stream: null, audio: null, analyser: null, data: null, pending: null, generation: 0 };
+      const cam = { stream: null, video: null, ctx: null, prev: null, value: 0, sampling: false, startedAt: 0, updatedAt: 0, frame: 0, pending: null, generation: 0 };
+
+      // http:// で開くと navigator.mediaDevices ごと消えるので、非対応と区別して案内する
+      function assertMediaAvailable(deviceName) {
+        if (window.isSecureContext === false) {
+          throw new SensorNoticeError(`${deviceName}を使うには https か localhost で開いてください`);
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new SensorNoticeError(`このブラウザでは${deviceName}を使えません（https か localhost で開いてください）`);
+        }
+      }
+
+      // 「許可してください」で一括りにすると、他アプリが占有中・端末に無い・管理者ブロックのときに手詰まりになる
+      function mediaErrorMessage(error, deviceName) {
+        switch (error && error.name) {
+          case "NotFoundError":
+          case "DevicesNotFoundError":
+            return `この端末に${deviceName}が見つかりません`;
+          case "NotReadableError":
+          case "TrackStartError":
+            return `ほかのアプリが${deviceName}を使っています。閉じてからもう一度おしてください`;
+          case "NotAllowedError":
+          case "PermissionDeniedError":
+            return /system|policy/i.test(String(error.message || ""))
+              ? `この端末の設定で${deviceName}を使えません。先生に確認してください`
+              : `${deviceName}の使用を許可してください（アドレスバーのアイコンから変えられます）`;
+          case "SecurityError":
+            return `ブラウザの設定で${deviceName}が無効になっています`;
+          case "TypeError":
+            return `${deviceName}を使うには https か localhost で開いてください`;
+          default:
+            return `${deviceName}を使えませんでした。もう一度おしてください`;
+        }
+      }
+
+      // 許可ダイアログを何度も出さないよう、準備中のPromiseを使い回す
+      function ensureMedia(target, setup) {
+        if (!target.pending) target.pending = setup().finally(() => { target.pending = null; });
+        return target.pending;
+      }
+
+      async function ensureMic() {
+        if (mic.analyser) {
+          if (mic.audio.state === "suspended") await mic.audio.resume().catch(() => {});
+          return;
+        }
+        await ensureMedia(mic, setupMic);
+      }
+
+      async function setupMic() {
+        assertMediaAvailable("マイク");
+        const generation = mic.generation;
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (error) {
+          console.warn(error);
+          throw new SensorNoticeError(mediaErrorMessage(error, "マイク"));
+        }
+        // 許可を待っている間に別のセンサーへ移っていたら、開いたままにせず手放す
+        if (generation !== mic.generation) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        const audio = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audio.createAnalyser();
+        analyser.fftSize = 512;
+        audio.createMediaStreamSource(stream).connect(analyser);
+        if (audio.state === "suspended") await audio.resume().catch(error => console.warn(error));
+        if (audio.state === "suspended") {
+          // ここを黙って通すと、音量がずっと0のまま理由が分からなくなる
+          stream.getTracks().forEach(track => track.stop());
+          audio.close().catch(() => {});
+          throw new SensorNoticeError("マイクを開始できませんでした。画面をクリックしてからもう一度おしてください");
+        }
+        mic.stream = stream;
+        mic.audio = audio;
+        mic.analyser = analyser;
+        mic.data = new Uint8Array(analyser.fftSize);
+      }
+
+      function readVolume() {
+        if (!mic.analyser) return 0;
+        mic.analyser.getByteTimeDomainData(mic.data);
+        let sum = 0;
+        for (let i = 0; i < mic.data.length; i++) {
+          const deviation = (mic.data[i] - 128) / 128;
+          sum += deviation * deviation;
+        }
+        const rms = Math.sqrt(sum / mic.data.length);
+        return Math.min(100, Math.round(rms * 300));
+      }
+
+      function releaseMic() {
+        mic.generation += 1;   // 準備中のものがあれば、完了時に破棄させる
+        if (!mic.stream && !mic.audio) return;
+        if (mic.stream) mic.stream.getTracks().forEach(track => track.stop());
+        if (mic.audio) mic.audio.close().catch(() => {});
+        mic.stream = mic.audio = mic.analyser = mic.data = null;
+      }
+
+      async function ensureCam() {
+        if (cam.stream) return;
+        await ensureMedia(cam, setupCam);
+      }
+
+      async function setupCam() {
+        assertMediaAvailable("カメラ");
+        const generation = cam.generation;
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+        } catch (error) {
+          console.warn(error);
+          throw new SensorNoticeError(mediaErrorMessage(error, "カメラ"));
+        }
+        if (generation !== cam.generation) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = MOTION_WIDTH;
+        canvas.height = MOTION_HEIGHT;
+        els.motionVideo.srcObject = stream;
+        els.motionVideo.muted = true;
+        try {
+          await els.motionVideo.play();
+        } catch (error) {
+          // 再生できないまま進むと、動きの値が永久に0になるだけで気づけない
+          console.warn(error);
+          stream.getTracks().forEach(track => track.stop());
+          els.motionVideo.srcObject = null;
+          throw new SensorNoticeError("カメラの映像を始められませんでした。もう一度おしてください");
+        }
+        cam.stream = stream;
+        cam.video = els.motionVideo;
+        cam.ctx = canvas.getContext("2d", { willReadFrequently: true });
+      }
+
+      // 「動き」を測るときだけフレーム差分の計算を回す（AIのカメラ表示では不要）
+      function startMotionSampling() {
+        if (!cam.stream || cam.sampling) return;
+        cam.sampling = true;
+        cam.prev = null;
+        cam.value = 0;
+        cam.startedAt = performance.now();
+        cam.updatedAt = 0;
+        cam.frame = requestAnimationFrame(sampleMotion);
+      }
+
+      function stopMotionSampling() {
+        if (cam.frame) cancelAnimationFrame(cam.frame);
+        cam.frame = 0;
+        cam.sampling = false;
+        cam.prev = null;
+        cam.startedAt = 0;
+        cam.updatedAt = 0;
+      }
+
+      function sampleMotion() {
+        if (!cam.stream || !cam.sampling) return;
+        if (cam.video && cam.video.readyState >= 2) {
+          cam.ctx.drawImage(cam.video, 0, 0, MOTION_WIDTH, MOTION_HEIGHT);
+          const data = cam.ctx.getImageData(0, 0, MOTION_WIDTH, MOTION_HEIGHT).data;
+          if (cam.prev) {
+            let total = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const now = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              const before = (cam.prev[i] + cam.prev[i + 1] + cam.prev[i + 2]) / 3;
+              total += Math.abs(now - before);
+            }
+            const average = total / (MOTION_WIDTH * MOTION_HEIGHT);
+            cam.value = Math.min(100, Math.round(average * MOTION_SCALE));
+          }
+          cam.prev = new Uint8ClampedArray(data);
+          cam.updatedAt = performance.now();
+        }
+        cam.frame = requestAnimationFrame(sampleMotion);
+      }
+
+      // requestAnimationFrame はタブが裏に回ると止まる。止まった値をそのまま記録すると
+      // 「同じ数値がずっと続くグラフ」ができてしまうので、古い値は使わずに案内を出す。
+      function readMotion() {
+        if (!cam.stream || !cam.sampling) return 0;
+        // 一度もフレームが来ていない場合は、測り始めた時刻を基準にする
+        const lastFrameAt = cam.updatedAt || cam.startedAt;
+        if (lastFrameAt && performance.now() - lastFrameAt > MOTION_STALE_MS) {
+          throw new SensorNoticeError("この画面を開いているあいだだけ動きを測れます");
+        }
+        return cam.value;
+      }
+
+      function releaseCam() {
+        cam.generation += 1;   // 準備中のものがあれば、完了時に破棄させる
+        if (!cam.stream) return;
+        stopMotionSampling();
+        cam.stream.getTracks().forEach(track => track.stop());
+        if (cam.video) cam.video.srcObject = null;
+        cam.stream = cam.video = cam.ctx = cam.prev = null;
+        cam.value = 0;
+        cam.updatedAt = 0;
+      }
+
+      // 使っていないマイク・カメラは止める（録音・録画したままにしない）
+      function syncMediaUsage() {
+        if (selectedSensor !== "volume") releaseMic();
+        if (selectedSensor !== "motion") stopMotionSampling();
+        if (selectedSensor !== "motion" && !aiMode) releaseCam();
+      }
+
+      // valueSize: 桁数が多い項目は現在値の文字を小さくする / statsStack: 最小・平均・最大を縦積みにする
+      // needsBoard: false のセンサーはS-LINKなしで測れる
+      const sensors = {
+        temperature: {
+          name: "温度",
+          unit: "℃",
+          csvUnit: "°C",
+          color: "#ef5b5b",
+          decimals: 1,
+          fetch: board => board.fetchTemperature()
+        },
+        brightness: {
+          name: "照度",
+          unit: "lx",
+          csvUnit: "lx",
+          color: "#f6a900",
+          decimals: 0,
+          valueSize: "narrow",
+          fetch: board => board.fetchBrightness()
+        },
+        distance: {
+          name: "距離",
+          unit: "cm",
+          csvUnit: "cm",
+          color: "#7b61d1",
+          decimals: 1,
+          fetch: board => board.fetchOpticalDistance()
+        },
+        humidity: {
+          name: "湿度",
+          unit: "%",
+          csvUnit: "%",
+          color: "#0799cf",
+          decimals: 1,
+          fetch: board => board.fetchHumidity()
+        },
+        pressure: {
+          name: "気圧",
+          unit: "hPa",
+          csvUnit: "hPa",
+          color: "#18a06d",
+          decimals: 1,
+          valueSize: "compact",
+          statsStack: true,
+          fetch: board => board.fetchPressure()
+        },
+        gravity: {
+          name: "重力",
+          unit: "m/s²",
+          csvUnit: "m/s^2",
+          color: "#7fae1b",
+          decimals: 2,
+          valueSize: "compact",
+          fetch: board => board.fetchAccelerationMagnitude()
+        },
+        tilt: {
+          name: "傾き",
+          unit: "°",
+          csvUnit: "deg",
+          color: "#5a6fd8",
+          decimals: 1,
+          fetch: board => board.fetchRoll()
+        },
+        motion: {
+          name: "動き",
+          unit: "",
+          csvUnit: "",
+          color: "#9b51e0",
+          decimals: 0,
+          needsBoard: false,
+          fetch: async () => {
+            await ensureCam();
+            startMotionSampling();
+            return readMotion();
+          }
+        },
+        volume: {
+          name: "音量",
+          unit: "",
+          csvUnit: "",
+          color: "#ff7043",
+          decimals: 0,
+          needsBoard: false,
+          fetch: async () => {
+            await ensureMic();
+            return readVolume();
+          }
+        },
+        waterTemperature: {
+          name: "水温",
+          unit: "℃",
+          csvUnit: "°C",
+          color: "#12b0a0",
+          decimals: 1,
+          connectGuide: {
+            lead: "AkaDako用 防水温度センサー",
+            product: "TFW-AD-TP1",
+            url: "https://tfabworks.com/product/tfw-ad-tp1/",
+            tail: "をデジタルAに接続してください"
+          },
+          fetch: board => board.fetchWaterTemperatureA()
+        },
+        oxygen: {
+          name: "酸素",
+          unit: "%",
+          csvUnit: "%",
+          color: "#d8489a",
+          decimals: 2,
+          valueSize: "compact",
+          connectGuide: {
+            lead: "AkaDako用 簡易酸素センサー",
+            product: "TFW-AD-OXY1",
+            url: "https://tfabworks.com/product/tfw-ad-oxy1/",
+            tail: "をアナログAに接続してください"
+          },
+          needsCalibration: true,
+          fetch: () => readOxygen()
+        },
+        current: {
+          name: "電流",
+          unit: "A",
+          csvUnit: "A",
+          color: "#1492c8",
+          decimals: 3,
+          valueSize: "compact",
+          connectGuide: {
+            lead: "AkaDako用電力測定ボード",
+            product: "TFW-AD-PWR1",
+            url: "https://tfabworks.com/product/tfw-ad-pwr1/",
+            tail: "をアナログAに接続してください"
+          },
+          fetch: () => readPowerLevels().current
+        },
+        voltage: {
+          name: "電圧",
+          unit: "V",
+          csvUnit: "V",
+          color: "#e07d10",
+          decimals: 2,
+          valueSize: "compact",
+          connectGuide: {
+            lead: "AkaDako用電力測定ボード",
+            product: "TFW-AD-PWR1",
+            url: "https://tfabworks.com/product/tfw-ad-pwr1/",
+            tail: "をアナログAに接続してください"
+          },
+          fetch: () => readPowerLevels().voltage
+        },
+        power: {
+          name: "電力",
+          unit: "W",
+          csvUnit: "W",
+          color: "#3a9d4e",
+          decimals: 3,
+          valueSize: "compact",
+          connectGuide: {
+            lead: "AkaDako用電力測定ボード",
+            product: "TFW-AD-PWR1",
+            url: "https://tfabworks.com/product/tfw-ad-pwr1/",
+            tail: "をアナログAに接続してください"
+          },
+          fetch: () => readPowerLevels().power
+        }
+      };
+
+      const dataStore = Object.fromEntries(
+        Object.keys(sensors).map(key => [key, []])
+      );
+
+      // 表の「番号」用。データを間引いても番号がずれないように、押した回数を数えておく
+      const seqCounters = Object.fromEntries(
+        Object.keys(sensors).map(key => [key, 0])
+      );
+
+      const els = {
+        connectBtn: document.getElementById("connectBtn"),
+        statusChip: document.getElementById("statusChip"),
+        statusText: document.getElementById("statusText"),
+        sensorButtons: [...document.querySelectorAll(".sensor-btn")],
+        sideCard: document.getElementById("sideCard"),
+        currentSensorName: document.getElementById("currentSensorName"),
+        currentLabelSuffix: document.getElementById("currentLabelSuffix"),
+        valueBox: document.getElementById("valueBox"),
+        aiPanel: document.getElementById("aiPanel"),
+        aiVideo: document.getElementById("aiVideo"),
+        aiStatus: document.getElementById("aiStatus"),
+        motionPreview: document.getElementById("motionPreview"),
+        motionPreviewVideo: document.getElementById("motionPreviewVideo"),
+        currentValue: document.getElementById("currentValue"),
+        currentUnit: document.getElementById("currentUnit"),
+        readingMeta: document.getElementById("readingMeta"),
+        miniStats: document.getElementById("miniStats"),
+        minValue: document.getElementById("minValue"),
+        avgValue: document.getElementById("avgValue"),
+        maxValue: document.getElementById("maxValue"),
+        chartViewBtn: document.getElementById("chartViewBtn"),
+        tableViewBtn: document.getElementById("tableViewBtn"),
+        recordBtn: document.getElementById("recordBtn"),
+        intervalSelect: document.getElementById("intervalSelect"),
+        oxygenPanel: document.getElementById("oxygenPanel"),
+        oxygenStatus: document.getElementById("oxygenStatus"),
+        calibrateBtn: document.getElementById("calibrateBtn"),
+        chartTitle: document.getElementById("chartTitle"),
+        chartDescription: document.getElementById("chartDescription"),
+        sampleCount: document.getElementById("sampleCount"),
+        canvasWrap: document.getElementById("canvasWrap"),
+        canvas: document.getElementById("chartCanvas"),
+        emptyState: document.getElementById("emptyState"),
+        tableWrap: document.getElementById("tableWrap"),
+        tableBody: document.getElementById("tableBody"),
+        tableValueHead: document.getElementById("tableValueHead"),
+        tableEmpty: document.getElementById("tableEmpty"),
+        downloadBtn: document.getElementById("downloadBtn"),
+        copyBtn: document.getElementById("copyBtn"),
+        deleteBtn: document.getElementById("deleteBtn"),
+        shareBtn: document.getElementById("shareBtn"),
+        sensorDialog: document.getElementById("sensorDialog"),
+        sensorDialogTitle: document.getElementById("sensorDialogTitle"),
+        sensorDialogText: document.getElementById("sensorDialogText"),
+        sensorDialogOk: document.getElementById("sensorDialogOk"),
+        sensorDialogCancel: document.getElementById("sensorDialogCancel"),
+        shareDialog: document.getElementById("shareDialog"),
+        dialogCloseBtn: document.getElementById("dialogCloseBtn"),
+        toast: document.getElementById("toast"),
+        midiDiag: document.getElementById("midiDiag"),
+        midiDiagBody: document.getElementById("midiDiagBody"),
+        motionVideo: document.getElementById("motionVideo")
+      };
+
+      const ctx = els.canvas.getContext("2d");
+      const LIVE_INTERVAL = 1000;   // 記録していないときも、現在値は1秒ごとに測り直す
+      let board = null;
+      let selectedSensor = "temperature";
+      let viewMode = "chart";       // "chart" | "table"
+      let aiMode = false;           // true のあいだは左パネルにカメラ映像を出す
+      let isRecording = false;
+      let loopRunning = false;
+      let nextSaveAt = 0;
+      let readingInProgress = false;
+      let toastTimer = null;
+      let oxygenCorrectionRate = null;   // null = 未校正。次の読み取りで大気20.9%を基準に決める
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2600);
+      }
+
+      function applyValueLayout(sensorKey) {
+        const sensor = sensors[sensorKey];
+        els.currentValue.classList.toggle("value--compact", sensor.valueSize === "compact");
+        els.currentValue.classList.toggle("value--narrow", sensor.valueSize === "narrow");
+        els.miniStats.classList.toggle("stats--stacked", Boolean(sensor.statsStack));
+      }
+
+      function updateOxygenPanel() {
+        const isOxygen = !aiMode && Boolean(sensors[selectedSensor].needsCalibration);
+        els.oxygenPanel.hidden = !isOxygen;
+        if (!isOxygen) return;
+        const calibrated = oxygenCorrectionRate !== null;
+        els.oxygenStatus.textContent = calibrated
+          ? `校正ずみ（大気＝${OXYGEN_AIR_PERCENT}%）`
+          : "未校正です。センサーを大気中に置いてから測定をはじめてください";
+        els.oxygenStatus.classList.toggle("calibrated", calibrated);
+        els.calibrateBtn.disabled = !isConnected();
+      }
+
+      function isConnected() {
+        return Boolean(board && board.isConnected);
+      }
+
+      // マイク・カメラのセンサーはS-LINKなしでも測れる
+      function canRead(sensorKey = selectedSensor) {
+        return sensors[sensorKey].needsBoard === false ? true : isConnected();
+      }
+
+      function waitingMessage() {
+        if (canRead()) return "測定しています…";
+        return selectedSensor === "volume" ? "マイクの使用を許可してください"
+          : selectedSensor === "motion" ? "カメラの使用を許可してください"
+          : "接続後に測定できます";
+      }
+
+      function setConnectionUI(connected, text = connected ? "接続中" : "未接続") {
+        els.statusText.textContent = text;
+        els.statusChip.classList.toggle("connected", connected);
+        els.connectBtn.textContent = connected ? "切断する" : "S-LINK接続";
+        els.recordBtn.disabled = !canRead();
+        if (!connected) {
+          if (!canRead()) stopRecording();
+          oxygenCorrectionRate = null;   // ボードが変われば校正はやり直し
+          els.readingMeta.textContent = waitingMessage();
+        }
+        updateOxygenPanel();
+        ensureReadingLoop();
+      }
+
+      // ===== Chromebook 対策 =====================================================
+      // s-link.js は MIDIポート名を /STEAM BOX/ /MidiDako/ /S-LINK/ の3つで絞り込む。
+      // ChromeOS ではポート名の付き方が macOS と違うため、ボードが挿さっていても
+      // この絞り込みに落ちて "no available MIDIPort for the filters" になることがある。
+      // そこで失敗したら、ポート名だけを偽装した MIDIAccess を渡して一度だけ再挑戦する。
+      const BOARD_NAME_HINT = /s.?link|akadako|mididako|steam.?box|dako/i;
+      const VIRTUAL_PORT = /midi\s*through|through\s*port|iac\s*driver|rtpmidi|network/i;
+      const PORT_FILTER_ERROR = /MIDIPort|MIDIInput|MIDIOutput/;
+      let lastMidiPorts = null;
+
+      async function listMidiPorts() {
+        if (!navigator.requestMIDIAccess) return null;
+        const access = await navigator.requestMIDIAccess({ sysex: true });
+        return {
+          inputs: [...access.inputs.values()],
+          outputs: [...access.outputs.values()]
+        };
+      }
+
+      // ボードらしいポートを選ぶ。名前で当たらなければ、仮想ポートを除いて1つだけ残る場合はそれを使う
+      // （s-link.js もフィルタ未指定なら先頭のポートをそのまま使う実装になっている）
+      function pickBoardPorts(ports) {
+        if (!ports) return null;
+        const real = list => list.filter(port => !VIRTUAL_PORT.test(port.name || ""));
+        const hinted = list => list.find(port => BOARD_NAME_HINT.test(`${port.manufacturer || ""} ${port.name || ""}`));
+        const inputs = real(ports.inputs);
+        const outputs = real(ports.outputs);
+        const input = hinted(inputs) || (inputs.length === 1 ? inputs[0] : null);
+        const output = hinted(outputs) || (outputs.length === 1 ? outputs[0] : null);
+        return input && output ? { input, output } : null;
+      }
+
+      // name だけを差し替えた透過プロキシ。open/close/send/onmidimessage は実物へそのまま流す
+      function aliasPort(port) {
+        return new Proxy(port, {
+          get(target, key) {
+            if (key === "name") return "S-LINK";
+            const value = Reflect.get(target, key);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+          set(target, key, value) {
+            target[key] = value;
+            return true;
+          }
+        });
+      }
+
+      async function connectWithAlias(input, output) {
+        const descriptor = Object.getOwnPropertyDescriptor(navigator, "requestMIDIAccess");
+        const request = navigator.requestMIDIAccess.bind(navigator);
+        navigator.requestMIDIAccess = async options => {
+          await request(options);   // 許可の確認は本物で済ませる
+          return {
+            inputs: new Map([[input.id, aliasPort(input)]]),
+            outputs: new Map([[output.id, aliasPort(output)]])
+          };
+        };
+        try {
+          return await SLINK.connect();
+        } finally {
+          if (descriptor) Object.defineProperty(navigator, "requestMIDIAccess", descriptor);
+          else delete navigator.requestMIDIAccess;
+        }
+      }
+
+      async function connectAnyBoard() {
+        lastMidiPorts = null;
+        try {
+          return await SLINK.connect();
+        } catch (error) {
+          if (!PORT_FILTER_ERROR.test(String(error))) throw error;
+          lastMidiPorts = await listMidiPorts().catch(() => null);
+          const pair = pickBoardPorts(lastMidiPorts);
+          if (!pair) throw error;
+          console.info(`[接続] ポート名「${pair.input.name}」が絞り込みに一致しないため、S-LINKとみなして再試行します`);
+          return connectWithAlias(pair.input, pair.output);
+        }
+      }
+
+      function hideMidiDiag() {
+        els.midiDiag.hidden = true;
+        els.midiDiag.open = false;
+      }
+
+      async function showMidiDiag(error) {
+        const detail = String(error && error.message ? error.message : error);
+        const ports = lastMidiPorts || await listMidiPorts().catch(() => null);
+        const lines = [`接続エラー: ${detail}`, ""];
+
+        if (!ports) {
+          lines.push("このブラウザは Web MIDI を使えません（または許可されませんでした）。");
+        } else if (!ports.inputs.length && !ports.outputs.length) {
+          lines.push("MIDIポートが1つも見つかりません。ボードのUSBケーブルを挿し直してください。");
+        } else {
+          lines.push("このブラウザが見つけたMIDIポート:");
+          const show = (list, tag) => list.forEach(port =>
+            lines.push(`  [${tag}] name="${port.name}"  manufacturer="${port.manufacturer}"`));
+          show(ports.inputs, "入力");
+          show(ports.outputs, "出力");
+          lines.push("", "この一覧をそのまま開発者に伝えてください。");
+        }
+
+        els.midiDiagBody.textContent = lines.join("\n");
+        els.midiDiag.hidden = false;
+        els.midiDiag.open = true;
+      }
+
+      async function connectBoard() {
+        if (isConnected()) {
+          stopRecording();
+          board.disconnect();
+          board = null;
+          setConnectionUI(false);
+          showToast("S-LINKを切断しました");
+          return;
+        }
+
+        if (!window.SLINK) {
+          showToast("s-link.jsを読み込めませんでした");
+          return;
+        }
+
+        els.connectBtn.disabled = true;
+        els.statusText.textContent = "接続しています…";
+        try {
+          board = await connectAnyBoard();
+          board.onDisconnected(() => {
+            board = null;
+            setConnectionUI(false, "切断されました");
+            showToast("S-LINKとの接続が切れました");
+          });
+          setConnectionUI(true);
+          hideMidiDiag();
+          showToast("S-LINKに接続しました");
+          ensureReadingLoop();
+        } catch (error) {
+          console.error(error);
+          board = null;
+          setConnectionUI(false, "接続できませんでした");
+          showToast(/MIDI Access/.test(String(error))
+            ? "Web MIDIを使えませんでした。ブラウザの設定を確認してください"
+            : "ボードが見つかりませんでした。下の「接続できないときの情報」をご覧ください");
+          await showMidiDiag(error);
+        } finally {
+          els.connectBtn.disabled = false;
+        }
+      }
+
+      // 「動き」タブ: 最小・平均・最大の下にカメラの映像を出す
+      function syncMotionPreview() {
+        if (!aiMode && selectedSensor === "motion") showMotionPreview();
+        else hideMotionPreview();
+      }
+
+      async function showMotionPreview() {
+        els.motionPreview.hidden = false;
+        try {
+          await ensureCam();
+          if (aiMode || selectedSensor !== "motion") return;   // 待っている間に移っていたら何もしない
+          els.motionPreviewVideo.srcObject = cam.stream;
+          els.motionPreviewVideo.muted = true;
+          await els.motionPreviewVideo.play().catch(error => console.warn(error));
+        } catch (error) {
+          // 使えない理由は現在値の下（readingMeta）に出るので、ここでは枠を消すだけ
+          if (!(error instanceof SensorNoticeError)) console.error(error);
+          hideMotionPreview();
+        }
+      }
+
+      function hideMotionPreview() {
+        els.motionPreviewVideo.srcObject = null;
+        els.motionPreview.hidden = true;
+      }
+
+      // 「AI」タブ: 左の現在値のかわりにカメラの映像を出す（最小・平均・最大は隠す）
+      async function enterAiMode() {
+        if (aiMode) return;
+        aiMode = true;
+        els.sensorButtons.forEach(button => {
+          button.setAttribute("aria-selected", String(button.dataset.sensor === "ai"));
+        });
+        els.valueBox.hidden = true;
+        els.miniStats.hidden = true;
+        els.oxygenPanel.hidden = true;
+        els.aiPanel.hidden = false;
+        els.currentSensorName.textContent = "AI";
+        els.currentLabelSuffix.textContent = " カメラの映像";
+        els.aiStatus.textContent = "カメラを準備しています…";
+        syncMotionPreview();
+
+        try {
+          await ensureCam();
+          if (!aiMode) return;   // 準備中に他のタブへ移っていたら何もしない
+          els.aiVideo.srcObject = cam.stream;
+          els.aiVideo.muted = true;
+          await els.aiVideo.play().catch(error => console.warn(error));
+          els.aiStatus.textContent = "";
+        } catch (error) {
+          if (!(error instanceof SensorNoticeError)) console.error(error);
+          els.aiStatus.textContent = error instanceof SensorNoticeError ? error.message : "カメラを使えませんでした";
+        }
+      }
+
+      // 元のセンサー表示に戻す
+      function exitAiMode() {
+        if (!aiMode) return;
+        aiMode = false;
+        els.aiVideo.srcObject = null;
+        els.aiPanel.hidden = true;
+        els.aiStatus.textContent = "";
+        els.valueBox.hidden = false;
+        els.miniStats.hidden = false;
+        els.currentSensorName.textContent = sensors[selectedSensor].name;
+        els.currentLabelSuffix.textContent = " の現在値";
+        els.sensorButtons.forEach(button => {
+          button.setAttribute("aria-selected", String(button.dataset.sensor === selectedSensor));
+        });
+        updateOxygenPanel();
+        updateSummary();
+        syncMediaUsage();
+        syncMotionPreview();
+      }
+
+      // 外付けの機器が要るセンサーは、切り替える前に接続の確認を出す
+      let pendingSensor = null;
+
+      function requestSensor(sensorKey) {
+        if (sensorKey === "ai") {
+          enterAiMode();
+          return;
+        }
+        const sensor = sensors[sensorKey];
+        if (!sensor) return;
+        if (sensorKey === selectedSensor) {
+          exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ
+          return;
+        }
+        if (!sensor.connectGuide) {
+          switchSensor(sensorKey);
+          return;
+        }
+        pendingSensor = sensorKey;
+        const guide = sensor.connectGuide;
+        const link = document.createElement("a");
+        link.href = guide.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = guide.product;
+        els.sensorDialogTitle.textContent = `${sensor.name}をはかる準備`;
+        els.sensorDialogText.replaceChildren(
+          document.createTextNode(`${guide.lead}(`),
+          link,
+          document.createTextNode(`)${guide.tail}`)
+        );
+        if (typeof els.sensorDialog.showModal === "function") els.sensorDialog.showModal();
+        else els.sensorDialog.setAttribute("open", "");
+      }
+
+      function closeSensorDialog() {
+        pendingSensor = null;
+        if (typeof els.sensorDialog.close === "function") els.sensorDialog.close();
+        else els.sensorDialog.removeAttribute("open");
+      }
+
+      function unitSuffix(sensor) {
+        return sensor.unit ? `（${sensor.unit}）` : "（0〜100）";
+      }
+
+      function switchSensor(sensorKey) {
+        if (!sensors[sensorKey] || sensorKey === selectedSensor) return;
+        exitAiMode();
+        selectedSensor = sensorKey;
+        syncMediaUsage();
+
+        els.sensorButtons.forEach(button => {
+          button.setAttribute("aria-selected", String(button.dataset.sensor === sensorKey));
+        });
+
+        const sensor = sensors[sensorKey];
+        els.sideCard.style.setProperty("--active-color", sensor.color);
+        document.documentElement.style.setProperty("--active-color", sensor.color);
+        els.currentSensorName.textContent = sensor.name;
+        els.currentValue.textContent = "--";
+        els.readingMeta.textContent = waitingMessage();
+        els.currentUnit.textContent = sensor.unit;
+        els.recordBtn.disabled = !canRead();
+        applyValueLayout(sensorKey);
+        updateOxygenPanel();
+        els.chartTitle.textContent = `${sensor.name}の変化`;
+        els.chartDescription.textContent = `横軸：時刻　縦軸：${sensor.name}${unitSuffix(sensor)}`;
+        updateSummary();
+        refreshView();
+        syncMotionPreview();
+        ensureReadingLoop();
+      }
+
+      function startRecording() {
+        if (!canRead() || isRecording) return;
+        isRecording = true;
+        nextSaveAt = 0;   // 次の周期ですぐ1件目を記録する
+        els.recordBtn.classList.add("running");
+        els.recordBtn.textContent = "■ 記録をとめる";
+        els.intervalSelect.disabled = true;
+        ensureReadingLoop();
+      }
+
+      function stopRecording() {
+        if (!isRecording) return;
+        isRecording = false;
+        els.recordBtn.classList.remove("running");
+        els.recordBtn.textContent = "● 記録をはじめる";
+        els.intervalSelect.disabled = false;
+      }
+
+      // 記録中かどうかに関わらず走らせる1本のループ。
+      // 現在値は1秒ごと（記録間隔が0.5秒ならその周期）に更新し、記録は記録間隔ごとに行う。
+      function ensureReadingLoop() {
+        if (loopRunning || !canRead()) return;
+        loopRunning = true;
+        runReadingLoop().finally(() => { loopRunning = false; });
+      }
+
+      async function runReadingLoop() {
+        while (canRead()) {
+          const startedAt = performance.now();
+          const recordInterval = Number(els.intervalSelect.value);
+          const save = isRecording && startedAt >= nextSaveAt;
+          if (save) nextSaveAt = startedAt + recordInterval;
+          await readOnce(save);
+          const tick = isRecording ? Math.min(LIVE_INTERVAL, recordInterval) : LIVE_INTERVAL;
+          const wait = Math.max(0, tick - (performance.now() - startedAt));
+          await new Promise(resolve => setTimeout(resolve, wait));
+        }
+      }
+
+      async function readOnce(save) {
+        if (!canRead() || readingInProgress) return;
+        readingInProgress = true;
+        const sensorKeyAtStart = selectedSensor;
+        const sensor = sensors[sensorKeyAtStart];
+
+        try {
+          const rawValue = await sensor.fetch(board);
+          const value = Number(rawValue);
+          if (!Number.isFinite(value)) throw new Error("センサー値が数値ではありません");
+
+          if (save) {
+            seqCounters[sensorKeyAtStart] += 1;
+            dataStore[sensorKeyAtStart].push({ time: new Date(), value, seq: seqCounters[sensorKeyAtStart] });
+            if (dataStore[sensorKeyAtStart].length > 10000) {
+              dataStore[sensorKeyAtStart].shift();
+            }
+          }
+
+          if (selectedSensor === sensorKeyAtStart) {
+            els.currentValue.textContent = formatValue(value, sensor);
+            els.readingMeta.textContent = `${new Date().toLocaleTimeString("ja-JP")} に${save ? "記録" : "測定"}`;
+            updateSummary(false);
+            refreshView();
+          }
+        } catch (error) {
+          const notice = error instanceof SensorNoticeError;
+          if (!notice) console.error(error);
+          if (selectedSensor === sensorKeyAtStart) {
+            els.readingMeta.textContent = notice ? error.message
+              : error && error.name === "NotSupportedError" ? `このボードでは${sensor.name}を測れません`
+              : "センサー値を取得できませんでした";
+          }
+        } finally {
+          readingInProgress = false;
+        }
+      }
+
+      function formatValue(value, sensor = sensors[selectedSensor]) {
+        return value.toFixed(sensor.decimals);
+      }
+
+      // showLatest: false のときは現在値・測定時刻の表示に触れない（ライブ値を上書きしないため）
+      function updateSummary(showLatest = true) {
+        const sensor = sensors[selectedSensor];
+        const data = dataStore[selectedSensor];
+        const hasData = data.length > 0;
+
+        applyValueLayout(selectedSensor);
+        els.sampleCount.textContent = `データ ${data.length.toLocaleString("ja-JP")}件`;
+        els.emptyState.classList.toggle("hidden", hasData);
+        els.downloadBtn.disabled = !hasData;
+        els.copyBtn.disabled = !hasData;
+        els.deleteBtn.disabled = !hasData;
+
+        if (!hasData) {
+          els.minValue.textContent = "--";
+          els.avgValue.textContent = "--";
+          els.maxValue.textContent = "--";
+          if (showLatest && !canRead()) els.currentValue.textContent = "--";
+          return;
+        }
+
+        const values = data.map(item => item.value);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+        els.minValue.textContent = `${formatValue(min, sensor)}${sensor.unit}`;
+        els.avgValue.textContent = `${formatValue(avg, sensor)}${sensor.unit}`;
+        els.maxValue.textContent = `${formatValue(max, sensor)}${sensor.unit}`;
+
+        if (!showLatest) return;
+        const latest = data[data.length - 1];
+        els.currentValue.textContent = formatValue(latest.value, sensor);
+        els.readingMeta.textContent = `${latest.time.toLocaleTimeString("ja-JP")} に記録`;
+      }
+
+      // ===== グラフ／表 の切り替え ==============================================
+      function setViewMode(mode) {
+        viewMode = mode === "table" ? "table" : "chart";
+        const showTable = viewMode === "table";
+        els.chartViewBtn.classList.toggle("is-active", !showTable);
+        els.tableViewBtn.classList.toggle("is-active", showTable);
+        els.chartViewBtn.setAttribute("aria-pressed", String(!showTable));
+        els.tableViewBtn.setAttribute("aria-pressed", String(showTable));
+        els.canvasWrap.hidden = showTable;
+        els.tableWrap.hidden = !showTable;
+        refreshView();
+      }
+
+      function refreshView() {
+        if (viewMode === "table") renderTable();
+        else drawChart();
+      }
+
+      // 1秒ごとに呼ばれるので、増えた行だけを足していく
+      const tableState = { sensor: null, rendered: 0, firstSeq: null };
+
+      function resetTable() {
+        els.tableBody.replaceChildren();
+        tableState.sensor = selectedSensor;
+        tableState.rendered = 0;
+        tableState.firstSeq = null;
+      }
+
+      function renderTable() {
+        const sensor = sensors[selectedSensor];
+        const data = dataStore[selectedSensor];
+        els.tableValueHead.textContent = `${sensor.name}${unitSuffix(sensor)}`;
+        els.tableEmpty.hidden = data.length > 0;
+
+        if (tableState.sensor !== selectedSensor || data.length < tableState.rendered) resetTable();
+
+        // 上限を超えて古い行が捨てられたぶんは、表の先頭からも取り除く
+        const firstSeq = data.length ? data[0].seq : null;
+        if (tableState.firstSeq !== null && firstSeq !== null && firstSeq > tableState.firstSeq) {
+          let drop = firstSeq - tableState.firstSeq;
+          while (drop-- > 0 && els.tableBody.firstElementChild) {
+            els.tableBody.firstElementChild.remove();
+            tableState.rendered -= 1;
+          }
+        }
+        tableState.firstSeq = firstSeq;
+        if (data.length === tableState.rendered) return;
+
+        const wrap = els.tableWrap;
+        const atBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 28;
+        const fragment = document.createDocumentFragment();
+
+        for (let i = tableState.rendered; i < data.length; i++) {
+          const item = data[i];
+          const row = document.createElement("tr");
+          const no = document.createElement("td");
+          const time = document.createElement("td");
+          const value = document.createElement("td");
+          no.textContent = String(item.seq);
+          time.textContent = item.time.toLocaleTimeString("ja-JP", { hour12: false });
+          value.textContent = formatValue(item.value, sensor);
+          row.append(no, time, value);
+          fragment.append(row);
+        }
+
+        els.tableBody.append(fragment);
+        tableState.rendered = data.length;
+        if (atBottom) wrap.scrollTop = wrap.scrollHeight;   // 記録中は最新行を追いかける
+      }
+
+      function resizeCanvas() {
+        const rect = els.canvasWrap.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.max(320, Math.floor(rect.width));
+        const height = Math.max(260, Math.floor(rect.height));
+
+        if (els.canvas.width !== Math.floor(width * dpr) || els.canvas.height !== Math.floor(height * dpr)) {
+          els.canvas.width = Math.floor(width * dpr);
+          els.canvas.height = Math.floor(height * dpr);
+          els.canvas.style.width = `${width}px`;
+          els.canvas.style.height = `${height}px`;
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { width, height };
+      }
+
+      function niceStep(range, targetTicks = 5) {
+        if (!Number.isFinite(range) || range <= 0) return 1;
+        const rough = range / targetTicks;
+        const power = Math.pow(10, Math.floor(Math.log10(rough)));
+        const fraction = rough / power;
+        const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+        return niceFraction * power;
+      }
+
+      function drawChart() {
+        const { width, height } = resizeCanvas();
+        ctx.clearRect(0, 0, width, height);
+
+        const allData = dataStore[selectedSensor];
+        if (!allData.length) return;
+
+        const sensor = sensors[selectedSensor];
+        const maxVisible = 120;
+        const data = allData.slice(-maxVisible);
+        const values = data.map(item => item.value);
+        let rawMin = Math.min(...values);
+        let rawMax = Math.max(...values);
+
+        if (rawMin === rawMax) {
+          const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 ? 5 : 1);
+          rawMin -= pad;
+          rawMax += pad;
+        }
+
+        const range = rawMax - rawMin;
+        const step = niceStep(range * 1.18, 5);
+        const yMin = Math.floor((rawMin - range * 0.09) / step) * step;
+        const yMax = Math.ceil((rawMax + range * 0.09) / step) * step;
+
+        const margin = {
+          top: 24,
+          right: 22,
+          bottom: 45,
+          left: width < 470 ? 55 : 68
+        };
+        const plotW = width - margin.left - margin.right;
+        const plotH = height - margin.top - margin.bottom;
+        const xAt = i => margin.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
+        const yAt = value => margin.top + ((yMax - value) / (yMax - yMin)) * plotH;
+
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#d9e8f1";
+        ctx.fillStyle = "#667b8c";
+        ctx.font = `${width < 470 ? 10 : 12}px system-ui, sans-serif`;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+
+        const yTickCount = Math.round((yMax - yMin) / step);
+        for (let i = 0; i <= yTickCount; i++) {
+          const tick = yMin + i * step;
+          const y = yAt(tick);
+          ctx.beginPath();
+          ctx.moveTo(margin.left, y);
+          ctx.lineTo(width - margin.right, y);
+          ctx.stroke();
+          const decimals = step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9)));
+          ctx.fillText(tick.toFixed(decimals), margin.left - 9, y);
+        }
+
+        const desiredXTicks = width < 500 ? 4 : 6;
+        const xTickIndexes = new Set([0, data.length - 1]);
+        for (let i = 1; i < desiredXTicks - 1; i++) {
+          xTickIndexes.add(Math.round((i / (desiredXTicks - 1)) * (data.length - 1)));
+        }
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        [...xTickIndexes].sort((a, b) => a - b).forEach(index => {
+          const x = xAt(index);
+          ctx.beginPath();
+          ctx.moveTo(x, margin.top);
+          ctx.lineTo(x, height - margin.bottom);
+          ctx.stroke();
+          const label = data[index].time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          ctx.fillText(label, x, height - margin.bottom + 10);
+        });
+
+        ctx.strokeStyle = "#9cb5c5";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, height - margin.bottom);
+        ctx.lineTo(width - margin.right, height - margin.bottom);
+        ctx.stroke();
+
+        const gradient = ctx.createLinearGradient(0, margin.top, 0, height - margin.bottom);
+        gradient.addColorStop(0, hexToRgba(sensor.color, 0.28));
+        gradient.addColorStop(1, hexToRgba(sensor.color, 0.015));
+
+        ctx.beginPath();
+        data.forEach((item, index) => {
+          const x = xAt(index);
+          const y = yAt(item.value);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(xAt(data.length - 1), height - margin.bottom);
+        ctx.lineTo(xAt(0), height - margin.bottom);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.beginPath();
+        data.forEach((item, index) => {
+          const x = xAt(index);
+          const y = yAt(item.value);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = sensor.color;
+        ctx.lineWidth = 3.2;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        const last = data[data.length - 1];
+        const lastX = xAt(data.length - 1);
+        const lastY = yAt(last.value);
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = sensor.color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        const badgeText = `${formatValue(last.value, sensor)} ${sensor.unit}`;
+        ctx.font = `bold ${width < 470 ? 11 : 13}px system-ui, sans-serif`;
+        const badgeW = ctx.measureText(badgeText).width + 18;
+        const badgeH = 28;
+        const badgeX = Math.min(width - margin.right - badgeW, Math.max(margin.left, lastX - badgeW / 2));
+        const badgeY = Math.max(margin.top + 3, lastY - 39);
+        roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 9);
+        ctx.fillStyle = sensor.color;
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + .5);
+        ctx.restore();
+      }
+
+      function roundRect(context, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        context.beginPath();
+        context.moveTo(x + r, y);
+        context.arcTo(x + width, y, x + width, y + height, r);
+        context.arcTo(x + width, y + height, x, y + height, r);
+        context.arcTo(x, y + height, x, y, r);
+        context.arcTo(x, y, x + width, y, r);
+        context.closePath();
+      }
+
+      function hexToRgba(hex, alpha) {
+        const value = hex.replace("#", "");
+        const bigint = parseInt(value, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      // CSV・TSVで共通の表データ（1行目は見出し）
+      function buildRows() {
+        const sensor = sensors[selectedSensor];
+        return [
+          ["日時", "時刻", sensor.name, "単位"],
+          ...dataStore[selectedSensor].map(item => [
+            item.time.toLocaleDateString("ja-JP"),
+            item.time.toLocaleTimeString("ja-JP", { hour12: false }),
+            item.value,
+            sensor.csvUnit
+          ])
+        ];
+      }
+
+      function downloadCsv() {
+        const sensor = sensors[selectedSensor];
+        const data = dataStore[selectedSensor];
+        if (!data.length) return;
+
+        const escapeCsv = value => `"${String(value).replaceAll('"', '""')}"`;
+        const csv = "\uFEFF" + buildRows().map(row => row.map(escapeCsv).join(",")).join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        link.href = url;
+        link.download = `AkaDako_${sensor.name}_${stamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast(`${sensor.name}のデータをCSVで保存しました`);
+      }
+
+      // ExcelやGoogleスプレッドシートにそのまま貼れるよう、タブ区切りでコピーする
+      async function copyTsv() {
+        const sensor = sensors[selectedSensor];
+        const data = dataStore[selectedSensor];
+        if (!data.length) return;
+
+        const tsv = buildRows().map(row => row.join("\t")).join("\r\n");
+        const copied = await writeClipboard(tsv);
+        showToast(copied
+          ? `${sensor.name}のデータ${data.length.toLocaleString("ja-JP")}件をコピーしました`
+          : "コピーできませんでした。ダウンロードをお使いください");
+      }
+
+      async function writeClipboard(text) {
+        // 保護された文脈(https/localhost/file)ならこちらが通る
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+        // クリップボードAPIが使えない環境向けの保険
+        try {
+          if (typeof document.execCommand !== "function") return false;
+          const area = document.createElement("textarea");
+          area.value = text;
+          area.setAttribute("readonly", "");
+          area.style.cssText = "position:fixed;top:0;left:-9999px;opacity:0";
+          document.body.appendChild(area);
+          area.select();
+          const copied = document.execCommand("copy");
+          area.remove();
+          return copied;
+        } catch (error) {
+          console.warn(error);
+          return false;
+        }
+      }
+
+      function deleteCurrentData() {
+        const sensor = sensors[selectedSensor];
+        if (!dataStore[selectedSensor].length) return;
+        if (!window.confirm(`${sensor.name}の記録データをすべて削除しますか？`)) return;
+        dataStore[selectedSensor].length = 0;
+        seqCounters[selectedSensor] = 0;
+        resetTable();
+        els.currentValue.textContent = "--";
+        els.readingMeta.textContent = canRead() ? "記録データを削除しました" : waitingMessage();
+        updateSummary();
+        refreshView();
+        showToast(`${sensor.name}のグラフを削除しました`);
+      }
+
+      els.connectBtn.addEventListener("click", connectBoard);
+      els.recordBtn.addEventListener("click", () => isRecording ? stopRecording() : startRecording());
+      els.sensorButtons.forEach(button => button.addEventListener("click", () => requestSensor(button.dataset.sensor)));
+      els.sensorDialogOk.addEventListener("click", () => {
+        const sensorKey = pendingSensor;
+        closeSensorDialog();
+        if (sensorKey) switchSensor(sensorKey);
+      });
+      els.sensorDialogCancel.addEventListener("click", closeSensorDialog);
+      els.sensorDialog.addEventListener("cancel", () => { pendingSensor = null; });   // Escキー
+      els.sensorDialog.addEventListener("click", event => {
+        if (event.target === els.sensorDialog) closeSensorDialog();   // 外側をクリック
+      });
+      els.calibrateBtn.addEventListener("click", async () => {
+        oxygenCorrectionRate = null;
+        updateOxygenPanel();
+        showToast(`大気（${OXYGEN_AIR_PERCENT}%）で校正し直します`);
+        if (isConnected()) await readOnce(false);
+        updateOxygenPanel();
+      });
+      els.chartViewBtn.addEventListener("click", () => setViewMode("chart"));
+      els.tableViewBtn.addEventListener("click", () => setViewMode("table"));
+      els.downloadBtn.addEventListener("click", downloadCsv);
+      els.copyBtn.addEventListener("click", copyTsv);
+      els.deleteBtn.addEventListener("click", deleteCurrentData);
+      els.shareBtn.addEventListener("click", () => els.shareDialog.showModal());
+      els.dialogCloseBtn.addEventListener("click", () => els.shareDialog.close());
+      els.shareDialog.addEventListener("click", event => {
+        if (event.target === els.shareDialog) els.shareDialog.close();
+      });
+      window.addEventListener("resize", () => {
+        if (viewMode === "chart") drawChart();
+      });
+
+      document.documentElement.style.setProperty("--active-color", sensors[selectedSensor].color);
+      setConnectionUI(false);
+      updateSummary();
+      setViewMode("chart");
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# 作業用の参照画像・スクラッチ
+*.jpg
+*.png
+.claude/
+node_modules/
