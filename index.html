@@ -442,6 +442,9 @@
 
     .view-btn:hover { color: var(--blue-dark); }
 
+    /* AI表示中は「表」だけになるので1列にする */
+    .view-toggle.view-toggle--single { grid-template-columns: 1fr; }
+
     .view-btn.is-active {
       color: white;
       background: var(--active-color, var(--blue));
@@ -971,7 +974,7 @@
             <p id="aiStatus" class="ai-status"></p>
             <div class="ai-prompt">
               <label class="ai-prompt-label" for="aiPrompt">プロンプト</label>
-              <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: カメラにうつっているものを教えて"></textarea>
+              <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: 男性と女性の人数を数えて"></textarea>
             </div>
           </div>
           <div id="miniStats" class="mini-stats" aria-label="統計値">
@@ -990,7 +993,7 @@
           </div>
           <button id="recordBtn" class="record-btn" type="button" disabled>● 記録をはじめる</button>
           <label class="interval-row">記録間隔
-            <select id="intervalSelect">
+            <select id="intervalSelect" data-kind="sensor">
               <option value="500">0.5秒</option>
               <option value="1000" selected>1秒</option>
               <option value="2000">2秒</option>
@@ -1820,6 +1823,25 @@
         }
       }
 
+      // 記録間隔の選択肢。AI表示中は長めの3種類に入れ替える
+      const RECORD_INTERVALS = {
+        sensor: [["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
+        ai: [["10000", "10秒"], ["60000", "1分"], ["600000", "10分"]]
+      };
+      let savedInterval = null;
+      let savedViewMode = null;
+
+      function setIntervalOptions(kind) {
+        if (els.intervalSelect.dataset.kind === kind) return;
+        els.intervalSelect.dataset.kind = kind;
+        els.intervalSelect.replaceChildren(...RECORD_INTERVALS[kind].map(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          return option;
+        }));
+      }
+
       // 「動き」タブ: 最小・平均・最大の下にカメラの映像を出す
       function syncMotionPreview() {
         if (!aiMode && selectedSensor === "motion") showMotionPreview();
@@ -1862,6 +1884,15 @@
         els.aiStatus.textContent = "カメラを準備しています…";
         syncMotionPreview();
 
+        // 表示は「表」だけにし、記録間隔は長めの選択肢に入れ替える
+        savedViewMode = viewMode;
+        savedInterval = els.intervalSelect.value;
+        els.chartViewBtn.hidden = true;
+        els.chartViewBtn.parentElement.classList.add("view-toggle--single");
+        setViewMode("table");
+        setIntervalOptions("ai");
+        els.intervalSelect.value = "10000";
+
         try {
           await ensureCam();
           if (!aiMode) return;   // 準備中に他のタブへ移っていたら何もしない
@@ -1886,6 +1917,13 @@
         els.miniStats.hidden = false;
         els.currentSensorName.textContent = sensors[selectedSensor].name;
         els.currentLabelSuffix.textContent = " の現在値";
+        els.chartViewBtn.hidden = false;
+        els.chartViewBtn.parentElement.classList.remove("view-toggle--single");
+        setIntervalOptions("sensor");
+        if (savedInterval !== null) els.intervalSelect.value = savedInterval;
+        savedInterval = null;
+        if (savedViewMode) setViewMode(savedViewMode);
+        savedViewMode = null;
         els.sensorButtons.forEach(button => {
           button.setAttribute("aria-selected", String(button.dataset.sensor === selectedSensor));
         });
