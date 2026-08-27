@@ -296,6 +296,34 @@
       transform: scaleX(-1);   /* 鏡にうつしたほうが自分の動きと合う */
     }
 
+    .ai-prompt { display: grid; gap: 5px; }
+
+    .ai-prompt-label {
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+
+    .ai-prompt-input {
+      width: 100%;
+      padding: 9px 11px;
+      border: 2px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: .85rem;
+      line-height: 1.5;
+      resize: vertical;
+      overflow-y: auto;   /* 5行を超えたら縦スクロール */
+    }
+
+    .ai-prompt-input:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
     .ai-status {
       margin: 0;
       min-height: 1.2em;
@@ -941,6 +969,10 @@
           <div id="aiPanel" class="ai-panel" hidden>
             <video id="aiVideo" class="ai-video" playsinline muted></video>
             <p id="aiStatus" class="ai-status"></p>
+            <div class="ai-prompt">
+              <label class="ai-prompt-label" for="aiPrompt">プロンプト</label>
+              <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: カメラにうつっているものを教えて"></textarea>
+            </div>
           </div>
           <div id="miniStats" class="mini-stats" aria-label="統計値">
             <div class="mini-stat"><span>最小</span><strong id="minValue">--</strong></div>
