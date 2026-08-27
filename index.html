@@ -162,9 +162,40 @@
       padding: 9px 0 15px;
       overflow-x: auto;
       overscroll-behavior-x: contain;
-      scrollbar-width: thin;
       -webkit-overflow-scrolling: touch;
+      /* スクロールバーは出さず、かわりに左右の矢印で気づかせる */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
+
+    .sensor-tabs::-webkit-scrollbar { display: none; }
+
+    .sensor-tabs-wrap { position: relative; }
+
+    /* 後ろのタブが透けるグレーの半透明。押すと端までスクロールする */
+    .tabs-arrow {
+      position: absolute;
+      top: 9px;
+      bottom: 15px;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: clamp(30px, 3.2vw, 44px);
+      padding: 0;
+      border: 0;
+      border-radius: clamp(13px, 1.5vw, 20px);
+      color: rgba(255, 255, 255, .96);
+      background: rgba(92, 112, 130, .42);
+      box-shadow: 0 4px 12px rgba(20, 58, 90, .12);
+      font-size: clamp(.95rem, 1.5vw, 1.25rem);
+      line-height: 1;
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+
+    .tabs-arrow:hover { background: rgba(92, 112, 130, .62); }
+    .tabs-arrow--left { left: 0; }
+    .tabs-arrow--right { right: 0; }
 
     .sensor-btn {
       --sensor-color: var(--blue);
@@ -802,7 +833,8 @@
       </div>
     </header>
 
-    <nav class="sensor-tabs" aria-label="表示するセンサー">
+    <div class="sensor-tabs-wrap">
+      <nav id="sensorTabs" class="sensor-tabs" aria-label="表示するセンサー">
       <button class="sensor-btn sensor-btn--ai" data-sensor="ai" aria-selected="false" type="button">
         <span class="sensor-icon" aria-hidden="true">
           <svg viewBox="0 0 32 32"><text x="16" y="16.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="900">AI</text></svg>
@@ -907,7 +939,10 @@
         </span>
         <span class="sensor-name">電力</span>
       </button>
-    </nav>
+      </nav>
+      <button id="tabsScrollLeft" class="tabs-arrow tabs-arrow--left" type="button" aria-label="左のセンサーを表示する" hidden>◀</button>
+      <button id="tabsScrollRight" class="tabs-arrow tabs-arrow--right" type="button" aria-label="右のセンサーを表示する" hidden>▶</button>
+    </div>
 
     <section class="dashboard">
       <aside id="sideCard" class="side-card" style="--active-color:#ef5b5b">
@@ -1481,6 +1516,9 @@
         statusChip: document.getElementById("statusChip"),
         statusText: document.getElementById("statusText"),
         sensorButtons: [...document.querySelectorAll(".sensor-btn")],
+        sensorTabs: document.getElementById("sensorTabs"),
+        tabsScrollLeft: document.getElementById("tabsScrollLeft"),
+        tabsScrollRight: document.getElementById("tabsScrollRight"),
         sideCard: document.getElementById("sideCard"),
         currentSensorName: document.getElementById("currentSensorName"),
         currentLabelSuffix: document.getElementById("currentLabelSuffix"),
@@ -1543,6 +1581,22 @@
       let readingInProgress = false;
       let toastTimer = null;
       let oxygenCorrectionRate = null;   // null = 未校正。次の読み取りで大気20.9%を基準に決める
+
+      // タブが右に続いていることに気づけるよう、端でないほうの矢印だけを出す
+      function updateTabsArrows() {
+        const tabs = els.sensorTabs;
+        const max = tabs.scrollWidth - tabs.clientWidth;
+        const scrollable = max > 4;
+        els.tabsScrollLeft.hidden = !scrollable || tabs.scrollLeft <= 2;
+        els.tabsScrollRight.hidden = !scrollable || tabs.scrollLeft >= max - 2;
+      }
+
+      function scrollTabsTo(left) {
+        const tabs = els.sensorTabs;
+        if (typeof tabs.scrollTo === "function") tabs.scrollTo({ left, behavior: "smooth" });
+        else tabs.scrollLeft = left;
+        updateTabsArrows();
+      }
 
       function showToast(message) {
         clearTimeout(toastTimer);
@@ -2375,6 +2429,11 @@
         if (isConnected()) await readOnce(false);
         updateOxygenPanel();
       });
+      els.tabsScrollRight.addEventListener("click", () => scrollTabsTo(els.sensorTabs.scrollWidth));
+      els.tabsScrollLeft.addEventListener("click", () => scrollTabsTo(0));
+      els.sensorTabs.addEventListener("scroll", () => {
+        requestAnimationFrame(updateTabsArrows);   // スクロール中に何度も走らせない
+      }, { passive: true });
       els.chartViewBtn.addEventListener("click", () => setViewMode("chart"));
       els.tableViewBtn.addEventListener("click", () => setViewMode("table"));
       els.downloadBtn.addEventListener("click", downloadCsv);
@@ -2386,6 +2445,7 @@
         if (event.target === els.shareDialog) els.shareDialog.close();
       });
       window.addEventListener("resize", () => {
+        updateTabsArrows();
         if (viewMode === "chart") drawChart();
       });
 
@@ -2393,6 +2453,7 @@
       setConnectionUI(false);
       updateSummary();
       setViewMode("chart");
+      updateTabsArrows();
     })();
   </script>
 </body>
