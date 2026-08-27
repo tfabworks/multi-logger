@@ -1,4 +1,4 @@
-# AkaDako Cloud Logger
+# AkaDako Multi Logger
 
 AkaDako / S-LINK センサーボードの値をブラウザでリアルタイムに表示・記録する、1ファイル構成の教材用Webアプリです。
 
