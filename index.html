@@ -1091,6 +1091,10 @@
     (() => {
       "use strict";
 
+      // s-link.js は配信時期によってグローバル名が SLINK だったり AkaDako だったりする
+      // （中身は akadako.js と同一のバンドル）。どちらでも動くように両方を見る。
+      const SLINK = window.SLINK || window.AkaDako;
+
       // ===== 換算定数 =====
       // 酸素 (TFW-AD-OXY1 / 空気亜鉛電池) : アナログA1 の 0〜100 を大気=20.9% として1点校正する。
       //   参照 https://graph.699.jp/  (センサー定義 id:20 の targetValueForCorrectionOnStart: 20.9)
@@ -1792,7 +1796,7 @@
           return;
         }
 
-        if (!window.SLINK) {
+        if (!SLINK) {
           showToast("s-link.jsを読み込めませんでした");
           return;
         }
