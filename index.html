@@ -781,6 +781,16 @@
 
     .dialog-cancel:hover { border-color: var(--blue); color: var(--blue-dark); }
 
+    /* iPad → Scrub の案内。開くボタンはリンクなので、ボタンと同じ見た目にそろえる */
+    .scrub-actions { display: grid; gap: 10px; }
+    .dialog-body .scrub-launch {
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+    }
+    .dialog-body .scrub-store { font-size: .85rem; }
+
     .toast {
       position: fixed;
       left: 50%;
@@ -1080,7 +1090,7 @@
       <pre id="midiDiagBody"></pre>
     </details>
 
-    <p class="notice">※ S-LINKへの接続にはWeb MIDI対応ブラウザが必要です。ローカルファイルで接続できない場合は、Live ServerなどのWebサーバーから開いてください。</p>
+    <p id="notice" class="notice">※ S-LINKへの接続にはWeb MIDI対応ブラウザが必要です。ローカルファイルで接続できない場合は、Live ServerなどのWebサーバーから開いてください。</p>
   </main>
 
   <dialog id="sensorDialog" aria-labelledby="sensorDialogTitle">
@@ -1101,6 +1111,20 @@
       <h3 id="shareDialogTitle">共有機能</h3>
       <p>現在、準備中です</p>
       <button id="dialogCloseBtn" class="dialog-close" type="button">とじる</button>
+    </div>
+  </dialog>
+
+  <!-- iPad の Safari/Chrome には Web MIDI が無く S-LINK につなげないので、Scratch専用ブラウザ「Scrub」で開いてもらう -->
+  <dialog id="scrubDialog" aria-labelledby="scrubDialogTitle">
+    <div class="dialog-body">
+      <div class="dialog-icon" aria-hidden="true">!</div>
+      <h3 id="scrubDialogTitle">iPad では「Scrub」で開いてください</h3>
+      <p>この画面は Safari や Chrome では S-LINK につなげません。Scratch専用ブラウザ「Scrub」で開くと使えます。</p>
+      <div class="scrub-actions">
+        <a id="scrubLaunch" class="dialog-close scrub-launch" href="#">Scrub で開く</a>
+        <a class="scrub-store" href="https://apps.apple.com/jp/app/scrub/id1569777095" target="_blank" rel="noopener noreferrer">Scrub をインストール（App Store）</a>
+        <button id="scrubDialogClose" class="dialog-cancel" type="button">このまま画面を見る</button>
+      </div>
     </div>
   </dialog>
 
@@ -1766,6 +1790,10 @@
         sensorDialogCancel: document.getElementById("sensorDialogCancel"),
         shareDialog: document.getElementById("shareDialog"),
         dialogCloseBtn: document.getElementById("dialogCloseBtn"),
+        scrubDialog: document.getElementById("scrubDialog"),
+        scrubLaunch: document.getElementById("scrubLaunch"),
+        scrubDialogClose: document.getElementById("scrubDialogClose"),
+        notice: document.getElementById("notice"),
         toast: document.getElementById("toast"),
         midiDiag: document.getElementById("midiDiag"),
         midiDiagBody: document.getElementById("midiDiagBody"),
@@ -2714,6 +2742,39 @@
         showToast(`${sensor.name}のグラフを削除しました`);
       }
 
+      // ===== iPad 対策 ============================================================
+      // iPad の Safari/Chrome には Web MIDI が無く S-LINK につなげない。Scratch専用ブラウザ「Scrub」
+      // （UA に "Scrub" を含み、WebMIDIKit で Web MIDI を提供）で開き直してもらう。判定は 699.jp/d/scrub と同じ。
+      // iPadOS 13 以降の Safari は UA が Mac と同じなので「Macintosh かつタッチ対応」も iPad とみなす。
+      // 動作確認用に ?preview=ipad を付けると PC でも案内が出る。
+      function isIpadBrowser() {
+        const ua = navigator.userAgent || "";
+        if (/Scrub/.test(ua)) return false;
+        if (new URLSearchParams(location.search).get("preview") === "ipad") return true;
+        return /ipad/i.test(ua) || (/macintosh/i.test(ua) && "ontouchend" in document);
+      }
+
+      function closeScrubGuide() {
+        if (typeof els.scrubDialog.close === "function") els.scrubDialog.close();
+        else els.scrubDialog.removeAttribute("open");
+      }
+
+      function showScrubGuide() {
+        if (!isIpadBrowser()) return;
+        const url = new URL(location.href);
+        url.searchParams.delete("preview");
+        // Scrub は scrub://openUrl?<URL> の「?」以降をそのまま開くURLとして受け取る
+        els.scrubLaunch.href = `scrub://openUrl?${encodeURI(url.href)}`;
+        els.notice.textContent = "※ iPad では Scratch専用ブラウザ「Scrub」で開くと S-LINK に接続できます。Safari や Chrome ではカメラ・マイクの項目だけ測れます。";
+        if (typeof els.scrubDialog.showModal === "function") els.scrubDialog.showModal();
+        else els.scrubDialog.setAttribute("open", "");
+      }
+
+      els.scrubDialogClose.addEventListener("click", closeScrubGuide);
+      els.scrubDialog.addEventListener("click", event => {
+        if (event.target === els.scrubDialog) closeScrubGuide();   // 外側をクリック
+      });
+
       els.connectBtn.addEventListener("click", connectBoard);
       els.recordBtn.addEventListener("click", () => isRecording ? stopRecording() : startRecording());
       els.sensorButtons.forEach(button => button.addEventListener("click", () => requestSensor(button.dataset.sensor)));
@@ -2759,6 +2820,7 @@
       updateSummary();
       setViewMode("chart");
       updateTabsArrows();
+      showScrubGuide();
     })();
   </script>
 </body>

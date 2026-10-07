@@ -25,5 +25,6 @@ AkaDako / S-LINK センサーボードの値をブラウザでリアルタイム
 ## 動作環境
 
 - Web MIDI API に対応したブラウザ（Chrome、Edge など）
+- iPad は Safari / Chrome に Web MIDI が無いため、Scratch専用ブラウザ [Scrub](https://apps.apple.com/jp/app/scrub/id1569777095) で開いてください。iPad の通常ブラウザで開くと「Scrub で開く」の案内が出ます（`scrub://openUrl?<このページのURL>` で Scrub に渡します）。PC で案内の表示を確かめるには `?preview=ipad` を付けます
 - AkaDako / S-LINK センサーボード
 - カメラ・マイクを使う項目は `https://` または `localhost` での配信が必要です（`file://` では許可されない場合があります）
