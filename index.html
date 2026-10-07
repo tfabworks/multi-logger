@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
-  <title>AkaDako Multi Logger</title>
+  <title>AkaDako Multi Logger(β)</title>
   <script src="https://s-link.education/js/s-link.js"></script>
   <style>
     :root {
@@ -454,9 +454,6 @@
 
     .view-btn:hover { color: var(--blue-dark); }
 
-    /* AI表示中は「表」だけになるので1列にする */
-    .view-toggle.view-toggle--single { grid-template-columns: 1fr; }
-
     .view-btn.is-active {
       color: white;
       background: var(--active-color, var(--blue));
@@ -862,7 +859,7 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
-        <h1>AkaDako Multi Logger</h1>
+        <h1>AkaDako Multi Logger(β)</h1>
       </div>
       <div class="connection-panel">
         <div id="statusChip" class="status-chip" aria-live="polite">
@@ -997,7 +994,7 @@
             <p id="aiStatus" class="ai-status"></p>
             <div class="ai-prompt">
               <label class="ai-prompt-label" for="aiPrompt">プロンプト</label>
-              <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: 男性と女性の人数を数えて"></textarea>
+              <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: 指の本数を数えて"></textarea>
               <p class="ai-note">数で答えられる質問にしてください。記録間隔ごとにカメラの画像とプロンプトをAIに送り、答えの数字を記録します。利用には <a href="https://699.jp/cp" target="_blank" rel="noopener noreferrer">AkaDako Cloud Plus のアクセスコード</a> の登録が必要です。</p>
             </div>
           </div>
@@ -2028,7 +2025,6 @@
         ai: [["10000", "10秒"], ["60000", "1分"], ["600000", "10分"]]
       };
       let savedInterval = null;
-      let savedViewMode = null;
 
       function setIntervalOptions(kind) {
         if (els.intervalSelect.dataset.kind === kind) return;
@@ -2097,12 +2093,8 @@
         els.recordBtn.disabled = !canRead();
         syncMotionPreview();
 
-        // 表示は「表」だけにし、記録間隔は長めの選択肢に入れ替える
-        savedViewMode = viewMode;
+        // 記録間隔は長めの選択肢に入れ替える（グラフ／表の切り替えはそのまま使える）
         savedInterval = els.intervalSelect.value;
-        els.chartViewBtn.hidden = true;
-        els.chartViewBtn.parentElement.classList.add("view-toggle--single");
-        setViewMode("table");
         setIntervalOptions("ai");
         els.intervalSelect.value = "10000";
         updateSummary();
@@ -2145,13 +2137,9 @@
         els.chartTitle.textContent = `${sensor.name}の変化`;
         els.chartDescription.textContent = `横軸：時刻　縦軸：${sensor.name}${unitSuffix(sensor)}`;
         els.recordBtn.disabled = !canRead();
-        els.chartViewBtn.hidden = false;
-        els.chartViewBtn.parentElement.classList.remove("view-toggle--single");
         setIntervalOptions("sensor");
         if (savedInterval !== null) els.intervalSelect.value = savedInterval;
         savedInterval = null;
-        if (savedViewMode) setViewMode(savedViewMode);
-        savedViewMode = null;
         els.sensorButtons.forEach(button => {
           button.setAttribute("aria-selected", String(button.dataset.sensor === selectedSensor));
         });
@@ -2490,7 +2478,8 @@
         let rawMax = Math.max(...values);
 
         if (rawMin === rawMax) {
-          const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 ? 5 : 1);
+          // 整数で記録する項目（動き・音量・AIの数）は値が同じでも軸が潰れないよう広めに取る
+          const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 || sensor.decimals === null ? 5 : 1);
           rawMin -= pad;
           rawMax += pad;
         }

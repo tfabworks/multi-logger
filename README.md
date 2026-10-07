@@ -1,4 +1,4 @@
-# AkaDako Multi Logger
+# AkaDako Multi Logger(β)
 
 AkaDako / S-LINK センサーボードの値をブラウザでリアルタイムに表示・記録する、1ファイル構成の教材用Webアプリです。
 
