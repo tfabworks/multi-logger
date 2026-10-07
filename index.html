@@ -876,7 +876,7 @@
           <span class="status-dot"></span>
           <span id="statusText">未接続</span>
         </div>
-        <button id="connectBtn" class="primary-btn" type="button">S-LINK接続</button>
+        <button id="connectBtn" class="primary-btn" type="button">ボードに接続</button>
       </div>
     </header>
 
@@ -1885,7 +1885,7 @@
       function setConnectionUI(connected, text = connected ? "接続中" : "未接続") {
         els.statusText.textContent = text;
         els.statusChip.classList.toggle("connected", connected);
-        els.connectBtn.textContent = connected ? "切断する" : "S-LINK接続";
+        els.connectBtn.textContent = connected ? "切断する" : "ボードに接続";
         els.recordBtn.disabled = !canRead();
         if (!connected) {
           if (!canRead()) stopRecording();
