@@ -2121,9 +2121,10 @@
         els.recordBtn.disabled = !canRead();
         syncMotionPreview();
 
-        // 記録間隔は長めの選択肢に入れ替える（グラフ／表の切り替えはそのまま使える）
+        // 記録間隔は長めの選択肢に入れ替える。表示はグラフから始める（表には切り替えられる）
         savedInterval = els.intervalSelect.value;
         setIntervalOptions("ai");
+        setViewMode("chart");
         els.intervalSelect.value = "10000";
         updateSummary();
         refreshView();
