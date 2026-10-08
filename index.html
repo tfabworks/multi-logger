@@ -335,6 +335,9 @@
 
     .ai-status a { color: var(--blue-dark); }
 
+    /* 問い合わせに失敗したときは赤字にして気づけるようにする */
+    .ai-status.is-error { color: #c62828; }
+
     .ai-note {
       margin: 0;
       color: var(--muted);
@@ -1090,6 +1093,11 @@
       <pre id="midiDiagBody"></pre>
     </details>
 
+    <details id="aiDiag" class="midi-diag" hidden>
+      <summary>AIに問い合わせできないときの情報</summary>
+      <pre id="aiDiagBody"></pre>
+    </details>
+
     <p id="notice" class="notice">※ S-LINKへの接続にはWeb MIDI対応ブラウザが必要です。ローカルファイルで接続できない場合は、Live ServerなどのWebサーバーから開いてください。</p>
   </main>
 
@@ -1421,12 +1429,16 @@
       const AI_BOARD_INFO_TTL_MS = 10 * 60 * 1000;   // 署名付きUIDはブロックと同じく10分使い回す
       const AI_PROMPT_SUFFIX = "答えは数字だけを半角で1つ書いてください。単位や説明はいりません。";
 
-      // サーバーからの案内はリンク入りのHTMLで届くことがある（アクセスコードの登録先など）
+      // AI計測で起きた失敗。kind で種類を分け、detail（診断用の行）を画面下の「AIに問い合わせできないときの情報」に出す。
+      // サーバーからの案内はリンク入りのHTMLで届くことがある（アクセスコードの登録先など）ので html も持てる。
+      // kind: prompt | camera | board | network | timeout | http | server | answer | other
       class AiNoticeError extends SensorNoticeError {
-        constructor(message, html = null) {
+        constructor(message, { kind = "other", html = null, detail = [] } = {}) {
           super(message);
           this.name = "AiNoticeError";
+          this.kind = kind;
           this.html = html;
+          this.detail = detail;
         }
       }
 
@@ -1457,7 +1469,10 @@
         }
         const raw = board && board.board;   // AkaDako ラッパーが持つ生のボード（xcx-g2s の AkaDakoBoard）
         if (!raw || typeof raw.boardSignedUid !== "function") {
-          throw new SensorNoticeError("このs-link.jsではAI計測に必要なボード情報を取れません");
+          throw new AiNoticeError("このs-link.jsではAI計測に必要なボード情報を取れません", {
+            kind: "board",
+            detail: [`board.board: ${raw ? typeof raw : "なし"}`]
+          });
         }
         const buffer = new ArrayBuffer(8);
         new DataView(buffer).setBigUint64(0, BigInt(Math.floor(now / 1000)), false);
@@ -1493,6 +1508,7 @@
           board: await getAiBoardInfo(),
           locale: "ja"
         };
+        const boardLine = `ボード情報: version=${body.board.version} uid=${body.board.uid ? `${body.board.uid.length}文字` : "なし"}`;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
         let response;
@@ -1507,25 +1523,48 @@
           });
         } catch (error) {
           console.warn(error);
-          throw new SensorNoticeError(error && error.name === "AbortError"
-            ? "AIの答えが時間内に返ってきませんでした"
-            : "生成AIに接続できませんでした");
+          const timedOut = error && error.name === "AbortError";
+          // fetch 自体が失敗するのは、オフライン・学校のフィルタ・CORS など通信が届いていないとき
+          throw new AiNoticeError(timedOut
+            ? `AIの答えが${AI_TIMEOUT_MS / 1000}秒たっても返ってきませんでした`
+            : "生成AIサーバーに通信できませんでした（ネットワークの制限や、通信がブロックされている可能性があります）", {
+            kind: timedOut ? "timeout" : "network",
+            detail: [`fetch: ${error && error.name}: ${error && error.message}`, boardLine]
+          });
         } finally {
           clearTimeout(timer);
         }
+        const rawText = await response.text().catch(() => "");
+        const snippet = rawText.replace(/\s+/g, " ").slice(0, 300);
+        if (!response.ok) {
+          throw new AiNoticeError(`生成AIサーバーがエラーを返しました（HTTP ${response.status}）`, {
+            kind: "http",
+            detail: [`HTTP ${response.status} ${response.statusText}`, `応答: ${snippet}`, boardLine]
+          });
+        }
         let data;
         try {
-          data = await response.json();
+          data = JSON.parse(rawText);
         } catch (error) {
-          throw new SensorNoticeError(`生成AIの応答を読めませんでした（HTTP ${response.status}）`);
+          throw new AiNoticeError(`生成AIの応答を読めませんでした（HTTP ${response.status}）`, {
+            kind: "http",
+            detail: [`HTTP ${response.status}`, `応答: ${snippet}`, boardLine]
+          });
         }
         if (data && data.content !== null && data.content !== undefined) return String(data.content);
         const fault = data ? data.error : null;
         if (fault && typeof fault === "object") {
           const html = fault.type === "text/html" ? String(fault.content || "") : null;
-          throw new AiNoticeError(stripHtml(fault.content) || "生成AIを利用できません", html);
+          throw new AiNoticeError(stripHtml(fault.content) || "生成AIを利用できません", {
+            kind: "server",
+            html,
+            detail: [`サーバーの案内: ${stripHtml(fault.content)}`, `応答: ${snippet}`, boardLine]
+          });
         }
-        throw new SensorNoticeError(fault ? String(fault) : "生成AIから答えがありませんでした");
+        throw new AiNoticeError(fault ? String(fault) : "生成AIから答えがありませんでした", {
+          kind: "server",
+          detail: [`応答: ${snippet}`, boardLine]
+        });
       }
 
       // 回答文から最初の数字を取り出す（全角数字・桁区切りにも対応）
@@ -1539,14 +1578,56 @@
 
       async function readAi() {
         const prompt = els.aiPrompt.value.trim();
-        if (!prompt) throw new SensorNoticeError("プロンプトを入力してください");
+        if (!prompt) throw new AiNoticeError("プロンプトを入力してください", { kind: "prompt" });
         await ensureCam();
         const image = captureAiImage();
         setReadingMeta("AIに問い合わせています…");
         const answer = (await askGenerativeAI(`${prompt}\n${AI_PROMPT_SUFFIX}`, image)).trim();
         const value = parseAiNumber(answer);
-        if (!Number.isFinite(value)) throw new SensorNoticeError(`AIの答えに数字がありませんでした：${answer}`);
+        if (!Number.isFinite(value)) {
+          throw new AiNoticeError(`AIの答えに数字がありませんでした：${answer}`, { kind: "answer", detail: [`回答: ${answer}`] });
+        }
         return { value, note: answer };
+      }
+
+      // ---- AI計測の失敗を見える化する ----
+      // 映像の下の文を赤字にし、画面下に診断情報を出す。記録を始めてから一度も成功していないうちに
+      // 失敗したら（アクセスコード未登録・通信ブロックなど、待っても直らないことが多い）記録を止めて知らせる。
+      // 一度でも成功した後の失敗（一時的な通信エラーや、数字のない回答）は赤字で出すだけで記録は続ける。
+      let aiSucceededSinceStart = false;
+
+      function clearAiError() {
+        els.aiStatus.classList.remove("is-error");
+        els.aiDiag.hidden = true;
+        els.aiDiag.open = false;
+      }
+
+      function reportAiError(error) {
+        const info = error instanceof AiNoticeError ? error : null;
+        const kind = info ? info.kind : (error instanceof SensorNoticeError ? "camera" : "other");
+        const message = error && error.message ? error.message : String(error);
+        console.error("[AI計測] 問い合わせに失敗", kind, error);
+
+        els.aiStatus.classList.add("is-error");
+        const lines = [
+          `AIに問い合わせできませんでした: ${message}`,
+          `種類: ${kind}`,
+          `時刻: ${new Date().toLocaleString("ja-JP")}`,
+          `送信先: ${GENERATIVE_AI_URL}`,
+          `このページ: ${location.href}`,
+          ...(info ? info.detail : []),
+          `ブラウザ: ${navigator.userAgent}`,
+          "",
+          "この内容をそのまま開発者に伝えてください。"
+        ];
+        els.aiDiagBody.textContent = lines.join("\n");
+        els.aiDiag.hidden = false;
+
+        if (isRecording && !aiSucceededSinceStart && kind !== "answer") {
+          stopRecording();
+          els.aiDiag.open = true;
+          showToast("AIに問い合わせできなかったので記録を止めました");
+        }
       }
 
       // valueSize: 桁数が多い項目は現在値の文字を小さくする / statsStack: 最小・平均・最大を縦積みにする
@@ -1797,6 +1878,8 @@
         toast: document.getElementById("toast"),
         midiDiag: document.getElementById("midiDiag"),
         midiDiagBody: document.getElementById("midiDiagBody"),
+        aiDiag: document.getElementById("aiDiag"),
+        aiDiagBody: document.getElementById("aiDiagBody"),
         motionVideo: document.getElementById("motionVideo")
       };
 
@@ -2154,6 +2237,7 @@
         els.aiVideo.srcObject = null;
         els.aiPanel.hidden = true;
         els.aiStatus.textContent = "";
+        clearAiError();
         els.valueBox.hidden = false;
         els.miniStats.hidden = false;
         els.sideCard.style.setProperty("--active-color", sensor.color);
@@ -2265,6 +2349,7 @@
           return;
         }
         isRecording = true;
+        aiSucceededSinceStart = false;
         nextSaveAt = 0;   // 次の周期ですぐ1件目を記録する
         els.recordBtn.classList.add("running");
         els.recordBtn.textContent = "■ 記録をとめる";
@@ -2326,6 +2411,10 @@
             }
           }
 
+          if (sensorKeyAtStart === "ai") {
+            aiSucceededSinceStart = true;
+            clearAiError();
+          }
           if (selectedSensor === sensorKeyAtStart) {
             els.currentValue.textContent = formatValue(value, sensor);
             const stamp = `${new Date().toLocaleTimeString("ja-JP")} に${save ? "記録" : "測定"}`;
@@ -2341,6 +2430,7 @@
               : error && error.name === "NotSupportedError" ? `このボードでは${sensor.name}を測れません`
               : "センサー値を取得できませんでした",
               error instanceof AiNoticeError ? error.html : null);
+            if (sensorKeyAtStart === "ai") reportAiError(error);
           }
         } finally {
           readingInProgress = false;
