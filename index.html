@@ -836,6 +836,47 @@
       word-break: break-all;
     }
 
+    /* 高さの低い画面（GIGA端末の 1366×768 や iPad の横向き）では、スクロールしなくても
+       「記録をはじめる」やダウンロードのボタンまで見えるように余白と高さを詰める。
+       グラフ・表の高さは画面の高さから決め、残りの部品が収まるようにする */
+    @media (max-height: 820px) {
+      .page { padding: 8px 0 12px; }
+      .hero { margin-bottom: 8px; padding: 8px 16px; border-radius: 18px; }
+      h1 { font-size: clamp(1.25rem, 2.2vw, 1.7rem); }
+      .status-chip { min-height: 36px; padding: 5px 11px; }
+      .primary-btn { min-height: 38px; padding: 6px 14px; }
+      .sensor-tabs { margin: 0; padding: 6px 0 11px; }
+      .sensor-btn { min-height: 60px; padding: 5px 3px; border-radius: 13px; }
+      .sensor-icon { width: 29px; height: 29px; margin-bottom: 3px; border-radius: 9px; }
+      .sensor-name { font-size: .72rem; }
+      .side-card { padding: 12px; }
+      .chart-card { padding: 11px 12px 10px; }
+      .current-label { margin-bottom: 6px; }
+      .value-box { padding: 9px 8px 8px; }
+      .value { font-size: clamp(2rem, 4.4vw, 3rem); }
+      .value.value--compact { font-size: clamp(1.7rem, 3.6vw, 2.5rem); }
+      .value.value--narrow { font-size: clamp(1.55rem, 3.2vw, 2.3rem); }
+      .reading-meta { margin-top: 5px; }
+      .mini-stats { margin: 8px 0 10px; }
+      .mini-stat { padding: 6px 4px; }
+      .motion-preview { margin-bottom: 8px; }
+      .ai-panel { gap: 5px; }
+      .ai-video { aspect-ratio: auto; height: clamp(96px, 17vh, 150px); }
+      .ai-prompt-input { height: 58px; padding: 6px 9px; font-size: .8rem; }
+      .ai-note { font-size: .66rem; line-height: 1.35; }
+      .control-stack { gap: 6px; }
+      .view-btn { min-height: 32px; }
+      .record-btn { min-height: 42px; }
+      .interval-row select { min-height: 32px; }
+      .chart-head { margin-bottom: 6px; }
+      .chart-title-group h2 { font-size: 1.1rem; }
+      .chart-title-group p { margin-top: 2px; }
+      .canvas-wrap, .table-wrap { height: clamp(220px, calc(100vh - 320px), 430px); min-height: 0; }
+      .action-bar { margin-top: 9px; gap: 8px; }
+      .action-btn { min-height: 40px; }
+      .notice { margin-top: 8px; }
+    }
+
     @media (max-width: 840px) {
       .hero { align-items: flex-start; flex-direction: column; }
       .connection-panel { justify-content: flex-start; }
@@ -1008,7 +1049,7 @@
             <div class="ai-prompt">
               <label class="ai-prompt-label" for="aiPrompt">プロンプト</label>
               <textarea id="aiPrompt" class="ai-prompt-input" rows="5" placeholder="例: 指の本数を数えて"></textarea>
-              <p class="ai-note">数で答えられる質問にしてください。記録間隔ごとにカメラの画像とプロンプトをAIに送り、答えの数字を記録します。利用には <a href="https://699.jp/cp" target="_blank" rel="noopener noreferrer">AkaDako Cloud Plus のアクセスコード</a> の登録が必要です。</p>
+              <p class="ai-note">数で答えられる質問にしてください。利用には <a href="https://699.jp/cp" target="_blank" rel="noopener noreferrer">AkaDako Cloud Plus のアクセスコード</a> の登録が必要です。</p>
             </div>
           </div>
           <div id="miniStats" class="mini-stats" aria-label="統計値">
