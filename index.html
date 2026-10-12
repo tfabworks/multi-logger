@@ -577,7 +577,7 @@
     .canvas-wrap {
       position: relative;
       width: 100%;
-      height: 430px;
+      height: 404px;   /* 下のスクロールバー（26px）と合わせて、表と同じ 430px になる */
       min-height: 310px;
       overflow: hidden;
       border: 2px solid #dcebf4;
@@ -794,6 +794,188 @@
     }
     .dialog-body .scrub-store { font-size: .85rem; }
 
+    /* ===== グラフの下のスクロールバー ===== */
+    .chart-scroll {
+      position: relative;
+      height: 20px;
+      margin: 6px 8px 0;
+      border-radius: 10px;
+      background: #edf2f5;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .chart-scroll .thumb {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #c3ccd3;
+      cursor: grab;
+      touch-action: none;
+    }
+    .chart-scroll .thumb.dragging { cursor: grabbing; background: #b3bec6; }
+    .chart-scroll .thumb:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .chart-scroll .grip {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 14px;
+      border-radius: 10px;
+      background: #8b99a5;
+      cursor: ew-resize;
+      touch-action: none;
+    }
+    .chart-scroll .grip.l { left: 0; }
+    .chart-scroll .grip.r { right: 0; }
+    .chart-scroll .span-label { font-size: 11px; font-weight: 800; color: #3b4d61; white-space: nowrap; pointer-events: none; }
+
+    /* ===== グラフで範囲を選ぶ（ドラッグ）→ 拡大 ===== */
+    .canvas-wrap canvas { touch-action: none; }
+    .canvas-wrap.can-select canvas { cursor: crosshair; }
+    .sel-box {
+      position: absolute;
+      z-index: 2;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 6px 20px rgba(0,0,0,.22);
+      white-space: nowrap;
+    }
+    .sel-btn {
+      min-height: 34px;
+      padding: 4px 14px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: white;
+      font-size: .82rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .sel-btn:hover { border-color: var(--blue); color: var(--blue-dark); }
+    .sel-btn--primary { color: white; background: var(--blue); border-color: var(--blue); }
+    .sel-btn--primary:hover { color: white; background: var(--blue-dark); border-color: var(--blue-dark); }
+
+    /* ===== 測定室ボタンの印（緑: 送っている / 橙: 送れていない） ===== */
+    .action-btn.ind { position: relative; }
+    .action-btn.ind .ind-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #c9d3db;
+      flex: 0 0 auto;
+    }
+    .action-btn.ind.on .ind-dot { background: #2fd38a; box-shadow: 0 0 0 3px rgba(47,211,138,.22); }
+    .action-btn.ind.warn .ind-dot { background: #ffb347; box-shadow: 0 0 0 3px rgba(255,179,71,.22); }
+
+    /* ===== 測定室ダイアログ ===== */
+    dialog.room-dialog {
+      width: min(480px, calc(100% - 32px));
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+    dialog.room-dialog:not([open]) { display: none; }
+    .room-head {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--blue-dark);
+      font-size: 1.05rem;
+      font-weight: 900;
+    }
+    .room-body {
+      flex: 1 1 auto;
+      overflow: auto;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      padding: 14px 18px;
+    }
+    .room-foot {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px 18px 14px;
+      border-top: 1px solid var(--line);
+    }
+    .room-state { display: flex; align-items: center; gap: 8px; font-size: .95rem; font-weight: 900; color: var(--ink); }
+    .room-state .ind-dot { width: 10px; height: 10px; border-radius: 50%; background: #c9d3db; flex: 0 0 auto; }
+    .room-state.on .ind-dot { background: #2fd38a; box-shadow: 0 0 0 3px rgba(47,211,138,.22); }
+    .room-state.warn .ind-dot { background: #ffb347; box-shadow: 0 0 0 3px rgba(255,179,71,.22); }
+    .room-sub { font-size: .8rem; font-weight: 700; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+    .room-sub:empty { display: none; }
+    .room-sub.warn { color: #b95a10; }
+    .room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .room-btn {
+      min-height: 38px;
+      padding: 4px 14px;
+      border: 2px solid var(--line);
+      border-radius: 11px;
+      color: var(--ink);
+      background: white;
+      font-size: .85rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .room-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue-dark); }
+    .room-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .room-btn--primary { color: white; background: var(--blue); border-color: var(--blue); }
+    .room-btn--primary:hover:not(:disabled) { color: white; background: var(--blue-dark); border-color: var(--blue-dark); }
+    .room-btn.danger-armed { color: white; background: var(--red); border-color: var(--red); }
+    .room-form { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 13px; background: #f9fcfe; }
+    .room-form label { display: grid; gap: 4px; font-size: .74rem; font-weight: 800; color: var(--muted); }
+    .room-form label.check { display: flex; align-items: center; gap: 7px; font-size: .88rem; color: var(--ink); }
+    .room-form label.check input { width: 18px; height: 18px; margin: 0; }
+    .room-form input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: .95rem;
+    }
+    .room-form input:focus { outline: none; border-color: var(--blue); }
+    .room-code { font-size: .78rem; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
+    .room-code b {
+      display: block;
+      margin-top: 5px;
+      padding: 8px 12px;
+      border-radius: 13px;
+      background: var(--sky);
+      color: var(--blue-dark);
+      font-size: 2.1rem;
+      letter-spacing: .1em;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: pre;
+    }
+    .room-pub { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .room-url { display: grid; gap: 4px; font-size: .74rem; font-weight: 800; color: var(--muted); }
+    .room-url .row { display: flex; gap: 6px; }
+    .room-url input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 6px 9px;
+      border: 1.5px solid var(--line);
+      border-radius: 9px;
+      color: var(--ink);
+      background: #f7fbfe;
+      font: 12px/1.4 ui-monospace, Menlo, monospace;
+    }
+    .room-qr { display: flex; justify-content: center; padding: 6px; }
+    .room-qr svg { width: 200px; height: 200px; }
+    .room-err { font-size: .8rem; font-weight: 800; color: var(--red); overflow-wrap: anywhere; }
+
     .toast {
       position: fixed;
       left: 50%;
@@ -871,7 +1053,8 @@
       .chart-head { margin-bottom: 6px; }
       .chart-title-group h2 { font-size: 1.1rem; }
       .chart-title-group p { margin-top: 2px; }
-      .canvas-wrap, .table-wrap { height: clamp(220px, calc(100vh - 320px), 430px); min-height: 0; }
+      .table-wrap { height: clamp(220px, calc(100vh - 320px), 430px); min-height: 0; }
+      .canvas-wrap { height: clamp(194px, calc(100vh - 346px), 404px); min-height: 0; }
       .action-bar { margin-top: 9px; gap: 8px; }
       .action-btn { min-height: 40px; }
       .notice { margin-top: 8px; }
@@ -1096,6 +1279,15 @@
           <div id="emptyState" class="empty-state">
             <div class="empty-bubble">ボードに接続して「記録をはじめる」を押すと、ここにグラフが描かれます。</div>
           </div>
+          <!-- グラフの上をドラッグして選んだ範囲に出すボタン -->
+          <div id="selBox" class="sel-box" hidden>
+            <button id="selZoom" class="sel-btn sel-btn--primary" type="button">この範囲を拡大</button>
+            <button id="selCancel" class="sel-btn" type="button">キャンセル</button>
+          </div>
+        </div>
+        <!-- グラフの下のスクロールバー。灰色の部分の中央をドラッグで見える範囲を動かし、両端をドラッグで範囲の長さを変える -->
+        <div id="chartScroll" class="chart-scroll" hidden>
+          <div id="chartThumb" class="thumb" tabindex="0" role="slider" aria-label="グラフの表示範囲"><i id="chartGripL" class="grip l"></i><span id="chartSpan" class="span-label"></span><i id="chartGripR" class="grip r"></i></div>
         </div>
 
         <div id="tableWrap" class="table-wrap" hidden>
@@ -1121,9 +1313,10 @@
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             削除
           </button>
-          <button id="shareBtn" class="action-btn" type="button">
+          <button id="shareBtn" class="action-btn ind" type="button" title="測定室を作成する・測定室に参加して、みんなの測定データを見る（作成者は URL で公開できる）">
+            <span class="ind-dot" aria-hidden="true"></span>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="18" cy="5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="2"/><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" stroke="currentColor" stroke-width="2"/></svg>
-            共有
+            <span id="shareLabel">測定室</span>
           </button>
         </div>
       </article>
@@ -1154,13 +1347,51 @@
     </div>
   </dialog>
 
-  <dialog id="shareDialog" aria-labelledby="shareDialogTitle">
-    <div class="dialog-body">
-      <div class="dialog-icon" aria-hidden="true">!</div>
-      <h3 id="shareDialogTitle">共有機能</h3>
-      <p>現在、準備中です</p>
-      <button id="dialogCloseBtn" class="dialog-close" type="button">とじる</button>
+  <!-- 測定室: 複数の端末の測定データを集めて1つのページで見る（s-link-logger から移植。API も同じ） -->
+  <dialog id="roomDialog" class="room-dialog" aria-labelledby="roomDialogTitle">
+    <div class="room-head" id="roomDialogTitle">測定室</div>
+    <div class="room-body">
+      <div class="room-state" id="roomState"><span class="ind-dot"></span><span id="roomStateText">なし</span></div>
+      <div class="room-sub" id="roomSub"></div>
+      <div class="room-actions" id="roomNone">
+        <button id="roomJoinBtn" class="room-btn room-btn--primary" type="button">参加する</button>
+        <button id="roomOpenBtn" class="room-btn" type="button">作成する</button>
+      </div>
+      <div id="roomOpenForm" class="room-form" hidden>
+        <label><span>測定室の名前</span><input type="text" id="roomName" maxlength="40"></label>
+        <label class="check"><input type="checkbox" id="roomShareMine" checked><span>自身のデータ共有</span></label>
+        <label id="roomDev1Box"><span>自分の端末名</span><input type="text" id="roomDev1" maxlength="30"></label>
+        <div class="room-actions"><button id="roomOpenGo" class="room-btn room-btn--primary" type="button">作成</button><button id="roomOpenCancel" class="room-btn" type="button">やめる</button></div>
+      </div>
+      <div id="roomJoinForm" class="room-form" hidden>
+        <label><span>測定室 ID（6 桁の数字）</span><input type="text" id="roomCode" inputmode="numeric" maxlength="7" placeholder="123 456" autocomplete="off"></label>
+        <label><span>自分の端末名</span><input type="text" id="roomDev2" maxlength="30"></label>
+        <div class="room-sub" id="roomFound"></div>
+        <div class="room-actions"><button id="roomJoinGo" class="room-btn room-btn--primary" type="button" disabled>参加する</button><button id="roomJoinCancel" class="room-btn" type="button">やめる</button></div>
+      </div>
+      <div id="roomIn" hidden>
+        <div class="room-code" id="roomCodeBox" hidden><span>測定室 ID（参加する人に伝える）</span><b id="roomCodeText"></b></div>
+        <div class="room-actions">
+          <button id="roomView" class="room-btn room-btn--primary" type="button">別タブで測定室を表示</button>
+          <button id="roomLeave" class="room-btn" type="button" hidden>退出する</button>
+          <button id="roomClose" class="room-btn" type="button" hidden>終了する</button>
+        </div>
+        <div id="roomPub" class="room-pub">
+          <div class="room-state" id="roomPubState"><span class="ind-dot"></span><span id="roomPubText">非公開</span></div>
+          <div class="room-actions" id="roomPubActions" hidden>
+            <button id="roomPubStart" class="room-btn" type="button">公開する</button>
+            <button id="roomPubStop" class="room-btn" type="button" hidden>公開を停止する</button>
+          </div>
+          <div id="roomPubOn" hidden>
+            <div class="room-url"><span>測定室の URL（見るだけ）</span>
+              <div class="row"><input type="text" id="roomUrl" readonly><button id="roomUrlCopy" class="room-btn" type="button">コピー</button><button id="roomQrBtn" class="room-btn" type="button">QR コード</button></div></div>
+            <div id="roomQr" class="room-qr" hidden></div>
+          </div>
+        </div>
+      </div>
+      <div class="room-err" id="roomErr" hidden></div>
     </div>
+    <div class="room-foot"><button id="roomDialogClose" class="room-btn" type="button">閉じる</button></div>
   </dialog>
 
   <!-- iPad の Safari/Chrome には Web MIDI が無く S-LINK につなげないので、Scratch専用ブラウザ「Scrub」で開いてもらう -->
@@ -1188,6 +1419,10 @@
       // s-link.js は配信時期によってグローバル名が SLINK だったり AkaDako だったりする
       // （中身は akadako.js と同一のバンドル）。どちらでも動くように両方を見る。
       const SLINK = window.SLINK || window.AkaDako;
+
+      // ?mode=demo でボードの代わりに乱数の値を流す（見た目を確かめる用。s-link-logger の demo=1 と同じ仕組み）
+      const PAGE_PARAMS = new URLSearchParams(location.search);
+      const DEMO = PAGE_PARAMS.get("mode") === "demo";
 
       // ===== 換算定数 =====
       // 酸素 (TFW-AD-OXY1 / 空気亜鉛電池) : アナログA1 の 0〜100 を大気=20.9% として1点校正する。
@@ -1910,8 +2145,15 @@
         sensorDialogText: document.getElementById("sensorDialogText"),
         sensorDialogOk: document.getElementById("sensorDialogOk"),
         sensorDialogCancel: document.getElementById("sensorDialogCancel"),
-        shareDialog: document.getElementById("shareDialog"),
-        dialogCloseBtn: document.getElementById("dialogCloseBtn"),
+        shareLabel: document.getElementById("shareLabel"),
+        chartScroll: document.getElementById("chartScroll"),
+        chartThumb: document.getElementById("chartThumb"),
+        chartGripL: document.getElementById("chartGripL"),
+        chartGripR: document.getElementById("chartGripR"),
+        chartSpan: document.getElementById("chartSpan"),
+        selBox: document.getElementById("selBox"),
+        selZoom: document.getElementById("selZoom"),
+        selCancel: document.getElementById("selCancel"),
         scrubDialog: document.getElementById("scrubDialog"),
         scrubLaunch: document.getElementById("scrubLaunch"),
         scrubDialogClose: document.getElementById("scrubDialogClose"),
@@ -1968,7 +2210,7 @@
       }
 
       function updateOxygenPanel() {
-        const isOxygen = !aiMode && Boolean(sensors[selectedSensor].needsCalibration);
+        const isOxygen = !aiMode && !DEMO && Boolean(sensors[selectedSensor].needsCalibration);
         els.oxygenPanel.hidden = !isOxygen;
         if (!isOxygen) return;
         const calibrated = oxygenCorrectionRate !== null;
@@ -1985,6 +2227,7 @@
 
       // マイク・カメラのセンサーはS-LINKなしでも測れる
       function canRead(sensorKey = selectedSensor) {
+        if (DEMO) return true;
         return sensors[sensorKey].needsBoard === false ? true : isConnected();
       }
 
@@ -2226,6 +2469,7 @@
         aiMode = true;
         savedSensor = selectedSensor;
         selectedSensor = "ai";
+        resetChartView();
         syncMediaUsage();
         els.sensorButtons.forEach(button => {
           button.setAttribute("aria-selected", String(button.dataset.sensor === "ai"));
@@ -2254,6 +2498,11 @@
         refreshView();
         ensureReadingLoop();
 
+        if (DEMO) {
+          // デモではカメラも生成AIも使わず、乱数の値を記録する
+          els.aiStatus.textContent = "デモ値（乱数）を記録します。プロンプトを入力して「記録をはじめる」を押してください";
+          return;
+        }
         try {
           await ensureCam();
           if (!aiMode) return;   // 準備中に他のタブへ移っていたら何もしない
@@ -2274,6 +2523,7 @@
         aiMode = false;
         selectedSensor = savedSensor && sensors[savedSensor] ? savedSensor : "temperature";
         savedSensor = null;
+        resetChartView();
         const sensor = sensors[selectedSensor];
         els.aiVideo.srcObject = null;
         els.aiPanel.hidden = true;
@@ -2358,6 +2608,7 @@
         exitAiMode();
         if (sensorKey === selectedSensor) return;
         selectedSensor = sensorKey;
+        resetChartView();
         syncMediaUsage();
 
         els.sensorButtons.forEach(button => {
@@ -2394,6 +2645,8 @@
         nextSaveAt = 0;   // 次の周期ですぐ1件目を記録する
         els.recordBtn.classList.add("running");
         els.recordBtn.textContent = "■ 記録をとめる";
+        els.canvasWrap.classList.remove("can-select");   // 記録中はグラフの範囲選択をしない
+        selClear();
         els.intervalSelect.disabled = true;
         ensureReadingLoop();
       }
@@ -2403,6 +2656,7 @@
         isRecording = false;
         els.recordBtn.classList.remove("running");
         els.recordBtn.textContent = "● 記録をはじめる";
+        els.canvasWrap.classList.add("can-select");
         els.intervalSelect.disabled = false;
       }
 
@@ -2436,11 +2690,12 @@
 
         try {
           // fetch は数値か、{ value, note } （note は表・CSVに添える文。AIの回答文）を返す
-          const result = await sensor.fetch(board);
+          const result = DEMO ? demoRead(sensorKeyAtStart) : await sensor.fetch(board);
           const isDetailed = result !== null && typeof result === "object";
           const value = Number(isDetailed ? result.value : result);
           const note = isDetailed && result.note !== undefined ? String(result.note) : undefined;
           if (!Number.isFinite(value)) throw new Error("センサー値が数値ではありません");
+          latestValues[sensorKeyAtStart] = value;   // 測定室に送る「現在値」
 
           if (save) {
             seqCounters[sensorKeyAtStart] += 1;
@@ -2528,6 +2783,7 @@
         els.chartViewBtn.setAttribute("aria-pressed", String(!showTable));
         els.tableViewBtn.setAttribute("aria-pressed", String(showTable));
         els.canvasWrap.hidden = showTable;
+        els.chartScroll.hidden = showTable;
         els.tableWrap.hidden = !showTable;
         refreshView();
       }
@@ -2626,13 +2882,16 @@
       function drawChart() {
         const { width, height } = resizeCanvas();
         ctx.clearRect(0, 0, width, height);
+        chartGeo = null;
+        els.selBox.hidden = true;
 
         const allData = dataStore[selectedSensor];
+        const vr = viewRange();
+        updateScroll(vr);
         if (!allData.length) return;
 
         const sensor = sensors[selectedSensor];
-        const maxVisible = 120;
-        const data = allData.slice(-maxVisible);
+        const data = allData.slice(vr.start, vr.end);   // 見えている範囲。添字 i の記録は allData[vr.start + i]
         const values = data.map(item => item.value);
         let rawMin = Math.min(...values);
         let rawMax = Math.max(...values);
@@ -2710,11 +2969,13 @@
         gradient.addColorStop(0, hexToRgba(sensor.color, 0.28));
         gradient.addColorStop(1, hexToRgba(sensor.color, 0.015));
 
+        // 点が多いときは区間ごとに最小・最大だけ描く（線の形は変わらず、描画が軽くなる）
+        const pts = thinned(data.length, i => data[i].value, Math.max(200, Math.floor(plotW) * 2));
         ctx.beginPath();
-        data.forEach((item, index) => {
-          const x = xAt(index);
-          const y = yAt(item.value);
-          if (index === 0) ctx.moveTo(x, y);
+        pts.forEach((i, n) => {
+          const x = xAt(i);
+          const y = yAt(data[i].value);
+          if (n === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.lineTo(xAt(data.length - 1), height - margin.bottom);
@@ -2724,10 +2985,10 @@
         ctx.fill();
 
         ctx.beginPath();
-        data.forEach((item, index) => {
-          const x = xAt(index);
-          const y = yAt(item.value);
-          if (index === 0) ctx.moveTo(x, y);
+        pts.forEach((i, n) => {
+          const x = xAt(i);
+          const y = yAt(data[i].value);
+          if (n === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.strokeStyle = sensor.color;
@@ -2761,6 +3022,9 @@
         ctx.textBaseline = "middle";
         ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + .5);
         ctx.restore();
+
+        chartGeo = { left: margin.left, width: plotW, top: margin.top, bottom: height - margin.bottom, start: vr.start, count: data.length, xAt };
+        drawSelection();
       }
 
       function roundRect(context, x, y, width, height, radius) {
@@ -2866,12 +3130,663 @@
         if (!window.confirm(`${sensor.name}の記録データをすべて削除しますか？`)) return;
         dataStore[selectedSensor].length = 0;
         seqCounters[selectedSensor] = 0;
+        resetChartView();
+        shareOnCleared(selectedSensor);   // 測定室側もこの端末の分を空にする
         resetTable();
         els.currentValue.textContent = "--";
         setReadingMeta(canRead() ? "記録データを削除しました" : waitingMessage());
         updateSummary();
         refreshView();
         showToast(`${sensor.name}のグラフを削除しました`);
+      }
+
+      // ===== デモ（?mode=demo） ======================================================
+      // ボードの代わりに、目盛りの範囲の中をゆっくり揺れながら動く乱数を流す（s-link-logger と同じ式）
+      const DEMO_RANGES = {
+        temperature: [-10, 50], brightness: [0, 2000], distance: [0, 200], humidity: [0, 100], pressure: [950, 1050],
+        gravity: [0, 20], tilt: [-90, 90], motion: [0, 100], volume: [0, 100], waterTemperature: [0, 100], oxygen: [0, 30],
+        current: [0, 2], voltage: [0, 20], power: [0, 40], ai: [0, 10]
+      };
+      const demoState = {};
+      function demoValue(key) {
+        const r = DEMO_RANGES[key] || [0, 100], span = r[1] - r[0];
+        const state = demoState[key] || (demoState[key] = { v: r[0] + span * (0.35 + Math.random() * 0.3), d: (Math.random() - 0.5) * span * 0.04 });
+        const centre = r[0] + span / 2;
+        state.d += (Math.random() - 0.5) * span * 0.02 + (centre - state.v) * 0.004;   // 中央へゆるく引き戻す
+        state.d = Math.max(-span * 0.03, Math.min(span * 0.03, state.d));
+        state.v += state.d;
+        if (state.v < r[0] + span * 0.05 || state.v > r[1] - span * 0.05) state.d = -state.d;
+        state.v = Math.max(r[0], Math.min(r[1], state.v));
+        return state.v;
+      }
+      function demoRead(key) {
+        if (key === "ai") {
+          const n = Math.round(demoValue(key));
+          return { value: n, note: `デモ値：${n}（乱数）` };
+        }
+        return demoValue(key);
+      }
+      function applyDemoUI() {
+        els.statusText.textContent = "デモ値（乱数）";
+        els.statusChip.classList.add("connected");
+        els.connectBtn.hidden = true;
+        els.recordBtn.disabled = false;
+        els.readingMeta.textContent = waitingMessage();
+        els.notice.textContent = "※ デモモードです。ボードの代わりに乱数の値を表示しています（URL の mode=demo を外すと通常の画面になります）。";
+        ensureReadingLoop();
+      }
+
+      // ===== グラフの表示範囲とスクロールバー ======================================
+      // view.count: 見せる件数 / view.end: 見せる範囲の終わり（添字）。null なら最新を追いかける
+      const CHART_POINTS = 120;   // はじめに見せる件数
+      const VIEW_MIN = 10;        // 見せる件数の下限
+      let view = { count: CHART_POINTS, end: null };
+      let chartGeo = null;        // 直近に描いたグラフの座標（範囲選択で使う）
+
+      function resetChartView() {
+        view = { count: CHART_POINTS, end: null };
+        sel = null;
+      }
+      function viewRange() {
+        const total = dataStore[selectedSensor].length;
+        const count = Math.min(Math.max(1, view.count), total);   // 記録がないときは 0
+        const end = view.end === null ? total : Math.max(count, Math.min(view.end, total));
+        return { start: end - count, end, count, total };
+      }
+      function setView(start, end, follow) {
+        view.count = Math.max(1, end - start);
+        view.end = follow ? null : end;
+        if (viewMode === "chart") drawChart();
+      }
+      // 見えている範囲の長さ（例: 10秒、1分 30秒）
+      function spanText(ms) {
+        const sec = Math.round(ms / 1000), h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        const parts = [];
+        if (h) parts.push(`${h}時間`);
+        if (m) parts.push(`${m}分`);
+        if (s || !parts.length) parts.push(`${sec < 10 && !parts.length ? Math.round(ms / 100) / 10 : s}秒`);
+        return parts.join(" ");
+      }
+      function updateScroll(vr) {
+        const bar = els.chartScroll, thumb = els.chartThumb;
+        thumb.hidden = vr.total < 2;
+        if (thumb.hidden) return;
+        const trackW = bar.clientWidth;
+        const w = Math.min(trackW, Math.max(44, trackW * vr.count / vr.total));
+        const room = vr.total - vr.count;
+        thumb.style.width = `${w}px`;
+        thumb.style.left = `${room > 0 ? (trackW - w) * vr.start / room : 0}px`;
+        const data = dataStore[selectedSensor];
+        const span = spanText(data[vr.end - 1].time - data[vr.start].time);
+        els.chartSpan.textContent = w >= 90 ? span : "";
+        thumb.setAttribute("aria-valuetext", span);
+      }
+      (function wireChartScroll() {
+        const bar = els.chartScroll, thumb = els.chartThumb;
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        let drag = null;
+        const down = mode => event => {
+          if (event.button) return;
+          event.preventDefault();
+          event.stopPropagation();
+          drag = { mode, x: event.clientX, vr: viewRange(), trackW: bar.clientWidth, thumbW: thumb.offsetWidth };
+          try { thumb.setPointerCapture(event.pointerId); } catch (error) { /* 対応していないブラウザ */ }
+          thumb.classList.add("dragging");
+        };
+        els.chartGripL.addEventListener("pointerdown", down("l"));
+        els.chartGripR.addEventListener("pointerdown", down("r"));
+        thumb.addEventListener("pointerdown", down("move"));
+        thumb.addEventListener("pointermove", event => {
+          if (!drag) return;
+          const vr = drag.vr, dx = event.clientX - drag.x;
+          const min = Math.min(VIEW_MIN, vr.total);
+          let start = vr.start, end = vr.end;
+          if (drag.mode === "move") {
+            const room = vr.total - vr.count, px = drag.trackW - drag.thumbW;
+            start = clamp(vr.start + (px > 0 ? Math.round(dx / px * room) : 0), 0, room);
+            end = start + vr.count;
+          } else {
+            const dn = Math.round(dx / drag.trackW * vr.total);
+            if (drag.mode === "l") start = clamp(vr.start + dn, 0, vr.end - min);
+            else end = clamp(vr.end + dn, vr.start + min, vr.total);
+          }
+          setView(start, end, end >= vr.total);
+        });
+        const up = () => { drag = null; thumb.classList.remove("dragging"); };
+        thumb.addEventListener("pointerup", up);
+        thumb.addEventListener("pointercancel", up);
+        // 灰色の部分の外を押したら、そこが真ん中になるように動かす
+        bar.addEventListener("pointerdown", event => {
+          if (event.target !== bar || event.button) return;
+          const vr = viewRange(), rect = bar.getBoundingClientRect();
+          if (vr.total < 2) return;
+          const centre = (event.clientX - rect.left) / rect.width * vr.total;
+          const start = clamp(Math.round(centre - vr.count / 2), 0, vr.total - vr.count);
+          setView(start, start + vr.count, start + vr.count >= vr.total);
+        });
+        // キーボード: 左右で動かす。Shift を押しながらだと範囲の長さを変える
+        thumb.addEventListener("keydown", event => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          const vr = viewRange(), dir = event.key === "ArrowLeft" ? -1 : 1;
+          let start = vr.start, end = vr.end;
+          if (event.shiftKey) start = clamp(vr.start - dir * Math.max(1, Math.round(vr.count * 0.2)), 0, vr.end - Math.min(VIEW_MIN, vr.total));
+          else { start = clamp(vr.start + dir * Math.max(1, Math.round(vr.count * 0.1)), 0, vr.total - vr.count); end = start + vr.count; }
+          setView(start, end, end >= vr.total);
+        });
+      })();
+
+      // ===== グラフで範囲を選んで拡大する ==========================================
+      // 記録が止まっているときに、グラフの上を左右にドラッグして範囲を選ぶ。
+      // sel: {a, b: 選んだ記録の添字（両端を含む）, from: 押しはじめの添字, x0: 押しはじめの位置, done: 指を離したか}
+      let sel = null;
+      function selClear() {
+        sel = null;
+        if (viewMode === "chart") drawChart();
+      }
+      function indexAt(event) {
+        const g = chartGeo, rect = els.canvas.getBoundingClientRect();
+        const t = g.count < 2 ? 0 : Math.max(0, Math.min(1, (event.clientX - rect.left - g.left) / g.width));
+        return g.start + Math.round(t * (g.count - 1));
+      }
+      els.canvas.addEventListener("pointerdown", event => {
+        if (event.button || isRecording || !chartGeo || dataStore[selectedSensor].length < 2) return;
+        const i = indexAt(event);
+        sel = { a: i, b: i, from: i, x0: event.clientX, done: false };
+        try { els.canvas.setPointerCapture(event.pointerId); } catch (error) { /* 対応していないブラウザ */ }
+        event.preventDefault();
+        drawChart();
+      });
+      els.canvas.addEventListener("pointermove", event => {
+        if (!sel || sel.done || !chartGeo) return;
+        const i = indexAt(event);
+        sel.a = Math.min(sel.from, i);
+        sel.b = Math.max(sel.from, i);
+        drawChart();
+      });
+      const selUp = event => {
+        if (!sel || sel.done) return;
+        // ほとんど動かしていないときは、選ぶのをやめる（押しただけで選んだ範囲を消せる）
+        if (event.type === "pointercancel" || Math.abs(event.clientX - sel.x0) < 6 || sel.a === sel.b) { selClear(); return; }
+        sel.done = true;
+        drawChart();
+      };
+      els.canvas.addEventListener("pointerup", selUp);
+      els.canvas.addEventListener("pointercancel", selUp);
+      els.selZoom.addEventListener("click", () => {
+        // 選んだ範囲をグラフいっぱいに出す。スクロールバーの灰色の部分も同じ長さになる
+        if (!sel || !sel.done) return;
+        const start = sel.a, end = sel.b + 1;
+        sel = null;
+        setView(start, end, end >= dataStore[selectedSensor].length);
+      });
+      els.selCancel.addEventListener("click", selClear);
+      // 選んだ範囲を灰色で描き、指を離したあとはボタンを出す
+      function drawSelection() {
+        els.selBox.hidden = true;
+        const g = chartGeo;
+        if (!sel || !g || !g.count) return;
+        const first = Math.max(sel.a, g.start), last = Math.min(sel.b, g.start + g.count - 1);
+        if (first > last) return;
+        const x1 = g.xAt(first - g.start), x2 = g.xAt(last - g.start);
+        ctx.save();
+        ctx.fillStyle = "rgba(80, 96, 110, .22)";
+        ctx.fillRect(x1, g.top, Math.max(2, x2 - x1), g.bottom - g.top);
+        ctx.strokeStyle = "rgba(80, 96, 110, .6)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, g.top); ctx.lineTo(x1, g.bottom);
+        ctx.moveTo(x2, g.top); ctx.lineTo(x2, g.bottom);
+        ctx.stroke();
+        ctx.restore();
+        if (sel.done) {
+          els.selBox.hidden = false;
+          const half = els.selBox.offsetWidth / 2, w = els.canvasWrap.clientWidth;
+          els.selBox.style.left = `${Math.max(half + 4, Math.min(w - half - 4, (x1 + x2) / 2))}px`;
+          els.selBox.style.top = `${(g.top + g.bottom) / 2}px`;
+        }
+      }
+      // 点が多いときは、区間ごとに最小と最大だけを残して描く（線の形は変わらない）
+      function thinned(n, valueAt, maxPoints) {
+        const out = [];
+        if (n <= maxPoints) {
+          for (let i = 0; i < n; i++) out.push(i);
+          return out;
+        }
+        const buckets = Math.max(1, Math.floor(maxPoints / 2)), size = n / buckets;
+        for (let b = 0; b < buckets; b++) {
+          const from = Math.floor(b * size), to = Math.min(n, Math.floor((b + 1) * size));
+          let lo = -1, hi = -1;
+          for (let i = from; i < to; i++) {
+            if (lo < 0 || valueAt(i) < valueAt(lo)) lo = i;
+            if (hi < 0 || valueAt(i) > valueAt(hi)) hi = i;
+          }
+          if (lo < 0) continue;
+          if (lo <= hi) { out.push(lo); if (hi !== lo) out.push(hi); }
+          else { out.push(hi); out.push(lo); }
+        }
+        if (out[0] !== 0) out.unshift(0);
+        if (out[out.length - 1] !== n - 1) out.push(n - 1);
+        return out;
+      }
+
+      // ===== 測定室（s-link-logger から移植） =========================================
+      // 複数の端末の測定データを集めて1つのページで見る。API も測定室のページも s-link-logger と同じもの
+      // （API: https://logdb.s-link.education、測定室のページの URL は API が返す）。
+      // この端末の「いま選んでいるセンサーの記録」を1本のストリームとして 5 秒ごとに送る。
+      // センサーを切り替えたり記録を削除したりしたら、新しいセッションにしてサーバー側のこの端末の分を入れ替える。
+      // サーバーが「どの連番まで受け取ったか」を返すので、Wi-Fi が切れていた間の記録もあとからまとめて送られる。
+      const SHARE_API = String(PAGE_PARAMS.get("api") || "").replace(/\/+$/, "") || "https://logdb.s-link.education";
+      const SHARE_KEY = "akadako-multi:stream";
+      const SHARE_INTERVAL = 5000, SHARE_BATCH = 500;
+      const latestValues = {};   // センサーごとの直近の測定値（測定室の「現在値」用）
+      let clockOffset = 0;       // サーバー時刻 − この端末の時刻（ミリ秒）。送るデータの時刻をサーバー時刻にそろえる
+      // st: {streamId, token, name, sensorKey, room: {roomId, name, isOwner, code, ownerToken, roomPage, url, public, share} | null,
+      //      session, startedAt, lastAck, clockOffset, sentAt}
+      let st = null;
+      let shareBusy = false, shareTimer = null, shareErr = "";
+      const roomUi = {
+        dialog: document.getElementById("roomDialog"),
+        state: document.getElementById("roomState"), stateText: document.getElementById("roomStateText"), sub: document.getElementById("roomSub"),
+        none: document.getElementById("roomNone"), joinBtn: document.getElementById("roomJoinBtn"), openBtn: document.getElementById("roomOpenBtn"),
+        openForm: document.getElementById("roomOpenForm"), name: document.getElementById("roomName"), shareMine: document.getElementById("roomShareMine"),
+        dev1Box: document.getElementById("roomDev1Box"), dev1: document.getElementById("roomDev1"), openGo: document.getElementById("roomOpenGo"), openCancel: document.getElementById("roomOpenCancel"),
+        joinForm: document.getElementById("roomJoinForm"), code: document.getElementById("roomCode"), dev2: document.getElementById("roomDev2"), found: document.getElementById("roomFound"),
+        joinGo: document.getElementById("roomJoinGo"), joinCancel: document.getElementById("roomJoinCancel"),
+        inRoom: document.getElementById("roomIn"), codeBox: document.getElementById("roomCodeBox"), codeText: document.getElementById("roomCodeText"),
+        view: document.getElementById("roomView"), leave: document.getElementById("roomLeave"), close: document.getElementById("roomClose"),
+        pubState: document.getElementById("roomPubState"), pubText: document.getElementById("roomPubText"), pubActions: document.getElementById("roomPubActions"),
+        pubStart: document.getElementById("roomPubStart"), pubStop: document.getElementById("roomPubStop"), pubOn: document.getElementById("roomPubOn"),
+        url: document.getElementById("roomUrl"), urlCopy: document.getElementById("roomUrlCopy"), qrBtn: document.getElementById("roomQrBtn"), qr: document.getElementById("roomQr"),
+        err: document.getElementById("roomErr"), dialogClose: document.getElementById("roomDialogClose")
+      };
+      function newSession() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+      function shareSensors(key = selectedSensor) {
+        const s = sensors[key];
+        return [{ key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals === null ? 2 : s.decimals }];
+      }
+      function stLoad() {
+        try {
+          const raw = localStorage.getItem(SHARE_KEY);
+          if (raw) { const v = JSON.parse(raw); if (v && v.streamId && v.token) return v; }
+        } catch (error) { /* localStorage が使えない */ }
+        return null;
+      }
+      function stSave() {
+        try { if (st) localStorage.setItem(SHARE_KEY, JSON.stringify(st)); else localStorage.removeItem(SHARE_KEY); } catch (error) { /* 同上 */ }
+      }
+      async function shareApi(method, path, body, token) {
+        const headers = {};
+        if (body) headers["content-type"] = "application/json";
+        if (token) headers.authorization = `Bearer ${token}`;
+        const res = await fetch(SHARE_API + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
+        let data = null;
+        try { data = await res.json(); } catch (error) { /* 本文なし */ }
+        if (!res.ok) {
+          const err = new Error((data && data.message) || `HTTP ${res.status}`);
+          err.status = res.status;
+          err.code = data && data.error;
+          throw err;
+        }
+        return data;
+      }
+      // 往復の半分を通信にかかった時間とみなして、サーバー時刻との差を求める
+      function measureClock(serverNow, t0, t1) {
+        clockOffset = Math.round(serverNow - (t0 + t1) / 2);
+        if (st) st.clockOffset = clockOffset;
+      }
+      // 端末の登録。最初の 1 回だけ行い、以後はブラウザに残す
+      async function ensureStream(name) {
+        if (st && st.streamId) {
+          if (name && name !== st.name) {
+            await shareApi("PATCH", `/streams/${st.streamId}`, { name }, st.token);
+            st.name = name;
+            stSave();
+          }
+          return st;
+        }
+        const t0 = Date.now();
+        const res = await shareApi("POST", "/streams", { name: name || "端末", sensors: shareSensors() });
+        st = { streamId: res.streamId, token: res.token, name: name || "", sensorKey: selectedSensor, room: null,
+          session: newSession(), startedAt: null, lastAck: 0, clockOffset: 0, sentAt: 0 };
+        measureClock(res.now, t0, Date.now());
+        stSave();
+        return st;
+      }
+      // 作成者が「自身のデータ共有」を外したとき（share: false）は、測定室を管理するだけでデータは送らない
+      function isSending() { return Boolean(st && st.room && st.room.share !== false); }
+      function isWatching() { return Boolean(st && st.room && st.room.isOwner && st.room.share === false); }
+      async function roomWatch() {
+        // データを送らない作成者は push の返事をもらえないので、測定室の名前・公開・終了を自分で見に行く
+        if (!isWatching() || shareBusy) return;
+        shareBusy = true;
+        try {
+          const res = await shareApi("GET", `/rooms/${st.room.roomId}`, null, st.room.ownerToken);
+          if (!st.room) return;
+          st.room.name = res.room.name;
+          st.room.public = Boolean(res.room.public);
+          shareErr = "";
+          stSave();
+          renderRoom();
+        } catch (error) {
+          if (error.status === 404 && st.room) { st.room = null; stSave(); shareLoop(); renderRoom(); showToast("測定室が終了しました"); }
+        } finally {
+          shareBusy = false;
+        }
+      }
+      // 記録を消してやり直したとき（引数なし、または送っているセンサーの削除）: 新しいセッションにして、サーバー側のこの端末の分を空にする
+      function shareOnCleared(sensorKey) {
+        if (!st) return;
+        if (sensorKey && st.sensorKey !== sensorKey) return;
+        st.session = newSession();
+        st.startedAt = null;
+        st.lastAck = 0;
+        stSave();
+      }
+      function shareRows() {
+        const out = [];
+        const data = dataStore[st.sensorKey] || [];
+        for (let i = 0; i < data.length && out.length < SHARE_BATCH; i++) {
+          const r = data[i];
+          if (r.seq <= st.lastAck) continue;
+          if (st.startedAt === null || st.startedAt === undefined) st.startedAt = r.time.getTime() + clockOffset;
+          out.push([r.seq, r.time.getTime() + clockOffset - st.startedAt, r.value]);
+        }
+        return out;
+      }
+      async function sharePush() {
+        if (!isSending() || shareBusy) return;
+        shareBusy = true;
+        try {
+          if (st.sensorKey !== selectedSensor) {   // 選んでいるセンサーが変わった → 新しいセッションでそのセンサーの記録を送り直す
+            st.sensorKey = selectedSensor;
+            shareOnCleared();
+          }
+          const key = st.sensorKey;
+          const rows = shareRows();
+          const lastValues = {};
+          lastValues[key] = typeof latestValues[key] === "number" ? latestValues[key] : null;
+          const res = await shareApi("POST", `/streams/${st.streamId}/push`,
+            { session: st.session, startedAt: st.startedAt, sensors: shareSensors(key), lastValues, rows }, st.token);
+          st.lastAck = Math.max(st.lastAck || 0, res.ackSeq || 0);
+          st.sentAt = Date.now();
+          if (res.roomEnd && st.room) {
+            st.room = null;
+            showToast(res.roomEnd === "kicked" ? "退出させられました" : "測定室が終了しました");
+          } else if (res.room && st.room && res.room.name) {
+            st.room.name = res.room.name;
+            st.room.public = Boolean(res.room.public);
+          }
+          shareErr = "";
+          stSave();
+          renderRoom();
+          if (rows.length >= SHARE_BATCH) setTimeout(sharePush, 50);   // まだ送っていない分が残っている
+          if (!isSending()) shareLoop();
+        } catch (error) {
+          if (error.status === 404 && error.code === "stream_not_found") { st = null; stSave(); shareLoop(); renderRoom(); showToast("登録が消えていました。もう一度やり直してください"); }
+          else if (error.status === 403) { st = null; stSave(); shareLoop(); renderRoom(); }
+          else { console.warn("[測定室] 送れていません", error); shareErr = "送れていません（また送ります）"; renderRoom(); }
+        } finally {
+          shareBusy = false;
+        }
+      }
+      function shareLoop() {
+        clearInterval(shareTimer);
+        shareTimer = null;
+        if (isWatching()) { shareTimer = setInterval(roomWatch, SHARE_INTERVAL * 2); roomWatch(); return; }
+        if (!isSending()) return;
+        shareTimer = setInterval(sharePush, SHARE_INTERVAL);
+        sharePush();
+      }
+      function fmtCode(code) {
+        const c = String(code || "").replace(/\D/g, "");
+        return c.length === 6 ? `${c.slice(0, 3)} ${c.slice(3)}` : c;
+      }
+      function setIndicator(element, state) {
+        element.classList.toggle("on", state === "on");
+        element.classList.toggle("warn", state === "warn");
+      }
+      function sentText() {
+        return st && st.sentAt ? `送信ずみ ${(st.lastAck || 0).toLocaleString("ja-JP")}件　最終 ${new Date(st.sentAt + clockOffset).toLocaleTimeString("ja-JP")}` : "";
+      }
+      function renderRoom() {
+        const r = st && st.room;
+        const sending = isSending();
+        const state = sending ? (shareErr ? "warn" : "on") : "off";   // 印はデータを送っているかどうか
+        const pub = Boolean(r && r.public);
+        setIndicator(els.shareBtn, state);
+        els.shareLabel.textContent = `測定室${pub ? "（公開中）" : ""}`;
+        setIndicator(roomUi.state, state);
+        if (!r) {
+          roomUi.stateText.textContent = "なし";
+          roomUi.sub.textContent = "";
+        } else {
+          roomUi.stateText.textContent = sending
+            ? `「${r.name}」に参加中${r.isOwner ? "（作成者）" : ""}　端末名 ${st.name || ""}`
+            : `「${r.name}」の作成者（データ共有なし）`;
+          roomUi.sub.textContent = sending ? (shareErr || sentText()) : "";
+        }
+        roomUi.sub.classList.toggle("warn", Boolean(shareErr));
+        roomUi.none.hidden = Boolean(r) || !roomUi.openForm.hidden || !roomUi.joinForm.hidden;
+        roomUi.inRoom.hidden = !r;
+        if (r) {
+          roomUi.codeBox.hidden = !r.isOwner || !r.code;
+          roomUi.codeText.textContent = fmtCode(r.code);
+          roomUi.leave.hidden = r.isOwner;
+          roomUi.close.hidden = !r.isOwner;
+          roomUi.openForm.hidden = true;
+          roomUi.joinForm.hidden = true;
+          // 公開の切り替えと URL は作成者だけ。参加した端末には状態だけを見せる
+          setIndicator(roomUi.pubState, pub ? "on" : "off");
+          roomUi.pubText.textContent = pub ? "公開中" : "非公開";
+          roomUi.pubActions.hidden = !r.isOwner;
+          roomUi.pubStart.hidden = pub;
+          roomUi.pubStop.hidden = !pub;
+          roomUi.pubOn.hidden = !(pub && r.isOwner);
+          roomUi.url.value = r.url || r.roomPage;
+          if (!pub) roomUi.qr.hidden = true;
+        }
+      }
+      function roomError(message) {
+        roomUi.err.textContent = message || "";
+        roomUi.err.hidden = !message;
+      }
+      // 測定室のページには、見る資格（作成者の資格か、参加中の端末の資格）を # で渡す
+      function roomPageUrl() {
+        const r = st.room;
+        return r.roomPage + (r.isOwner && r.ownerToken ? `#owner=${encodeURIComponent(r.ownerToken)}` : `#member=${encodeURIComponent(`${st.streamId}.${st.token}`)}`);
+      }
+      async function setRoomPublic(on, button) {
+        button.disabled = true;
+        roomError("");
+        try {
+          const res = await shareApi("PATCH", `/rooms/${st.room.roomId}`, { public: on }, st.room.ownerToken);
+          st.room.public = Boolean(res.room && res.room.public);
+          if (res.room && res.room.url) st.room.url = res.room.url;
+          stSave();
+          renderRoom();
+          if (st.room.public === on) showToast(on ? "公開しました" : "公開を停止しました");
+          else roomError("切り替えられませんでした");
+        } catch (error) { roomError(error.message); }
+        finally { button.disabled = false; }
+      }
+      // QR コードのライブラリ（qrcode-generator）は押されたときだけ読み込む
+      function loadQrLib() {
+        if (window.qrcode) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "qrcode.js";
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("qrcode.js を読み込めませんでした"));
+          document.head.appendChild(script);
+        });
+      }
+      function openRoomDialog() {
+        roomError("");
+        roomUi.openForm.hidden = true;
+        roomUi.joinForm.hidden = true;
+        roomUi.qr.hidden = true;
+        renderRoom();
+        if (typeof roomUi.dialog.showModal === "function") roomUi.dialog.showModal();
+        else roomUi.dialog.setAttribute("open", "");
+      }
+      function closeRoomDialog() {
+        if (typeof roomUi.dialog.close === "function") roomUi.dialog.close();
+        else roomUi.dialog.removeAttribute("open");
+      }
+      function initRoom() {
+        let closeArm = null;
+        let lookupTimer = null, lookedUp = "";
+        els.shareBtn.addEventListener("click", openRoomDialog);
+        roomUi.dialogClose.addEventListener("click", closeRoomDialog);
+        roomUi.dialog.addEventListener("click", event => { if (event.target === roomUi.dialog) closeRoomDialog(); });
+        roomUi.shareMine.addEventListener("change", () => { roomUi.dev1Box.hidden = !roomUi.shareMine.checked; });
+        roomUi.openBtn.addEventListener("click", () => {
+          roomUi.dev1.value = (st && st.name) || "";
+          roomUi.shareMine.checked = true;
+          roomUi.dev1Box.hidden = false;
+          roomUi.openForm.hidden = false;
+          roomUi.joinForm.hidden = true;
+          renderRoom();
+          roomUi.name.focus();
+        });
+        roomUi.joinBtn.addEventListener("click", () => {
+          roomUi.dev2.value = (st && st.name) || "";
+          roomUi.code.value = "";
+          roomUi.found.textContent = "";
+          roomUi.joinGo.disabled = true;
+          roomUi.joinForm.hidden = false;
+          roomUi.openForm.hidden = true;
+          renderRoom();
+          roomUi.code.focus();
+        });
+        roomUi.openCancel.addEventListener("click", () => { roomUi.openForm.hidden = true; renderRoom(); });
+        roomUi.joinCancel.addEventListener("click", () => { roomUi.joinForm.hidden = true; renderRoom(); });
+        roomUi.openGo.addEventListener("click", async () => {
+          const name = roomUi.name.value.trim() || "測定室";
+          const share = roomUi.shareMine.checked;
+          const dev = share ? (roomUi.dev1.value.trim() || "端末") : "";
+          roomUi.openGo.disabled = true;
+          roomError("");
+          try {
+            await ensureStream(dev);
+            const res = await shareApi("POST", `/streams/${st.streamId}/rooms`, { name, share }, st.token);
+            // 古い API は作成した端末をかならず参加させるので、共有しないときはこちらから外す
+            if (!share && res.share !== false) await shareApi("POST", `/streams/${st.streamId}/leave`, {}, st.token);
+            st.room = { roomId: res.roomId, name: res.name, isOwner: true, code: res.code, ownerToken: res.ownerToken, roomPage: res.roomPage, url: res.url, public: Boolean(res.public), share };
+            stSave();
+            renderRoom();
+            shareLoop();
+            showToast("測定室を作成しました");
+          } catch (error) { roomError(error.message); }
+          finally { roomUi.openGo.disabled = false; }
+        });
+        roomUi.code.addEventListener("input", () => {
+          roomUi.code.value = fmtCode(roomUi.code.value);
+          const code = roomUi.code.value.replace(/\D/g, "");
+          roomUi.joinGo.disabled = true;
+          roomUi.found.textContent = "";
+          lookedUp = "";
+          clearTimeout(lookupTimer);
+          if (code.length !== 6) return;
+          lookupTimer = setTimeout(async () => {
+            try {
+              const res = await shareApi("GET", `/rooms/code/${code}`);
+              if (roomUi.code.value.replace(/\D/g, "") !== code) return;
+              lookedUp = code;
+              roomUi.found.textContent = `測定室「${res.name}」${res.public ? "（公開中）" : ""}`;
+              roomUi.joinGo.disabled = false;
+            } catch (error) { roomUi.found.textContent = error.message; }
+          }, 300);
+        });
+        roomUi.joinGo.addEventListener("click", async () => {
+          const code = roomUi.code.value.replace(/\D/g, "");
+          const dev = roomUi.dev2.value.trim() || "端末";
+          if (code.length !== 6 || code !== lookedUp) return;
+          roomUi.joinGo.disabled = true;
+          roomError("");
+          try {
+            await ensureStream(dev);
+            const res = await shareApi("POST", `/streams/${st.streamId}/join`, { code }, st.token);
+            st.room = { roomId: res.roomId, name: res.name, isOwner: false, code: "", ownerToken: "", roomPage: res.roomPage, url: res.url, public: Boolean(res.public) };
+            stSave();
+            renderRoom();
+            shareLoop();
+            showToast("参加しました");
+          } catch (error) { roomError(error.message); roomUi.joinGo.disabled = false; }
+        });
+        roomUi.view.addEventListener("click", () => { if (st && st.room) window.open(roomPageUrl(), "_blank", "noopener"); });
+        roomUi.pubStart.addEventListener("click", () => setRoomPublic(true, roomUi.pubStart));
+        roomUi.pubStop.addEventListener("click", () => setRoomPublic(false, roomUi.pubStop));
+        roomUi.urlCopy.addEventListener("click", async () => {
+          showToast((await writeClipboard(roomUi.url.value)) ? "URLをコピーしました" : "コピーできませんでした");
+        });
+        roomUi.qrBtn.addEventListener("click", async () => {
+          if (!roomUi.qr.hidden) { roomUi.qr.hidden = true; return; }
+          try {
+            await loadQrLib();
+            const qr = window.qrcode(0, "M");
+            qr.addData(roomUi.url.value);
+            qr.make();
+            roomUi.qr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+            roomUi.qr.hidden = false;
+          } catch (error) { console.error(error); roomError("QR コードを作れませんでした"); }
+        });
+        roomUi.leave.addEventListener("click", async () => {
+          roomUi.leave.disabled = true;
+          roomError("");
+          try {
+            await shareApi("POST", `/streams/${st.streamId}/leave`, {}, st.token);
+            st.room = null;
+            stSave();
+            renderRoom();
+            shareLoop();
+            showToast("退出しました");
+          } catch (error) { roomError(error.message); }
+          finally { roomUi.leave.disabled = false; }
+        });
+        roomUi.close.addEventListener("click", async () => {
+          // 確認ダイアログを使わず、2 回押しで確定する
+          if (!roomUi.close.classList.contains("danger-armed")) {
+            roomUi.close.classList.add("danger-armed");
+            roomUi.close.textContent = "もう一度押すと終了";
+            closeArm = setTimeout(() => { roomUi.close.classList.remove("danger-armed"); roomUi.close.textContent = "終了する"; }, 3000);
+            return;
+          }
+          clearTimeout(closeArm);
+          roomUi.close.classList.remove("danger-armed");
+          roomUi.close.textContent = "終了する";
+          roomUi.close.disabled = true;
+          roomError("");
+          try {
+            await shareApi("DELETE", `/rooms/${st.room.roomId}`, null, st.room.ownerToken);
+            st.room = null;
+            stSave();
+            renderRoom();
+            shareLoop();
+            showToast("測定室を終了しました");
+          } catch (error) {
+            if (error.status === 404) { st.room = null; stSave(); renderRoom(); shareLoop(); }
+            else roomError(error.message);
+          } finally { roomUi.close.disabled = false; }
+        });
+        // 前回の状態を引き継ぐ（ページを開き直しても送り続ける）
+        st = stLoad();
+        if (st) {
+          st.lastAck = st.lastAck || 0;
+          clockOffset = st.clockOffset || 0;
+          // 同じセンサーを送り続けるなら、番号がサーバーの受け取りずみと重ならないように続きから振る
+          if (st.sensorKey && sensors[st.sensorKey] && st.sensorKey === selectedSensor) {
+            seqCounters[st.sensorKey] = Math.max(seqCounters[st.sensorKey], st.lastAck);
+          }
+          if (isSending() || isWatching()) {
+            (async () => {
+              try { const t0 = Date.now(); const r = await shareApi("GET", "/time"); measureClock(r.now, t0, Date.now()); stSave(); } catch (error) { /* 次の送信で測り直す */ }
+              shareLoop();
+            })();
+          }
+        }
+        renderRoom();
       }
 
       // ===== iPad 対策 ============================================================
@@ -2937,11 +3852,6 @@
       els.downloadBtn.addEventListener("click", downloadCsv);
       els.copyBtn.addEventListener("click", copyTsv);
       els.deleteBtn.addEventListener("click", deleteCurrentData);
-      els.shareBtn.addEventListener("click", () => els.shareDialog.showModal());
-      els.dialogCloseBtn.addEventListener("click", () => els.shareDialog.close());
-      els.shareDialog.addEventListener("click", event => {
-        if (event.target === els.shareDialog) els.shareDialog.close();
-      });
       window.addEventListener("resize", () => {
         updateTabsArrows();
         if (viewMode === "chart") drawChart();
@@ -2952,7 +3862,10 @@
       updateSummary();
       setViewMode("chart");
       updateTabsArrows();
-      showScrubGuide();
+      els.canvasWrap.classList.add("can-select");
+      if (DEMO) applyDemoUI();
+      else showScrubGuide();
+      initRoom();
     })();
   </script>
 </body>
