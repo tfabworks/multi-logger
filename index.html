@@ -817,17 +817,30 @@
       cursor: grab;
       touch-action: none;
     }
+    .chart-scroll .thumb[hidden] { display: none; }
     .chart-scroll .thumb.dragging { cursor: grabbing; background: #b3bec6; }
+    .chart-scroll .thumb.resizing { cursor: ew-resize; }
     .chart-scroll .thumb:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    /* 両端のつまみ。見た目は 18px だが、押す判定は thumb 側で端から GRIP_HIT px まで広げている */
     .chart-scroll .grip {
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 14px;
+      width: 18px;
       border-radius: 10px;
       background: #8b99a5;
       cursor: ew-resize;
-      touch-action: none;
+      pointer-events: none;
+    }
+    .chart-scroll .grip::before {
+      content: "";
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      left: 6px;
+      width: 2px;
+      border-left: 2px solid #eef2f5;
+      border-right: 2px solid #eef2f5;
     }
     .chart-scroll .grip.l { left: 0; }
     .chart-scroll .grip.r { right: 0; }
@@ -2092,6 +2105,14 @@
       const seqCounters = Object.fromEntries(
         Object.keys(sensors).map(key => [key, 0])
       );
+      // 1秒より短い間隔で記録した項目は、表・CSV の時刻に 1/10 秒を付けて行を区別できるようにする
+      const fineTime = Object.fromEntries(
+        Object.keys(sensors).map(key => [key, false])
+      );
+      function timeText(date, fine) {
+        const text = date.toLocaleTimeString("ja-JP", { hour12: false });
+        return fine ? `${text}.${Math.floor(date.getMilliseconds() / 100)}` : text;
+      }
 
       const els = {
         connectBtn: document.getElementById("connectBtn"),
@@ -2414,15 +2435,23 @@
         }
       }
 
-      // 記録間隔の選択肢。AI表示中は長めの4種類に入れ替える（初期値は5秒）
+      // 記録間隔の選択肢。AI表示中は長めの4種類に入れ替える（初期値は5秒）。
+      // 音量はマイクの値を読むだけで速いので、0.1秒も選べる（ボードのセンサーは MIDI の往復があるので 0.5秒まで）
       const RECORD_INTERVALS = {
         sensor: [["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
+        volume: [["100", "0.1秒"], ["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
         ai: [["5000", "5秒"], ["10000", "10秒"], ["60000", "1分"], ["600000", "10分"]]
       };
       let savedInterval = null;
 
+      function intervalKind(sensorKey) {
+        return sensorKey === "ai" ? "ai" : sensorKey === "volume" ? "volume" : "sensor";
+      }
+
+      // 選択肢を入れ替える。いま選んでいる間隔が新しい選択肢にもあればそのまま、なければ一番短いものにする
       function setIntervalOptions(kind) {
         if (els.intervalSelect.dataset.kind === kind) return;
+        const current = els.intervalSelect.value;
         els.intervalSelect.dataset.kind = kind;
         els.intervalSelect.replaceChildren(...RECORD_INTERVALS[kind].map(([value, label]) => {
           const option = document.createElement("option");
@@ -2430,6 +2459,7 @@
           option.textContent = label;
           return option;
         }));
+        els.intervalSelect.value = RECORD_INTERVALS[kind].some(([value]) => value === current) ? current : RECORD_INTERVALS[kind][0][0];
       }
 
       // 「動き」タブ: 最小・平均・最大の下にカメラの映像を出す
@@ -2541,7 +2571,7 @@
         els.chartTitle.textContent = `${sensor.name}の変化`;
         els.chartDescription.textContent = `横軸：時刻　縦軸：${sensor.name}${unitSuffix(sensor)}`;
         els.recordBtn.disabled = !canRead();
-        setIntervalOptions("sensor");
+        setIntervalOptions(intervalKind(selectedSensor));
         if (savedInterval !== null) els.intervalSelect.value = savedInterval;
         savedInterval = null;
         els.sensorButtons.forEach(button => {
@@ -2610,6 +2640,7 @@
         selectedSensor = sensorKey;
         resetChartView();
         syncMediaUsage();
+        setIntervalOptions(intervalKind(sensorKey));   // 音量だけ 0.1秒 がある
 
         els.sensorButtons.forEach(button => {
           button.setAttribute("aria-selected", String(button.dataset.sensor === sensorKey));
@@ -2661,7 +2692,7 @@
       }
 
       // 記録中かどうかに関わらず走らせる1本のループ。
-      // 現在値は1秒ごと（記録間隔が0.5秒ならその周期）に更新し、記録は記録間隔ごとに行う。
+      // 現在値は1秒ごと（記録間隔が1秒より短いならその周期）に更新し、記録は記録間隔ごとに行う。
       function ensureReadingLoop() {
         if (loopRunning || !canRead()) return;
         loopRunning = true;
@@ -2701,6 +2732,8 @@
             seqCounters[sensorKeyAtStart] += 1;
             const item = { time: new Date(), value, seq: seqCounters[sensorKeyAtStart] };
             if (note !== undefined) item.note = note;
+            const previous = dataStore[sensorKeyAtStart][dataStore[sensorKeyAtStart].length - 1];
+            if (previous && item.time - previous.time < 750) fineTime[sensorKeyAtStart] = true;   // 1秒間隔のぶれでは付かないように 0.75秒
             dataStore[sensorKeyAtStart].push(item);
             if (dataStore[sensorKeyAtStart].length > 10000) {
               dataStore[sensorKeyAtStart].shift();
@@ -2794,13 +2827,14 @@
       }
 
       // 1秒ごとに呼ばれるので、増えた行だけを足していく
-      const tableState = { sensor: null, rendered: 0, firstSeq: null };
+      const tableState = { sensor: null, rendered: 0, firstSeq: null, fine: false };
 
       function resetTable() {
         els.tableBody.replaceChildren();
         tableState.sensor = selectedSensor;
         tableState.rendered = 0;
         tableState.firstSeq = null;
+        tableState.fine = fineTime[selectedSensor];
       }
 
       function renderTable() {
@@ -2812,7 +2846,8 @@
         if (noteLabel) els.tableNoteHead.textContent = noteLabel;
         els.tableEmpty.hidden = data.length > 0;
 
-        if (tableState.sensor !== selectedSensor || data.length < tableState.rendered) resetTable();
+        // 項目が変わった・行が減った・時刻の桁が変わった（1/10 秒が必要になった）ときは作り直す
+        if (tableState.sensor !== selectedSensor || data.length < tableState.rendered || tableState.fine !== fineTime[selectedSensor]) resetTable();
 
         // 上限を超えて古い行が捨てられたぶんは、表の先頭からも取り除く
         const firstSeq = data.length ? data[0].seq : null;
@@ -2837,7 +2872,7 @@
           const time = document.createElement("td");
           const value = document.createElement("td");
           no.textContent = String(item.seq);
-          time.textContent = item.time.toLocaleTimeString("ja-JP", { hour12: false });
+          time.textContent = timeText(item.time, tableState.fine);
           value.textContent = formatValue(item.value, sensor);
           row.append(no, time, value);
           if (noteLabel) {
@@ -2870,6 +2905,11 @@
         return { width, height };
       }
 
+      // グラフの余白（左は Y 軸の目盛り、下は時刻の分）。スクロールバーもこの左右にそろえる
+      function chartMargin(width) {
+        return { top: 24, right: 22, bottom: 45, left: width < 470 ? 55 : 68 };
+      }
+
       function niceStep(range, targetTicks = 5) {
         if (!Number.isFinite(range) || range <= 0) return 1;
         const rough = range / targetTicks;
@@ -2887,6 +2927,9 @@
 
         const allData = dataStore[selectedSensor];
         const vr = viewRange();
+        const margin = chartMargin(width);
+        const plotW = width - margin.left - margin.right;
+        placeScroll(margin.left, plotW);
         updateScroll(vr);
         if (!allData.length) return;
 
@@ -2908,13 +2951,6 @@
         const yMin = Math.floor((rawMin - range * 0.09) / step) * step;
         const yMax = Math.ceil((rawMax + range * 0.09) / step) * step;
 
-        const margin = {
-          top: 24,
-          right: 22,
-          bottom: 45,
-          left: width < 470 ? 55 : 68
-        };
-        const plotW = width - margin.left - margin.right;
         const plotH = height - margin.top - margin.bottom;
         const xAt = i => margin.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
         const yAt = value => margin.top + ((yMax - value) / (yMax - yMin)) * plotH;
@@ -3051,11 +3087,12 @@
       function buildRows() {
         const sensor = sensors[selectedSensor];
         const noteLabel = sensor.noteLabel || null;
+        const fine = fineTime[selectedSensor];
         return [
           ["日時", "時刻", sensor.name, "単位", ...(noteLabel ? [noteLabel] : [])],
           ...dataStore[selectedSensor].map(item => [
             item.time.toLocaleDateString("ja-JP"),
-            item.time.toLocaleTimeString("ja-JP", { hour12: false }),
+            timeText(item.time, fine),
             item.value,
             sensor.csvUnit,
             ...(noteLabel ? [item.note || ""] : [])
@@ -3130,6 +3167,7 @@
         if (!window.confirm(`${sensor.name}の記録データをすべて削除しますか？`)) return;
         dataStore[selectedSensor].length = 0;
         seqCounters[selectedSensor] = 0;
+        fineTime[selectedSensor] = false;
         resetChartView();
         shareOnCleared(selectedSensor);   // 測定室側もこの端末の分を空にする
         resetTable();
@@ -3179,7 +3217,7 @@
       // ===== グラフの表示範囲とスクロールバー ======================================
       // view.count: 見せる件数 / view.end: 見せる範囲の終わり（添字）。null なら最新を追いかける
       const CHART_POINTS = 120;   // はじめに見せる件数
-      const VIEW_MIN = 10;        // 見せる件数の下限
+      const VIEW_MIN = 2;          // 見える範囲の最小の記録数（線を引くのに 2 件あればよい。10 にすると記録が少ないうちは端のドラッグが効かない）
       let view = { count: CHART_POINTS, end: null };
       let chartGeo = null;        // 直近に描いたグラフの座標（範囲選択で使う）
 
@@ -3207,6 +3245,12 @@
         if (s || !parts.length) parts.push(`${sec < 10 && !parts.length ? Math.round(ms / 100) / 10 : s}秒`);
         return parts.join(" ");
       }
+      // スクロールバーの左右をグラフの描画域（Y軸の真下〜右端）にそろえる
+      function placeScroll(plotLeft, plotW) {
+        const bar = els.chartScroll;
+        bar.style.marginLeft = `${els.canvasWrap.clientLeft + plotLeft}px`;
+        bar.style.width = `${plotW}px`;
+      }
       function updateScroll(vr) {
         const bar = els.chartScroll, thumb = els.chartThumb;
         thumb.hidden = vr.total < 2;
@@ -3224,20 +3268,18 @@
       (function wireChartScroll() {
         const bar = els.chartScroll, thumb = els.chartThumb;
         const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const GRIP_HIT = 26;   // 灰色の部分の端から何 px までを「端をつかんだ」とみなすか（指でも押せる幅）
         let drag = null;
-        const down = mode => event => {
-          if (event.button) return;
-          event.preventDefault();
-          event.stopPropagation();
-          drag = { mode, x: event.clientX, vr: viewRange(), trackW: bar.clientWidth, thumbW: thumb.offsetWidth };
-          try { thumb.setPointerCapture(event.pointerId); } catch (error) { /* 対応していないブラウザ */ }
-          thumb.classList.add("dragging");
+        // 押した位置で、端をつかんだ（範囲の長さを変える）のか真ん中をつかんだ（動かす）のかを決める。
+        // 端のつまみ（.grip）は見た目だけで、判定はここで行う（つまみが細くても・指でも確実につかめるように）
+        const modeAt = event => {
+          const rect = thumb.getBoundingClientRect();
+          const hit = Math.min(GRIP_HIT, rect.width / 3);
+          const x = event.clientX - rect.left;
+          return x <= hit ? "l" : x >= rect.width - hit ? "r" : "move";
         };
-        els.chartGripL.addEventListener("pointerdown", down("l"));
-        els.chartGripR.addEventListener("pointerdown", down("r"));
-        thumb.addEventListener("pointerdown", down("move"));
-        thumb.addEventListener("pointermove", event => {
-          if (!drag) return;
+        const move = event => {
+          if (!drag || event.pointerId !== drag.pointerId) return;
           const vr = drag.vr, dx = event.clientX - drag.x;
           const min = Math.min(VIEW_MIN, vr.total);
           let start = vr.start, end = vr.end;
@@ -3247,14 +3289,32 @@
             end = start + vr.count;
           } else {
             const dn = Math.round(dx / drag.trackW * vr.total);
-            if (drag.mode === "l") start = clamp(vr.start + dn, 0, vr.end - min);
-            else end = clamp(vr.end + dn, vr.start + min, vr.total);
+            if (drag.mode === "l") start = clamp(vr.start + dn, 0, Math.max(0, vr.end - min));
+            else end = clamp(vr.end + dn, Math.min(vr.total, vr.start + min), vr.total);
           }
           setView(start, end, end >= vr.total);
+        };
+        const up = event => {
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          drag = null;
+          thumb.classList.remove("dragging", "resizing");
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          window.removeEventListener("pointercancel", up);
+        };
+        thumb.addEventListener("pointerdown", event => {
+          if (event.button || drag) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const mode = modeAt(event);
+          drag = { mode, pointerId: event.pointerId, x: event.clientX, vr: viewRange(), trackW: bar.clientWidth, thumbW: thumb.offsetWidth };
+          thumb.classList.add("dragging");
+          if (mode !== "move") thumb.classList.add("resizing");
+          // ポインターキャプチャに頼らず window で追う（指が灰色の部分から外れても・対応が甘いブラウザでも続くように）
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+          window.addEventListener("pointercancel", up);
         });
-        const up = () => { drag = null; thumb.classList.remove("dragging"); };
-        thumb.addEventListener("pointerup", up);
-        thumb.addEventListener("pointercancel", up);
         // 灰色の部分の外を押したら、そこが真ん中になるように動かす
         bar.addEventListener("pointerdown", event => {
           if (event.target !== bar || event.button) return;
