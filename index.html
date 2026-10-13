@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
-  <title>AkaDako Multi Logger(β)</title>
+  <title>S-LINK Multi Logger(β)</title>
   <script src="https://s-link.education/js/s-link.js"></script>
   <style>
     :root {
@@ -1230,7 +1230,7 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
-        <h1>AkaDako Multi Logger(β)</h1>
+        <h1>S-LINK Multi Logger(β)</h1>
       </div>
       <div class="connection-panel">
         <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「2つ目」になる（上限2つ。古いほうから外れる） -->
@@ -3513,8 +3513,7 @@
         ctx.textAlign = "right";
         ctx.fillText(`${sensorsOf[1].name}${unitSuffix(sensorsOf[1])}`, p.right - 7, p.top + 4);
 
-        // 線（塗りは重なると濁るので薄く）と最新の点・バッジ
-        const badges = [];
+        // 線（塗りは重なると濁るので薄く）と最新の点
         datas.forEach((data, n) => {
           const sensor = sensorsOf[n], yAt = yAts[n], xs = p.xs[n];
           if (!data.length || !yAt) return;
@@ -3545,25 +3544,6 @@
           ctx.strokeStyle = sensor.color;
           ctx.lineWidth = 3;
           ctx.stroke();
-          badges.push({ text: `${formatValue(last.value, sensor)} ${sensor.unit}`, x: lastX, y: lastY, color: sensor.color });
-        });
-        ctx.font = `bold ${p.small ? 11 : 13}px system-ui, sans-serif`;
-        const badgeH = 28;
-        const placed = [];
-        badges.forEach(badge => {
-          const w = ctx.measureText(badge.text).width + 18;
-          const x = Math.min(p.right - w, Math.max(p.left, badge.x - w / 2));
-          let y = Math.min(p.bottom - badgeH, Math.max(p.top + 24, badge.y - 39));   // 上の軸の名前にかぶせない
-          const hit = placed.find(b => Math.abs(b.y - y) < badgeH + 4 && x < b.x + b.w && b.x < x + w);
-          if (hit) y = hit.y + badgeH + 4 <= p.bottom - badgeH ? hit.y + badgeH + 4 : hit.y - badgeH - 4;   // 重なったら下（下が無ければ上）へ
-          roundRect(ctx, x, y, w, badgeH, 9);
-          ctx.fillStyle = badge.color;
-          ctx.fill();
-          ctx.fillStyle = "white";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(badge.text, x + w / 2, y + badgeH / 2 + .5);
-          placed.push({ x, y, w });
         });
         return keys.map((key, n) => ({ key, data: datas[n], yAt: yAts[n], xs: p.xs[n], top: p.top, bottom: p.bottom, left: p.left, right: p.right, small: p.small, titled: true }));
       }
@@ -3660,20 +3640,6 @@
         ctx.strokeStyle = sensor.color;
         ctx.lineWidth = 3;
         ctx.stroke();
-
-        const badgeText = `${formatValue(last.value, sensor)} ${sensor.unit}`;
-        ctx.font = `bold ${p.small ? 11 : 13}px system-ui, sans-serif`;
-        const badgeW = ctx.measureText(badgeText).width + 18;
-        const badgeH = 28;
-        const badgeX = Math.min(p.right - badgeW, Math.max(p.left, lastX - badgeW / 2));
-        const badgeY = Math.min(p.bottom - badgeH, Math.max(p.top + 3, lastY - 39));
-        roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 9);
-        ctx.fillStyle = sensor.color;
-        ctx.fill();
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + .5);
         return yAt;
       }
 
