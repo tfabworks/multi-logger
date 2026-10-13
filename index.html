@@ -227,6 +227,24 @@
       --sensor-color: #3a4550;
     }
 
+    /* くらべているセンサーのタブには、右上にチェック印 */
+    .sensor-btn.is-compared::before {
+      content: "✓";
+      position: absolute;
+      top: -7px;
+      right: -5px;
+      z-index: 1;
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      background: var(--sensor-color);
+      color: white;
+      font-size: 13px;
+      line-height: 21px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(20,58,90,.25);
+    }
+
     .sensor-icon {
       display: grid;
       place-items: center;
@@ -427,6 +445,65 @@
       white-space: nowrap;
     }
 
+    /* ===== くらべる（2つのセンサー） ===== */
+    .compare-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 8px 10px 8px 14px;
+      border: 2px solid rgba(255,255,255,.42);
+      border-radius: 999px;
+      background: rgba(0,0,0,.11);
+      color: white;
+      font: inherit;
+      font-size: .88rem;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease;
+    }
+    .compare-toggle .state {
+      min-width: 2.6em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      font-size: .76rem;
+      text-align: center;
+      letter-spacing: .04em;
+    }
+    .compare-toggle[aria-pressed="true"] { border-color: #ffd54a; background: #ffd54a; color: #3a2f00; }
+    .compare-toggle[aria-pressed="true"] .state { background: #3a2f00; color: #ffd54a; }
+    .compare-toggle:disabled { opacity: .7; cursor: progress; }
+    /* ボード接続のスイッチ: ON は緑 */
+    .connect-toggle .status-dot { margin-right: -2px; }
+    .connect-toggle.connecting .status-dot { background: #ffb347; box-shadow: 0 0 0 4px rgba(255,179,71,.25); animation: connect-blink 1s ease-in-out infinite; }
+    .connect-toggle[aria-pressed="true"] { border-color: #56ef9d; background: #56ef9d; color: #073b20; }
+    .connect-toggle[aria-pressed="true"] .status-dot { background: #073b20; box-shadow: 0 0 0 4px rgba(7,59,32,.14); }
+    .connect-toggle[aria-pressed="true"] .state { background: #073b20; color: #56ef9d; }
+    @keyframes connect-blink { 50% { opacity: .35; } }
+    .compare-list { margin-bottom: 10px; }
+    .compare-rows { display: grid; gap: 6px; }
+    .compare-row {
+      --row-color: var(--blue);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: 8px;
+      padding: 7px 10px;
+      border-left: 5px solid var(--row-color);
+      border-radius: 12px;
+      background: #f3f8fb;
+    }
+    .compare-row .name { font-size: .76rem; font-weight: 900; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .compare-row .val { font-size: 1.3rem; font-weight: 950; letter-spacing: -.03em; color: var(--row-color); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .compare-row .val small { margin-left: 3px; font-size: .72rem; color: var(--ink); }
+    .compare-row .stats { grid-column: 1 / -1; margin-top: 2px; font-size: .66rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .compare-row .stats.warn { color: #b95a10; white-space: normal; }
+    .compare-list .reading-meta { margin-top: 6px; }
+    /* くらべているときはパネルが縦に並ぶので、グラフの箱を高くする（低い画面ではページがスクロールする） */
+    .canvas-wrap[data-panels="2"] { min-height: 380px; }
+
     .control-stack {
       display: grid;
       gap: 9px;
@@ -564,6 +641,9 @@
       font-weight: 700;
     }
 
+    .chart-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .view-toggle--mini { padding: 3px; border-radius: 12px; }
+    .view-toggle--mini .view-btn { min-height: 28px; padding: 0 10px; border-radius: 9px; font-size: .78rem; }
     .sample-count {
       padding: 7px 11px;
       border-radius: 999px;
@@ -640,7 +720,26 @@
 
     .data-table th:first-child, .data-table td:first-child { width: 5em; color: var(--muted); }
     .data-table tbody tr:nth-child(even) { background: #f8fcfd; }
-    .data-table td:last-child { color: var(--active-color, var(--blue)); font-weight: 900; }
+    .data-table td.value-cell { color: var(--active-color, var(--blue)); font-weight: 900; }
+    /* メモの列: いちばん右。クリックして書く */
+    .data-table th.memo-head { text-align: left; }
+    .data-table td.memo-cell { min-width: 180px; padding: 2px 8px; text-align: left; }
+    .memo-input {
+      width: 100%;
+      padding: 4px 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .memo-input:hover { border-color: var(--line); background: white; }
+    .memo-input:focus { outline: none; border-color: var(--blue); background: white; }
+    /* 表のメモ欄: 空のときは何も出さず、行に乗せたときだけ「クリックして書く」をうすく出す */
+    .data-table .memo-input::placeholder { color: transparent; }
+    .data-table tr:hover .memo-input::placeholder, .data-table .memo-input:focus::placeholder { color: #a8b6c2; font-weight: 700; }
 
     /* AIの回答の列: 文章なので左寄せで折り返す（数値の強調色は使わない） */
     .data-table th.note-head { text-align: left; }
@@ -876,6 +975,25 @@
     .sel-btn:hover { border-color: var(--blue); color: var(--blue-dark); }
     .sel-btn--primary { color: white; background: var(--blue); border-color: var(--blue); }
     .sel-btn--primary:hover { color: white; background: var(--blue-dark); border-color: var(--blue-dark); }
+    .sel-btn--danger { color: var(--red); border-color: rgba(230,70,70,.35); }
+    .sel-btn--danger:hover { color: white; background: var(--red); border-color: var(--red); }
+    /* メモを書く小さな枠（グラフの上に出す） */
+    .memo-box {
+      position: absolute;
+      z-index: 3;
+      width: min(280px, calc(100% - 24px));
+      display: grid;
+      gap: 6px;
+      padding: 9px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.97);
+      box-shadow: 0 6px 20px rgba(0,0,0,.22);
+    }
+    .memo-box[hidden] { display: none; }
+    .memo-title { font-size: .78rem; font-weight: 900; color: var(--muted); }
+    .memo-box .memo-input { border: 2px solid var(--line); background: white; resize: vertical; }
+    .memo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .memo-actions .sel-btn { min-height: 30px; padding: 3px 10px; font-size: .78rem; }
 
     /* ===== 測定室ボタンの印（緑: 送っている / 橙: 送れていない） ===== */
     .action-btn.ind { position: relative; }
@@ -1054,6 +1172,9 @@
       .reading-meta { margin-top: 5px; }
       .mini-stats { margin: 8px 0 10px; }
       .mini-stat { padding: 6px 4px; }
+      .compare-toggle { min-height: 36px; padding: 5px 8px 5px 11px; }
+      .compare-row { padding: 4px 8px; }
+      .compare-row .val { font-size: 1.1rem; }
       .motion-preview { margin-bottom: 8px; }
       .ai-panel { gap: 5px; }
       .ai-video { aspect-ratio: auto; height: clamp(96px, 17vh, 150px); }
@@ -1112,11 +1233,14 @@
         <h1>AkaDako Multi Logger(β)</h1>
       </div>
       <div class="connection-panel">
-        <div id="statusChip" class="status-chip" aria-live="polite">
+        <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「2つ目」になる（上限2つ。古いほうから外れる） -->
+        <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
+        <!-- ボードの接続も「くらべる」と同じスイッチ。印の色: 灰=未接続 / 橙=接続中… / 緑=接続。デモのときはチップだけ出す -->
+        <button id="connectBtn" class="compare-toggle connect-toggle" type="button" aria-pressed="false" aria-live="polite" aria-label="ボード接続 未接続"><span class="status-dot"></span>ボード接続<span id="connectState" class="state">OFF</span></button>
+        <div id="statusChip" class="status-chip" aria-live="polite" hidden>
           <span class="status-dot"></span>
           <span id="statusText">未接続</span>
         </div>
-        <button id="connectBtn" class="primary-btn" type="button">ボードに接続</button>
       </div>
     </header>
 
@@ -1235,6 +1359,11 @@
       <aside id="sideCard" class="side-card" style="--active-color:#ef5b5b">
         <div class="reading-panel">
           <div class="current-label"><span id="currentSensorName">温度</span><span id="currentLabelSuffix"> の現在値</span></div>
+          <!-- くらべる ON で2つ目を選んでいる間は、現在値の箱のかわりにセンサーごとの行を出す -->
+          <div id="compareList" class="compare-list" hidden>
+            <div id="compareRows" class="compare-rows"></div>
+            <div id="compareMeta" class="reading-meta"></div>
+          </div>
           <div id="valueBox" class="value-box">
             <span id="currentValue" class="value">--</span><span id="currentUnit" class="unit">℃</span>
             <div id="readingMeta" class="reading-meta">接続後に測定できます</div>
@@ -1284,7 +1413,14 @@
             <h2 id="chartTitle">温度の変化</h2>
             <p id="chartDescription">横軸：時刻　縦軸：温度（℃）</p>
           </div>
-          <div id="sampleCount" class="sample-count">データ 0件</div>
+          <div class="chart-head-right">
+            <!-- 2つをくらべているときだけ: 上下に並べる／1枚に重ねる（単位が違えば左右の軸、同じなら共通の軸） -->
+            <div id="layoutToggle" class="view-toggle view-toggle--mini" role="group" aria-label="2つのグラフの出し方" hidden>
+              <button id="layoutStack" class="view-btn is-active" type="button" aria-pressed="true">並べる</button>
+              <button id="layoutOverlay" class="view-btn" type="button" aria-pressed="false">重ねる</button>
+            </div>
+            <div id="sampleCount" class="sample-count">データ 0件</div>
+          </div>
         </div>
 
         <div id="canvasWrap" class="canvas-wrap">
@@ -1295,7 +1431,18 @@
           <!-- グラフの上をドラッグして選んだ範囲に出すボタン -->
           <div id="selBox" class="sel-box" hidden>
             <button id="selZoom" class="sel-btn sel-btn--primary" type="button">この範囲を拡大</button>
+            <button id="selTrim" class="sel-btn sel-btn--danger" type="button">この範囲以外のデータを消去</button>
             <button id="selCancel" class="sel-btn" type="button">キャンセル</button>
+          </div>
+          <!-- 記録をクリック（タップ）するとメモを書ける。メモのある記録には吹き出しの印 -->
+          <div id="memoBox" class="memo-box" hidden>
+            <div id="memoTitle" class="memo-title"></div>
+            <textarea id="memoInput" class="memo-input" rows="2" placeholder="メモ（例: 窓を開けた）"></textarea>
+            <div class="memo-actions">
+              <button id="memoSave" class="sel-btn sel-btn--primary" type="button">保存</button>
+              <button id="memoDelete" class="sel-btn sel-btn--danger" type="button">消す</button>
+              <button id="memoCancel" class="sel-btn" type="button">キャンセル</button>
+            </div>
           </div>
         </div>
         <!-- グラフの下のスクロールバー。灰色の部分の中央をドラッグで見える範囲を動かし、両端をドラッグで範囲の長さを変える -->
@@ -1700,9 +1847,10 @@
 
       // 使っていないマイク・カメラは止める（録音・録画したままにしない）
       function syncMediaUsage() {
-        if (selectedSensor !== "volume") releaseMic();
-        if (selectedSensor !== "motion") stopMotionSampling();
-        if (selectedSensor !== "motion" && !aiMode) releaseCam();
+        const keys = activeKeys();
+        if (!keys.includes("volume")) releaseMic();
+        if (!keys.includes("motion")) stopMotionSampling();
+        if (!keys.includes("motion") && !aiMode) releaseCam();
       }
 
       // ===== AI計測（AkaDako 生成AI） ==============================================
@@ -2116,6 +2264,7 @@
 
       const els = {
         connectBtn: document.getElementById("connectBtn"),
+        connectState: document.getElementById("connectState"),
         statusChip: document.getElementById("statusChip"),
         statusText: document.getElementById("statusText"),
         sensorButtons: [...document.querySelectorAll(".sensor-btn")],
@@ -2157,6 +2306,12 @@
         tableValueHead: document.getElementById("tableValueHead"),
         tableNoteHead: document.getElementById("tableNoteHead"),
         tableEmpty: document.getElementById("tableEmpty"),
+        tableHeadRow: document.querySelector(".data-table thead tr"),
+        compareToggle: document.getElementById("compareToggle"),
+        compareToggleState: document.getElementById("compareToggleState"),
+        compareList: document.getElementById("compareList"),
+        compareRows: document.getElementById("compareRows"),
+        compareMeta: document.getElementById("compareMeta"),
         downloadBtn: document.getElementById("downloadBtn"),
         copyBtn: document.getElementById("copyBtn"),
         deleteBtn: document.getElementById("deleteBtn"),
@@ -2173,7 +2328,17 @@
         chartGripR: document.getElementById("chartGripR"),
         chartSpan: document.getElementById("chartSpan"),
         selBox: document.getElementById("selBox"),
+        layoutToggle: document.getElementById("layoutToggle"),
+        layoutStack: document.getElementById("layoutStack"),
+        layoutOverlay: document.getElementById("layoutOverlay"),
         selZoom: document.getElementById("selZoom"),
+        selTrim: document.getElementById("selTrim"),
+        memoBox: document.getElementById("memoBox"),
+        memoTitle: document.getElementById("memoTitle"),
+        memoInput: document.getElementById("memoInput"),
+        memoSave: document.getElementById("memoSave"),
+        memoDelete: document.getElementById("memoDelete"),
+        memoCancel: document.getElementById("memoCancel"),
         selCancel: document.getElementById("selCancel"),
         scrubDialog: document.getElementById("scrubDialog"),
         scrubLaunch: document.getElementById("scrubLaunch"),
@@ -2199,6 +2364,40 @@
       let readingInProgress = false;
       let toastTimer = null;
       let oxygenCorrectionRate = null;   // null = 未校正。次の読み取りで大気20.9%を基準に決める
+
+      // ===== くらべる（2つのセンサー） ==============================================
+      // 画面上の「くらべる」スイッチが ON のあいだは、タブを押すと切り替えではなく「2つ目」になる。
+      // 主センサー（selectedSensor。最後に押したタブ）のほかに compareKeys（その前に選んでいたセンサー）を同じ周期で読み、
+      // 同じ時刻で各センサーの保存先に記録する。グラフは古いほうを上・主センサーを下に並べ、相手の記録は時刻で主センサーに合わせる。
+      // 表・CSV・測定室は主センサーの記録を行の基準にして横に並べる。AI はほかと組み合わせない（問い合わせに数秒かかる）
+      let compareOn = false;
+      let compareKeys = [];
+      const compareErrors = {};   // 相手のセンサーが読めなかった理由（行に出す）
+      function activeKeys() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }   // 古い → 新しい（主）
+      // 2つのグラフの出し方。false: 上下に並べる / true: 1枚に重ねる（ブラウザに覚える）
+      const LAYOUT_KEY = "akadako-multi:layout";
+      let overlay = false;
+      try { overlay = localStorage.getItem(LAYOUT_KEY) === "overlay"; } catch (error) { /* 使えないブラウザ */ }
+      function isOverlay() { return isCompare() && overlay && activeKeys().length === 2; }
+      function setOverlay(on) {
+        overlay = Boolean(on);
+        try { localStorage.setItem(LAYOUT_KEY, overlay ? "overlay" : "stack"); } catch (error) { /* 使えないブラウザ */ }
+        renderLayoutToggle();
+        updateHeadings();
+        if (viewMode === "chart") drawChart();
+      }
+      function renderLayoutToggle() {
+        els.layoutToggle.hidden = !(isCompare() && viewMode === "chart");
+        els.layoutStack.classList.toggle("is-active", !overlay);
+        els.layoutOverlay.classList.toggle("is-active", overlay);
+        els.layoutStack.setAttribute("aria-pressed", String(!overlay));
+        els.layoutOverlay.setAttribute("aria-pressed", String(overlay));
+      }
+      // 単位が同じ組（温度と水温など）は左右に分けず、1本の共通の軸で重ねる
+      function overlaySameUnit(keys) { return keys.length === 2 && sensors[keys[0]].unit === sensors[keys[1]].unit; }
+      function isCompare() { return !aiMode && compareKeys.length > 0; }
+      function canReadAny() { return activeKeys().some(key => canRead(key)); }
+      function activeName() { return activeKeys().map(key => sensors[key].name).join("・"); }
 
       // タブが右に続いていることに気づけるよう、端でないほうの矢印だけを出す
       function updateTabsArrows() {
@@ -2231,7 +2430,7 @@
       }
 
       function updateOxygenPanel() {
-        const isOxygen = !aiMode && !DEMO && Boolean(sensors[selectedSensor].needsCalibration);
+        const isOxygen = !aiMode && !DEMO && activeKeys().some(key => sensors[key].needsCalibration);
         els.oxygenPanel.hidden = !isOxygen;
         if (!isOxygen) return;
         const calibrated = oxygenCorrectionRate !== null;
@@ -2265,7 +2464,7 @@
 
       // 測定の状況は、センサー表示では現在値の下、AI表示では映像の下に出す
       function setReadingMeta(text, html = null) {
-        const target = aiMode ? els.aiStatus : els.readingMeta;
+        const target = aiMode ? els.aiStatus : isCompare() ? els.compareMeta : els.readingMeta;
         if (html && aiMode) target.innerHTML = html;   // 生成AIサーバーからの案内（自前のサーバー）だけ
         else target.textContent = text;
       }
@@ -2273,10 +2472,14 @@
       function setConnectionUI(connected, text = connected ? "接続中" : "未接続") {
         els.statusText.textContent = text;
         els.statusChip.classList.toggle("connected", connected);
-        els.connectBtn.textContent = connected ? "切断する" : "ボードに接続";
-        els.recordBtn.disabled = !canRead();
+        els.connectBtn.classList.remove("connecting");
+        els.connectBtn.setAttribute("aria-pressed", String(connected));
+        els.connectBtn.setAttribute("aria-label", `ボード接続 ${text}`);
+        els.connectBtn.title = text;
+        els.connectState.textContent = connected ? "ON" : "OFF";
+        els.recordBtn.disabled = !canReadAny();
         if (!connected) {
-          if (!canRead()) stopRecording();
+          if (!canReadAny()) stopRecording();
           oxygenCorrectionRate = null;   // ボードが変われば校正はやり直し
           aiBoardInfo = null;            // 署名付きUIDもボードごとに取り直す
           setReadingMeta(waitingMessage());
@@ -2410,6 +2613,10 @@
         }
 
         els.connectBtn.disabled = true;
+        els.connectBtn.classList.add("connecting");   // 印を橙にして点滅
+        els.connectBtn.setAttribute("aria-label", "ボード接続 接続しています…");
+        els.connectBtn.title = "接続しています…";
+        els.connectState.textContent = "…";
         els.statusText.textContent = "接続しています…";
         try {
           board = await connectAnyBoard();
@@ -2444,8 +2651,10 @@
       };
       let savedInterval = null;
 
-      function intervalKind(sensorKey) {
-        return sensorKey === "ai" ? "ai" : sensorKey === "volume" ? "volume" : "sensor";
+      function intervalKind() {
+        if (aiMode) return "ai";
+        const keys = activeKeys();
+        return keys.length === 1 && keys[0] === "volume" ? "volume" : "sensor";   // 0.1秒 は音量を単独で測るときだけ
       }
 
       // 選択肢を入れ替える。いま選んでいる間隔が新しい選択肢にもあればそのまま、なければ一番短いものにする
@@ -2464,7 +2673,7 @@
 
       // 「動き」タブ: 最小・平均・最大の下にカメラの映像を出す
       function syncMotionPreview() {
-        if (!aiMode && selectedSensor === "motion") showMotionPreview();
+        if (!aiMode && activeKeys().includes("motion")) showMotionPreview();
         else hideMotionPreview();
       }
 
@@ -2472,7 +2681,7 @@
         els.motionPreview.hidden = false;
         try {
           await ensureCam();
-          if (aiMode || selectedSensor !== "motion") return;   // 待っている間に移っていたら何もしない
+          if (aiMode || !activeKeys().includes("motion")) return;   // 待っている間に移っていたら何もしない
           els.motionPreviewVideo.srcObject = cam.stream;
           els.motionPreviewVideo.muted = true;
           await els.motionPreviewVideo.play().catch(error => console.warn(error));
@@ -2496,14 +2705,13 @@
       async function enterAiMode() {
         if (aiMode) return;
         stopRecording();   // センサーの記録をAIの問い合わせに引き継がない
+        setCompareOn(false);   // AI を押したら「くらべる」は OFF に戻す（aiMode を立てる前に。記録間隔の選択肢を AI 用に変えないため）
         aiMode = true;
         savedSensor = selectedSensor;
         selectedSensor = "ai";
         resetChartView();
         syncMediaUsage();
-        els.sensorButtons.forEach(button => {
-          button.setAttribute("aria-selected", String(button.dataset.sensor === "ai"));
-        });
+        syncTabs();
         const sensor = sensors.ai;
         els.sideCard.style.setProperty("--active-color", sensor.color);
         document.documentElement.style.setProperty("--active-color", sensor.color);
@@ -2511,12 +2719,13 @@
         els.miniStats.hidden = true;
         els.oxygenPanel.hidden = true;
         els.aiPanel.hidden = false;
+        renderCompareUI();
         els.currentSensorName.textContent = "AI";
         els.currentLabelSuffix.textContent = " カメラの映像";
         els.aiStatus.textContent = "カメラを準備しています…";
         els.chartTitle.textContent = "AIの計測";
         els.chartDescription.textContent = "記録間隔ごとにカメラの画像とプロンプトをAIに送り、答えの数字を記録します";
-        els.recordBtn.disabled = !canRead();
+        els.recordBtn.disabled = !canReadAny();
         syncMotionPreview();
 
         // 記録間隔は長めの選択肢に入れ替える。表示はグラフから始める（表には切り替えられる）
@@ -2568,17 +2777,15 @@
         els.currentValue.textContent = "--";   // AI表示中はセンサーを読んでいないので、次の測定まで空にする
         els.currentUnit.textContent = sensor.unit;
         els.readingMeta.textContent = waitingMessage();
-        els.chartTitle.textContent = `${sensor.name}の変化`;
-        els.chartDescription.textContent = `横軸：時刻　縦軸：${sensor.name}${unitSuffix(sensor)}`;
-        els.recordBtn.disabled = !canRead();
-        setIntervalOptions(intervalKind(selectedSensor));
+        updateHeadings();
+        els.recordBtn.disabled = !canReadAny();
+        setIntervalOptions(intervalKind());
         if (savedInterval !== null) els.intervalSelect.value = savedInterval;
         savedInterval = null;
-        els.sensorButtons.forEach(button => {
-          button.setAttribute("aria-selected", String(button.dataset.sensor === selectedSensor));
-        });
+        syncTabs();
         applyValueLayout(selectedSensor);
         updateOxygenPanel();
+        renderCompareUI();
         updateSummary();
         refreshView();
         syncMediaUsage();
@@ -2596,12 +2803,12 @@
         }
         const sensor = sensors[sensorKey];
         if (!sensor) return;
-        if (sensorKey === selectedSensor || (aiMode && sensorKey === savedSensor)) {
-          exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ
+        if (activeKeys().includes(sensorKey) || (aiMode && sensorKey === savedSensor)) {
+          exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ。選んでいるタブを押しても何もしない
           return;
         }
         if (!sensor.connectGuide) {
-          switchSensor(sensorKey);
+          pickSensor(sensorKey);
           return;
         }
         pendingSensor = sensorKey;
@@ -2638,34 +2845,136 @@
         exitAiMode();
         if (sensorKey === selectedSensor) return;
         selectedSensor = sensorKey;
+        compareKeys = compareKeys.filter(key => key !== sensorKey);
+        applySensorUI();
+      }
+
+      // 主センサー・くらべる相手が変わったあとの画面の更新（切り替え・追加・解除で共通）
+      function applySensorUI() {
+        const sensor = sensors[selectedSensor];
         resetChartView();
         syncMediaUsage();
-        setIntervalOptions(intervalKind(sensorKey));   // 音量だけ 0.1秒 がある
-
-        els.sensorButtons.forEach(button => {
-          button.setAttribute("aria-selected", String(button.dataset.sensor === sensorKey));
-        });
-
-        const sensor = sensors[sensorKey];
+        setIntervalOptions(intervalKind());   // 音量を単独で測るときだけ 0.1秒 がある
+        syncTabs();
         els.sideCard.style.setProperty("--active-color", sensor.color);
         document.documentElement.style.setProperty("--active-color", sensor.color);
         els.currentSensorName.textContent = sensor.name;
         els.currentValue.textContent = "--";
         els.readingMeta.textContent = waitingMessage();
         els.currentUnit.textContent = sensor.unit;
-        els.recordBtn.disabled = !canRead();
-        applyValueLayout(sensorKey);
+        els.recordBtn.disabled = !canReadAny();
+        applyValueLayout(selectedSensor);
         updateOxygenPanel();
-        els.chartTitle.textContent = `${sensor.name}の変化`;
-        els.chartDescription.textContent = `横軸：時刻　縦軸：${sensor.name}${unitSuffix(sensor)}`;
+        updateHeadings();
+        renderCompareUI();
         updateSummary();
         refreshView();
         syncMotionPreview();
         ensureReadingLoop();
       }
 
+      // タブの選択状態。くらべているセンサーは全部「選択中」にしてチェック印を付ける
+      function syncTabs() {
+        const keys = activeKeys(), compare = isCompare();
+        els.sensorButtons.forEach(button => {
+          const on = keys.includes(button.dataset.sensor);
+          button.setAttribute("aria-selected", String(on));
+          button.classList.toggle("is-compared", compare && on);
+        });
+      }
+
+      function updateHeadings() {
+        const keys = activeKeys();
+        els.chartTitle.textContent = `${activeName()}の変化`;
+        const label = key => `${sensors[key].name}${unitSuffix(sensors[key])}`;
+        els.chartDescription.textContent = !isCompare()
+          ? `横軸：時刻　縦軸：${label(selectedSensor)}`
+          : !isOverlay() ? `横軸：時刻（共通）　縦軸：上から ${keys.map(label).join("・")}`
+          : overlaySameUnit(keys) ? `横軸：時刻　縦軸：${keys.map(label).join("・")}（共通の軸）`
+          : `横軸：時刻　縦軸：左 ${label(keys[0])}・右 ${label(keys[1])}`;
+      }
+
+      // タブを押したとき: 「くらべる」が OFF なら切り替え、ON なら 2つ目にする
+      function pickSensor(sensorKey) {
+        if (compareOn) compareAdd(sensorKey);
+        else switchSensor(sensorKey);
+      }
+      // くらべる ON でタブを押した: いままでの主センサーを相手にして、押したセンサーを主にする（相手がいた場合はそれが外れる）
+      function compareAdd(sensorKey) {
+        exitAiMode();
+        if (!sensors[sensorKey] || activeKeys().includes(sensorKey)) return;
+        compareKeys = [selectedSensor];
+        selectedSensor = sensorKey;
+        applySensorUI();
+      }
+      function setCompareOn(on) {
+        compareOn = Boolean(on);
+        if (!compareOn && compareKeys.length) {   // OFF にしたら、最後に押したセンサー（主）だけを残す
+          compareKeys = [];
+          applySensorUI();
+        }
+        els.compareToggle.setAttribute("aria-pressed", String(compareOn));
+        els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
+      }
+
+      // 左のカード: くらべているときは現在値の箱のかわりに、センサーごとの行（色・名前・現在値・最小/平均/最大・×）
+      function renderCompareUI() {
+        const compare = isCompare();
+        Object.keys(compareErrors).forEach(key => { if (!activeKeys().includes(key)) delete compareErrors[key]; });
+        els.compareList.hidden = !compare;
+        els.valueBox.hidden = aiMode || compare;
+        els.miniStats.hidden = aiMode || compare;
+        if (!aiMode) {
+          els.currentSensorName.textContent = compare ? activeName() : sensors[selectedSensor].name;
+          els.currentLabelSuffix.textContent = " の現在値";
+        }
+        if (!compare) {
+          els.compareRows.replaceChildren();
+          els.compareRows.dataset.keys = "";
+          els.compareMeta.textContent = "";
+        }
+        renderCompareList();
+        renderLayoutToggle();
+      }
+      function renderCompareList() {
+        if (!isCompare()) return;
+        const keys = activeKeys(), sig = keys.join("+");
+        if (els.compareRows.dataset.keys !== sig) {
+          els.compareRows.dataset.keys = sig;
+          els.compareRows.replaceChildren(...keys.map(key => {
+            const sensor = sensors[key];
+            const row = document.createElement("div");
+            row.className = "compare-row";
+            row.dataset.sensor = key;
+            row.style.setProperty("--row-color", sensor.color);
+            row.innerHTML = '<span class="name"></span><span class="val"><strong>--</strong><small></small></span><span class="stats"></span>';
+            row.querySelector(".name").textContent = sensor.name;
+            row.querySelector("small").textContent = sensor.unit || "";
+            return row;
+          }));
+          els.compareMeta.textContent = waitingMessage();
+        }
+        keys.forEach(key => {
+          const row = els.compareRows.querySelector(`[data-sensor="${key}"]`);
+          const sensor = sensors[key], data = dataStore[key], value = latestValues[key];
+          row.querySelector("strong").textContent = typeof value === "number" ? formatValue(value, sensor) : "--";
+          const stats = row.querySelector(".stats");
+          if (compareErrors[key]) {
+            stats.textContent = compareErrors[key];
+            stats.classList.add("warn");
+            return;
+          }
+          stats.classList.remove("warn");
+          if (!data.length) { stats.textContent = ""; return; }
+          const values = data.map(item => item.value);
+          const min = Math.min(...values), max = Math.max(...values);
+          const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+          stats.textContent = `最小 ${formatValue(min, sensor)}${sensor.unit}　平均 ${formatValue(avg, sensor)}${sensor.unit}　最大 ${formatValue(max, sensor)}${sensor.unit}`;
+        });
+      }
+
       function startRecording() {
-        if (!canRead() || isRecording) return;
+        if (!canReadAny() || isRecording) return;
         if (selectedSensor === "ai" && !els.aiPrompt.value.trim()) {
           showToast("プロンプトを入力してください");
           els.aiPrompt.focus();
@@ -2694,13 +3003,13 @@
       // 記録中かどうかに関わらず走らせる1本のループ。
       // 現在値は1秒ごと（記録間隔が1秒より短いならその周期）に更新し、記録は記録間隔ごとに行う。
       function ensureReadingLoop() {
-        if (loopRunning || !canRead()) return;
+        if (loopRunning || !canReadAny()) return;
         loopRunning = true;
         runReadingLoop().finally(() => { loopRunning = false; });
       }
 
       async function runReadingLoop() {
-        while (canRead()) {
+        while (canReadAny()) {
           const startedAt = performance.now();
           const recordInterval = Number(els.intervalSelect.value);
           const save = isRecording && startedAt >= nextSaveAt;
@@ -2712,57 +3021,78 @@
         }
       }
 
+      // 1 周期ぶんの測定。くらべているときは選んだセンサーを順に読み、同じ時刻で記録する
       async function readOnce(save) {
-        if (!canRead() || readingInProgress) return;
-        const sensorKeyAtStart = selectedSensor;
-        const sensor = sensors[sensorKeyAtStart];
-        if (sensor.saveOnly && !save) return;   // AIは記録のときだけ問い合わせる
+        if (readingInProgress) return;
+        const keys = activeKeys().filter(key => canRead(key));
+        if (!keys.length) return;
         readingInProgress = true;
+        const time = new Date();
+        let updated = false;
+        try {
+          for (const key of keys) {
+            if (!activeKeys().includes(key)) continue;   // 読んでいる間に外されたセンサーは飛ばす
+            if (await readSensor(key, save, time)) updated = true;
+          }
+        } finally {
+          readingInProgress = false;
+        }
+        if (updated) {
+          updateSummary(false);
+          refreshView();
+        }
+      }
 
+      // 1 つのセンサーを読み、save なら記録する。画面に出せたら true
+      async function readSensor(key, save, time) {
+        const sensor = sensors[key];
+        if (sensor.saveOnly && !save) return false;   // AIは記録のときだけ問い合わせる
         try {
           // fetch は数値か、{ value, note } （note は表・CSVに添える文。AIの回答文）を返す
-          const result = DEMO ? demoRead(sensorKeyAtStart) : await sensor.fetch(board);
+          const result = DEMO ? demoRead(key) : await sensor.fetch(board);
           const isDetailed = result !== null && typeof result === "object";
           const value = Number(isDetailed ? result.value : result);
           const note = isDetailed && result.note !== undefined ? String(result.note) : undefined;
           if (!Number.isFinite(value)) throw new Error("センサー値が数値ではありません");
-          latestValues[sensorKeyAtStart] = value;   // 測定室に送る「現在値」
+          latestValues[key] = value;   // 測定室に送る「現在値」
+          delete compareErrors[key];
 
           if (save) {
-            seqCounters[sensorKeyAtStart] += 1;
-            const item = { time: new Date(), value, seq: seqCounters[sensorKeyAtStart] };
+            seqCounters[key] += 1;
+            const item = { time, value, seq: seqCounters[key] };
             if (note !== undefined) item.note = note;
-            const previous = dataStore[sensorKeyAtStart][dataStore[sensorKeyAtStart].length - 1];
-            if (previous && item.time - previous.time < 750) fineTime[sensorKeyAtStart] = true;   // 1秒間隔のぶれでは付かないように 0.75秒
-            dataStore[sensorKeyAtStart].push(item);
-            if (dataStore[sensorKeyAtStart].length > 10000) {
-              dataStore[sensorKeyAtStart].shift();
+            const previous = dataStore[key][dataStore[key].length - 1];
+            if (previous && item.time - previous.time < 750) fineTime[key] = true;   // 1秒間隔のぶれでは付かないように 0.75秒
+            dataStore[key].push(item);
+            if (dataStore[key].length > 10000) {
+              dataStore[key].shift();
             }
           }
 
-          if (sensorKeyAtStart === "ai") {
+          if (key === "ai") {
             aiSucceededSinceStart = true;
             clearAiError();
           }
-          if (selectedSensor === sensorKeyAtStart) {
+          if (!activeKeys().includes(key)) return false;
+          if (key === selectedSensor) {
             els.currentValue.textContent = formatValue(value, sensor);
-            const stamp = `${new Date().toLocaleTimeString("ja-JP")} に${save ? "記録" : "測定"}`;
+            const stamp = `${time.toLocaleTimeString("ja-JP")} に${save ? "記録" : "測定"}`;
             setReadingMeta(note !== undefined ? `${stamp}　${sensor.noteLabel || "回答"}：${note}` : stamp);
-            updateSummary(false);
-            refreshView();
           }
+          return true;
         } catch (error) {
           const notice = error instanceof SensorNoticeError;
           if (!notice) console.error(error);
-          if (selectedSensor === sensorKeyAtStart) {
-            setReadingMeta(notice ? error.message
-              : error && error.name === "NotSupportedError" ? `このボードでは${sensor.name}を測れません`
-              : "センサー値を取得できませんでした",
-              error instanceof AiNoticeError ? error.html : null);
-            if (sensorKeyAtStart === "ai") reportAiError(error);
+          const message = notice ? error.message
+            : error && error.name === "NotSupportedError" ? `このボードでは${sensor.name}を測れません`
+            : "センサー値を取得できませんでした";
+          if (key === selectedSensor) {
+            setReadingMeta(message, error instanceof AiNoticeError ? error.html : null);
+            if (key === "ai") reportAiError(error);
+          } else if (activeKeys().includes(key)) {
+            compareErrors[key] = message;   // 相手のセンサーの行に出す
           }
-        } finally {
-          readingInProgress = false;
+          return false;
         }
       }
 
@@ -2779,11 +3109,12 @@
         const hasData = data.length > 0;
 
         applyValueLayout(selectedSensor);
+        renderCompareList();
         els.sampleCount.textContent = `データ ${data.length.toLocaleString("ja-JP")}件`;
         els.emptyState.classList.toggle("hidden", hasData);
         els.downloadBtn.disabled = !hasData;
         els.copyBtn.disabled = !hasData;
-        els.deleteBtn.disabled = !hasData;
+        els.deleteBtn.disabled = !activeKeys().some(key => dataStore[key].length);
 
         if (!hasData) {
           els.minValue.textContent = "--";
@@ -2818,6 +3149,7 @@
         els.canvasWrap.hidden = showTable;
         els.chartScroll.hidden = showTable;
         els.tableWrap.hidden = !showTable;
+        renderLayoutToggle();
         refreshView();
       }
 
@@ -2826,28 +3158,71 @@
         else drawChart();
       }
 
-      // 1秒ごとに呼ばれるので、増えた行だけを足していく
-      const tableState = { sensor: null, rendered: 0, firstSeq: null, fine: false };
+      // 1秒ごとに呼ばれるので、増えた行だけを足していく。sig は列の並び（センサーの組・時刻の桁・回答の列）
+      const tableState = { sig: null, rendered: 0, firstSeq: null };
 
       function resetTable() {
         els.tableBody.replaceChildren();
-        tableState.sensor = selectedSensor;
         tableState.rendered = 0;
         tableState.firstSeq = null;
-        tableState.fine = fineTime[selectedSensor];
+      }
+
+      // 表・CSV の列。くらべているときはセンサーごとに 1 列（主センサーの記録を行の基準にする）
+      function tableColumns() {
+        const keys = activeKeys();
+        return {
+          keys,
+          fine: keys.some(key => fineTime[key]),
+          noteLabel: !isCompare() && sensors[selectedSensor].noteLabel || null
+        };
+      }
+
+      function renderTableHead(cols) {
+        const th = text => {
+          const cell = document.createElement("th");
+          cell.scope = "col";
+          cell.textContent = text;
+          return cell;
+        };
+        const cells = [th("番号"), th("時刻"), ...cols.keys.map(key => th(`${sensors[key].name}${unitSuffix(sensors[key])}`))];
+        if (cols.noteLabel) {
+          const cell = th(cols.noteLabel);
+          cell.className = "note-head";
+          cells.push(cell);
+        }
+        const memo = th("メモ");
+        memo.className = "memo-head";
+        cells.push(memo);
+        els.tableHeadRow.replaceChildren(...cells);
+      }
+
+      // くらべる相手の記録を時刻（ミリ秒）で引く索引。同じ周期で記録した分は主センサーと同じ時刻になる
+      const timeIndex = {};
+      function itemAtTime(key, ms) {
+        const data = dataStore[key];
+        const firstSeq = data.length ? data[0].seq : null;
+        let index = timeIndex[key];
+        if (!index || index.firstSeq !== firstSeq || index.scanned > data.length) {
+          index = timeIndex[key] = { firstSeq, scanned: 0, map: new Map() };   // 古い行が捨てられた・削除された → 作り直す
+        }
+        for (; index.scanned < data.length; index.scanned++) {
+          index.map.set(data[index.scanned].time.getTime(), data[index.scanned]);
+        }
+        return index.map.get(ms);
       }
 
       function renderTable() {
-        const sensor = sensors[selectedSensor];
+        const cols = tableColumns();
+        const sig = `${cols.keys.join("+")}|${cols.fine}|${cols.noteLabel || ""}`;
         const data = dataStore[selectedSensor];
-        const noteLabel = sensor.noteLabel || null;
-        els.tableValueHead.textContent = `${sensor.name}${unitSuffix(sensor)}`;
-        els.tableNoteHead.hidden = !noteLabel;
-        if (noteLabel) els.tableNoteHead.textContent = noteLabel;
         els.tableEmpty.hidden = data.length > 0;
 
-        // 項目が変わった・行が減った・時刻の桁が変わった（1/10 秒が必要になった）ときは作り直す
-        if (tableState.sensor !== selectedSensor || data.length < tableState.rendered || tableState.fine !== fineTime[selectedSensor]) resetTable();
+        // 列が変わった・行が減ったときは作り直す
+        if (tableState.sig !== sig || data.length < tableState.rendered) {
+          tableState.sig = sig;
+          renderTableHead(cols);
+          resetTable();
+        }
 
         // 上限を超えて古い行が捨てられたぶんは、表の先頭からも取り除く
         const firstSeq = data.length ? data[0].seq : null;
@@ -2867,20 +3242,37 @@
 
         for (let i = tableState.rendered; i < data.length; i++) {
           const item = data[i];
+          const ms = item.time.getTime();
           const row = document.createElement("tr");
+          row.dataset.seq = String(item.seq);
           const no = document.createElement("td");
           const time = document.createElement("td");
-          const value = document.createElement("td");
           no.textContent = String(item.seq);
-          time.textContent = timeText(item.time, tableState.fine);
-          value.textContent = formatValue(item.value, sensor);
-          row.append(no, time, value);
-          if (noteLabel) {
+          time.textContent = timeText(item.time, cols.fine);
+          row.append(no, time);
+          cols.keys.forEach(key => {
+            const cell = document.createElement("td");
+            cell.className = "value-cell";
+            const found = key === selectedSensor ? item : itemAtTime(key, ms);
+            cell.textContent = found ? formatValue(found.value, sensors[key]) : "";
+            row.append(cell);
+          });
+          if (cols.noteLabel) {
             const note = document.createElement("td");
             note.className = "note-cell";
             note.textContent = item.note || "";
             row.append(note);
           }
+          const memoCell = document.createElement("td");
+          memoCell.className = "memo-cell";
+          const memoInput = document.createElement("input");
+          memoInput.type = "text";
+          memoInput.className = "memo-input";
+          memoInput.placeholder = "クリックして書く";
+          memoInput.setAttribute("aria-label", `番号 ${item.seq} のメモ`);
+          memoInput.value = memoAt(item, ms);
+          memoCell.append(memoInput);
+          row.append(memoCell);
           fragment.append(row);
         }
 
@@ -2906,8 +3298,8 @@
       }
 
       // グラフの余白（左は Y 軸の目盛り、下は時刻の分）。スクロールバーもこの左右にそろえる
-      function chartMargin(width) {
-        return { top: 24, right: 22, bottom: 45, left: width < 470 ? 55 : 68 };
+      function chartMargin(width, rightAxis = false) {
+        return { top: 24, right: rightAxis ? (width < 470 ? 50 : 62) : 22, bottom: 45, left: width < 470 ? 55 : 68 };
       }
 
       function niceStep(range, targetTicks = 5) {
@@ -2920,6 +3312,9 @@
       }
 
       function drawChart() {
+        const keys = activeKeys();
+        const overlayMode = isOverlay();
+        els.canvasWrap.dataset.panels = String(overlayMode ? 1 : keys.length);   // パネルの数で箱の高さが変わる（CSS）
         const { width, height } = resizeCanvas();
         ctx.clearRect(0, 0, width, height);
         chartGeo = null;
@@ -2927,102 +3322,324 @@
 
         const allData = dataStore[selectedSensor];
         const vr = viewRange();
-        const margin = chartMargin(width);
+        const margin = chartMargin(width, overlayMode && !overlaySameUnit(keys));   // 重ねて単位が違うときは右にも軸
         const plotW = width - margin.left - margin.right;
         placeScroll(margin.left, plotW);
         updateScroll(vr);
         if (!allData.length) return;
 
-        const sensor = sensors[selectedSensor];
         const data = allData.slice(vr.start, vr.end);   // 見えている範囲。添字 i の記録は allData[vr.start + i]
-        const values = data.map(item => item.value);
+        const xAt = i => margin.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
+        // 時刻 → x。くらべる相手の記録は、主センサーの記録の並びに時刻で合わせる（同じ時刻ならぴったり同じ x）
+        const times = data.map(item => item.time.getTime());
+        const xOfTime = ms => {
+          const last = data.length - 1;
+          if (last < 1 || ms <= times[0]) return xAt(0);
+          if (ms >= times[last]) return xAt(last);
+          let lo = 0, hi = last;
+          while (hi - lo > 1) {
+            const mid = (lo + hi) >> 1;
+            if (times[mid] <= ms) lo = mid; else hi = mid;
+          }
+          const span = times[hi] - times[lo];
+          return xAt(lo + (span > 0 ? (ms - times[lo]) / span : 0));
+        };
+
+        const small = width < 470;
+        const plotTop = margin.top, plotBottom = height - margin.bottom;
+        const gap = keys.length > 1 ? 18 : 0;
+        const panelH = (plotBottom - plotTop - gap * (keys.length - 1)) / keys.length;
+
+        ctx.save();
+        // 縦の目盛り線と時刻は全パネル共通
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#d9e8f1";
+        ctx.fillStyle = "#667b8c";
+        ctx.font = `${small ? 10 : 12}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const desiredXTicks = width < 500 ? 4 : 6;
+        const xTickIndexes = new Set([0, data.length - 1]);
+        for (let i = 1; i < desiredXTicks - 1; i++) {
+          xTickIndexes.add(Math.round((i / (desiredXTicks - 1)) * (data.length - 1)));
+        }
+        [...xTickIndexes].sort((a, b) => a - b).forEach(index => {
+          const x = xAt(index);
+          ctx.beginPath();
+          ctx.moveTo(x, plotTop);
+          ctx.lineTo(x, plotBottom);
+          ctx.stroke();
+          const label = data[index].time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          ctx.fillText(label, x, plotBottom + 10);
+        });
+
+        let panels = [];
+        const dataFor = key => key === selectedSensor ? data : sliceByTime(dataStore[key], times[0], times[times.length - 1]);
+        const xsFor = (key, panelData) => key === selectedSensor ? i => xAt(i) : i => xOfTime(panelData[i].time.getTime());
+        if (overlayMode) {
+          const datas = keys.map(dataFor);
+          panels = drawOverlay(keys, datas, {
+            top: plotTop, bottom: plotBottom, left: margin.left, right: width - margin.right, small,
+            xs: keys.map((key, n) => xsFor(key, datas[n]))
+          });
+        } else {
+          keys.forEach((key, n) => {
+            const top = plotTop + n * (panelH + gap);
+            const panelData = dataFor(key);
+            const geo = {
+              top, bottom: top + panelH, left: margin.left, right: width - margin.right, small,
+              titled: keys.length > 1,
+              xs: xsFor(key, panelData)
+            };
+            const yAt = drawPanel(key, panelData, geo);
+            panels.push({ key, data: panelData, yAt, ...geo });
+          });
+        }
+        ctx.restore();
+
+        chartGeo = { left: margin.left, width: plotW, top: plotTop, bottom: plotBottom, start: vr.start, count: data.length, xAt, panels, small };
+        drawSelection();
+        drawMemoIcons();
+        drawHover();
+        placeMemoBox();
+      }
+
+      // 時刻順に並んだ記録から t0〜t1（両端を含む）の分を切り出す
+      function sliceByTime(items, t0, t1) {
+        let lo = 0, hi = items.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (items[mid].time.getTime() < t0) lo = mid + 1; else hi = mid;
+        }
+        const start = lo;
+        hi = items.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (items[mid].time.getTime() <= t1) lo = mid + 1; else hi = mid;
+        }
+        return items.slice(start, lo);
+      }
+
+      // 値の範囲から、きりのいい目盛り（step）と軸の上下（yMin/yMax）を決める
+      function niceScale(values, sensor, ticks) {
         let rawMin = Math.min(...values);
         let rawMax = Math.max(...values);
-
         if (rawMin === rawMax) {
           // 整数で記録する項目（動き・音量・AIの数）は値が同じでも軸が潰れないよう広めに取る
           const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 || sensor.decimals === null ? 5 : 1);
           rawMin -= pad;
           rawMax += pad;
         }
-
         const range = rawMax - rawMin;
-        const step = niceStep(range * 1.18, 5);
+        const step = niceStep(range * 1.18, ticks);
         const yMin = Math.floor((rawMin - range * 0.09) / step) * step;
         const yMax = Math.ceil((rawMax + range * 0.09) / step) * step;
+        return { yMin, yMax, step, count: Math.round((yMax - yMin) / step) };
+      }
+      function tickDecimals(step) {
+        return step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9)));
+      }
 
-        const plotH = height - margin.top - margin.bottom;
-        const xAt = i => margin.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
-        const yAt = value => margin.top + ((yMax - value) / (yMax - yMin)) * plotH;
+      // 2 つの線を 1 枚に重ねる。単位が違えば左の軸を 1 つ目・右の軸を 2 つ目（主）のセンサーの色で描き、
+      // 目盛りの本数をそろえて横線を共有する。単位が同じなら 1 本の共通の軸。戻り値はパネル情報（ホバー・メモ用）
+      function drawOverlay(keys, datas, p) {
+        const sensorsOf = keys.map(key => sensors[key]);
+        const panelH = p.bottom - p.top;
+        const sameUnit = overlaySameUnit(keys);
+        let scales = datas.map((data, n) => data.length ? niceScale(data.map(item => item.value), sensorsOf[n], 5) : null);
+        if (sameUnit && (datas[0].length || datas[1].length)) {
+          const shared = niceScale([...datas[0], ...datas[1]].map(item => item.value), sensorsOf[0], 5);
+          scales = [shared, shared];
+        } else if (scales[0] && scales[1]) {
+          const count = Math.max(scales[0].count, scales[1].count);   // 本数をそろえる（少ないほうの上を広げる）
+          scales.forEach(scale => {
+            if (scale.count < count) { scale.yMax += (count - scale.count) * scale.step; scale.count = count; }
+          });
+        }
+        const yAts = scales.map(scale => scale ? value => p.top + ((scale.yMax - value) / (scale.yMax - scale.yMin)) * panelH : null);
+        const axisColor = n => sameUnit ? "#9cb5c5" : sensorsOf[n].color;
 
-        ctx.save();
+        // 横の目盛り線と左右の数字
+        const ref = scales[0] || scales[1];
+        ctx.font = `${p.small ? 10 : 12}px system-ui, sans-serif`;
+        ctx.textBaseline = "middle";
+        if (ref) {
+          for (let i = 0; i <= ref.count; i++) {
+            const y = p.top + panelH - (i / ref.count) * panelH;
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#d9e8f1";
+            ctx.beginPath();
+            ctx.moveTo(p.left, y);
+            ctx.lineTo(p.right, y);
+            ctx.stroke();
+            if (scales[0]) {
+              ctx.fillStyle = sameUnit ? "#667b8c" : sensorsOf[0].color;
+              ctx.textAlign = "right";
+              ctx.fillText((scales[0].yMin + i * scales[0].step).toFixed(tickDecimals(scales[0].step)), p.left - 9, y);
+            }
+            if (!sameUnit && scales[1]) {
+              ctx.fillStyle = sensorsOf[1].color;
+              ctx.textAlign = "left";
+              ctx.fillText((scales[1].yMin + i * scales[1].step).toFixed(tickDecimals(scales[1].step)), p.right + 9, y);
+            }
+          }
+        }
+        // 軸線（左: 1つ目の色、右: 2つ目の色。単位が同じなら灰色の左軸だけ）
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = axisColor(0);
+        ctx.beginPath();
+        ctx.moveTo(p.left, p.top);
+        ctx.lineTo(p.left, p.bottom);
+        ctx.stroke();
+        ctx.strokeStyle = "#9cb5c5";
+        ctx.beginPath();
+        ctx.moveTo(p.left, p.bottom);
+        ctx.lineTo(p.right, p.bottom);
+        ctx.stroke();
+        if (!sameUnit) {
+          ctx.strokeStyle = axisColor(1);
+          ctx.beginPath();
+          ctx.moveTo(p.right, p.top);
+          ctx.lineTo(p.right, p.bottom);
+          ctx.stroke();
+        }
+        // 軸の名前（左上・右上）
+        ctx.font = `bold ${p.small ? 10 : 12}px system-ui, sans-serif`;
+        ctx.textBaseline = "top";
+        ctx.fillStyle = sensorsOf[0].color;
+        ctx.textAlign = "left";
+        ctx.fillText(`${sensorsOf[0].name}${unitSuffix(sensorsOf[0])}`, p.left + 7, p.top + 4);
+        ctx.fillStyle = sensorsOf[1].color;
+        ctx.textAlign = "right";
+        ctx.fillText(`${sensorsOf[1].name}${unitSuffix(sensorsOf[1])}`, p.right - 7, p.top + 4);
+
+        // 線（塗りは重なると濁るので薄く）と最新の点・バッジ
+        const badges = [];
+        datas.forEach((data, n) => {
+          const sensor = sensorsOf[n], yAt = yAts[n], xs = p.xs[n];
+          if (!data.length || !yAt) return;
+          const pts = thinned(data.length, i => data[i].value, Math.max(200, Math.floor(p.right - p.left) * 2));
+          const gradient = ctx.createLinearGradient(0, p.top, 0, p.bottom);
+          gradient.addColorStop(0, hexToRgba(sensor.color, 0.12));
+          gradient.addColorStop(1, hexToRgba(sensor.color, 0.01));
+          ctx.beginPath();
+          pts.forEach((i, k) => { const x = xs(i), y = yAt(data[i].value); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+          ctx.lineTo(xs(data.length - 1), p.bottom);
+          ctx.lineTo(xs(0), p.bottom);
+          ctx.closePath();
+          ctx.fillStyle = gradient;
+          ctx.fill();
+          ctx.beginPath();
+          pts.forEach((i, k) => { const x = xs(i), y = yAt(data[i].value); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+          ctx.strokeStyle = sensor.color;
+          ctx.lineWidth = 3;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.stroke();
+          const last = data[data.length - 1];
+          const lastX = xs(data.length - 1), lastY = yAt(last.value);
+          ctx.beginPath();
+          ctx.arc(lastX, lastY, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+          ctx.strokeStyle = sensor.color;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          badges.push({ text: `${formatValue(last.value, sensor)} ${sensor.unit}`, x: lastX, y: lastY, color: sensor.color });
+        });
+        ctx.font = `bold ${p.small ? 11 : 13}px system-ui, sans-serif`;
+        const badgeH = 28;
+        const placed = [];
+        badges.forEach(badge => {
+          const w = ctx.measureText(badge.text).width + 18;
+          const x = Math.min(p.right - w, Math.max(p.left, badge.x - w / 2));
+          let y = Math.min(p.bottom - badgeH, Math.max(p.top + 24, badge.y - 39));   // 上の軸の名前にかぶせない
+          const hit = placed.find(b => Math.abs(b.y - y) < badgeH + 4 && x < b.x + b.w && b.x < x + w);
+          if (hit) y = hit.y + badgeH + 4 <= p.bottom - badgeH ? hit.y + badgeH + 4 : hit.y - badgeH - 4;   // 重なったら下（下が無ければ上）へ
+          roundRect(ctx, x, y, w, badgeH, 9);
+          ctx.fillStyle = badge.color;
+          ctx.fill();
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(badge.text, x + w / 2, y + badgeH / 2 + .5);
+          placed.push({ x, y, w });
+        });
+        return keys.map((key, n) => ({ key, data: datas[n], yAt: yAts[n], xs: p.xs[n], top: p.top, bottom: p.bottom, left: p.left, right: p.right, small: p.small, titled: true }));
+      }
+
+      // 1 つのセンサーの線を p の枠（top/bottom/left/right）に描く。p.xs(i) は data[i] の x
+      function drawPanel(key, data, p) {
+        const sensor = sensors[key];
+        const panelW = p.right - p.left, panelH = p.bottom - p.top;
+
+        ctx.strokeStyle = "#9cb5c5";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.left, p.top);
+        ctx.lineTo(p.left, p.bottom);
+        ctx.lineTo(p.right, p.bottom);
+        ctx.stroke();
+
+        if (p.titled) {
+          ctx.fillStyle = sensor.color;
+          ctx.font = `bold ${p.small ? 10 : 12}px system-ui, sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(`${sensor.name}${unitSuffix(sensor)}`, p.left + 7, p.top + 4);
+        }
+
+        if (!data.length) {
+          ctx.fillStyle = "#8fa3b3";
+          ctx.font = `bold ${p.small ? 11 : 13}px system-ui, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("この時間の記録はありません", (p.left + p.right) / 2, (p.top + p.bottom) / 2);
+          return null;
+        }
+
+        const { yMin, yMax, step } = niceScale(data.map(item => item.value), sensor, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす
+        const yAt = value => p.top + ((yMax - value) / (yMax - yMin)) * panelH;
+
         ctx.lineWidth = 1;
         ctx.strokeStyle = "#d9e8f1";
         ctx.fillStyle = "#667b8c";
-        ctx.font = `${width < 470 ? 10 : 12}px system-ui, sans-serif`;
+        ctx.font = `${p.small ? 10 : 12}px system-ui, sans-serif`;
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
-
         const yTickCount = Math.round((yMax - yMin) / step);
         for (let i = 0; i <= yTickCount; i++) {
           const tick = yMin + i * step;
           const y = yAt(tick);
           ctx.beginPath();
-          ctx.moveTo(margin.left, y);
-          ctx.lineTo(width - margin.right, y);
+          ctx.moveTo(p.left, y);
+          ctx.lineTo(p.right, y);
           ctx.stroke();
-          const decimals = step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9)));
-          ctx.fillText(tick.toFixed(decimals), margin.left - 9, y);
+          ctx.fillText(tick.toFixed(tickDecimals(step)), p.left - 9, y);
         }
 
-        const desiredXTicks = width < 500 ? 4 : 6;
-        const xTickIndexes = new Set([0, data.length - 1]);
-        for (let i = 1; i < desiredXTicks - 1; i++) {
-          xTickIndexes.add(Math.round((i / (desiredXTicks - 1)) * (data.length - 1)));
-        }
-
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        [...xTickIndexes].sort((a, b) => a - b).forEach(index => {
-          const x = xAt(index);
-          ctx.beginPath();
-          ctx.moveTo(x, margin.top);
-          ctx.lineTo(x, height - margin.bottom);
-          ctx.stroke();
-          const label = data[index].time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-          ctx.fillText(label, x, height - margin.bottom + 10);
-        });
-
-        ctx.strokeStyle = "#9cb5c5";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(margin.left, margin.top);
-        ctx.lineTo(margin.left, height - margin.bottom);
-        ctx.lineTo(width - margin.right, height - margin.bottom);
-        ctx.stroke();
-
-        const gradient = ctx.createLinearGradient(0, margin.top, 0, height - margin.bottom);
+        const gradient = ctx.createLinearGradient(0, p.top, 0, p.bottom);
         gradient.addColorStop(0, hexToRgba(sensor.color, 0.28));
         gradient.addColorStop(1, hexToRgba(sensor.color, 0.015));
 
         // 点が多いときは区間ごとに最小・最大だけ描く（線の形は変わらず、描画が軽くなる）
-        const pts = thinned(data.length, i => data[i].value, Math.max(200, Math.floor(plotW) * 2));
+        const pts = thinned(data.length, i => data[i].value, Math.max(200, Math.floor(panelW) * 2));
         ctx.beginPath();
         pts.forEach((i, n) => {
-          const x = xAt(i);
+          const x = p.xs(i);
           const y = yAt(data[i].value);
           if (n === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
-        ctx.lineTo(xAt(data.length - 1), height - margin.bottom);
-        ctx.lineTo(xAt(0), height - margin.bottom);
+        ctx.lineTo(p.xs(data.length - 1), p.bottom);
+        ctx.lineTo(p.xs(0), p.bottom);
         ctx.closePath();
         ctx.fillStyle = gradient;
         ctx.fill();
 
         ctx.beginPath();
         pts.forEach((i, n) => {
-          const x = xAt(i);
+          const x = p.xs(i);
           const y = yAt(data[i].value);
           if (n === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
@@ -3034,7 +3651,7 @@
         ctx.stroke();
 
         const last = data[data.length - 1];
-        const lastX = xAt(data.length - 1);
+        const lastX = p.xs(data.length - 1);
         const lastY = yAt(last.value);
         ctx.beginPath();
         ctx.arc(lastX, lastY, 5.5, 0, Math.PI * 2);
@@ -3045,11 +3662,11 @@
         ctx.stroke();
 
         const badgeText = `${formatValue(last.value, sensor)} ${sensor.unit}`;
-        ctx.font = `bold ${width < 470 ? 11 : 13}px system-ui, sans-serif`;
+        ctx.font = `bold ${p.small ? 11 : 13}px system-ui, sans-serif`;
         const badgeW = ctx.measureText(badgeText).width + 18;
         const badgeH = 28;
-        const badgeX = Math.min(width - margin.right - badgeW, Math.max(margin.left, lastX - badgeW / 2));
-        const badgeY = Math.max(margin.top + 3, lastY - 39);
+        const badgeX = Math.min(p.right - badgeW, Math.max(p.left, lastX - badgeW / 2));
+        const badgeY = Math.min(p.bottom - badgeH, Math.max(p.top + 3, lastY - 39));
         roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 9);
         ctx.fillStyle = sensor.color;
         ctx.fill();
@@ -3057,10 +3674,198 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + .5);
-        ctx.restore();
+        return yAt;
+      }
 
-        chartGeo = { left: margin.left, width: plotW, top: margin.top, bottom: height - margin.bottom, start: vr.start, count: data.length, xAt };
-        drawSelection();
+      // ===== マウスを乗せた記録の値を出す ============================================
+      // hover: 主センサーの記録の添字（allData 基準）。縦の線と、パネルごとに点と値、上に時刻を描く
+      let hover = null;
+      function setHover(index) {
+        if (hover === index) return;
+        hover = index;
+        if (viewMode === "chart") drawChart();
+      }
+      // 時刻順の記録から ms にいちばん近いものを返す
+      function nearestByTime(items, ms) {
+        if (!items.length) return null;
+        let lo = 0, hi = items.length - 1;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (items[mid].time.getTime() <= ms) lo = mid; else hi = mid;
+        }
+        return Math.abs(items[hi].time.getTime() - ms) < Math.abs(items[lo].time.getTime() - ms) ? items[hi] : items[lo];
+      }
+      // メモのある記録に小さな吹き出しの印を描く（点の少し上）
+      function drawMemoIcons() {
+        const g = chartGeo;
+        if (!g) return;
+        ctx.save();
+        g.panels.forEach(panel => {
+          if (!panel.yAt) return;
+          const data = panel.data;
+          data.forEach((item, i) => {
+            if (!item.memo) return;
+            // 山（前後より高い）なら点の上に、谷なら点の下に出す。端の記録は隣の 1 件とくらべる
+            const around = [data[i - 1], data[i + 1]].filter(Boolean).map(it => it.value);
+            const up = !around.length || item.value >= around.reduce((sum, v) => sum + v, 0) / around.length;
+            const dir = up ? -1 : 1;
+            const x = panel.xs(i), y = panel.yAt(item.value) + dir * 15;
+            roundRect(ctx, x - 8, y - 6, 16, 12, 4);
+            ctx.fillStyle = "#ffd54a";
+            ctx.fill();
+            ctx.strokeStyle = "#3a4550";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.beginPath();   // 吹き出しのしっぽ（点のほうへ向ける）
+            ctx.moveTo(x - 3, y - dir * 6);
+            ctx.lineTo(x, y - dir * 10);
+            ctx.lineTo(x + 3, y - dir * 6);
+            ctx.closePath();
+            ctx.fillStyle = "#ffd54a";
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#3a4550";
+            ctx.font = "bold 9px system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("…", x, y - .5);
+          });
+        });
+        ctx.restore();
+      }
+
+      function drawHover() {
+        const g = chartGeo;
+        if (hover === null || !g || !g.count || hover < g.start || hover >= g.start + g.count) return;
+        const primary = dataStore[selectedSensor][hover];
+        if (!primary) return;
+        const ms = primary.time.getTime();
+        const x = g.xAt(hover - g.start);
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(58, 69, 80, .55)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x, g.top);
+        ctx.lineTo(x, g.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const font = `bold ${g.small ? 11 : 12}px system-ui, sans-serif`;
+        const boxH = 24, pad = 8;
+        const drawBox = (text, bx, by, fill, color) => {
+          ctx.font = font;
+          const w = ctx.measureText(text).width + pad * 2;
+          const left = Math.min(g.left + g.width - w, Math.max(g.left, bx));
+          roundRect(ctx, left, by, w, boxH, 7);
+          ctx.fillStyle = fill;
+          ctx.fill();
+          ctx.fillStyle = color;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, left + pad, by + boxH / 2 + .5);
+          return w;
+        };
+        // 時刻（線の上端。右端に近いときは線の左へ）
+        const timeLabel = timeText(primary.time, fineTime[selectedSensor]);
+        ctx.font = font;
+        const timeW = ctx.measureText(timeLabel).width + pad * 2;
+        drawBox(timeLabel, x + 8 + timeW > g.left + g.width ? x - 8 - timeW : x + 8, g.top + 2, "rgba(58, 69, 80, .9)", "white");
+
+        const placed = [];   // 出した枠（重ねるときに 2 つが重ならないように）
+        g.panels.forEach(panel => {
+          if (!panel.yAt || !panel.data.length) return;
+          const item = panel.key === selectedSensor ? primary : nearestByTime(panel.data, ms);
+          if (!item) return;
+          const sensor = sensors[panel.key];
+          const px = panel.key === selectedSensor ? x : panel.xs(panel.data.indexOf(item));
+          const y = panel.yAt(item.value);
+          ctx.beginPath();
+          ctx.arc(px, y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = "white";
+          ctx.fill();
+          ctx.strokeStyle = sensor.color;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          const text = `${panel.titled ? `${sensor.name} ` : ""}${formatValue(item.value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""}`;
+          const memo = item.memo ? (item.memo.length > 28 ? `${item.memo.slice(0, 28)}…` : item.memo) : "";
+          ctx.font = font;
+          const w = Math.max(ctx.measureText(text).width, memo ? ctx.measureText(memo).width : 0) + pad * 2;
+          const bx = px + 12 + w > g.left + g.width ? px - 12 - w : px + 12;
+          const h = boxH * (memo ? 2 : 1);
+          let by = Math.min(panel.bottom - h - 2, Math.max(panel.top + 2, y - boxH / 2));
+          const hit = placed.find(b => by < b.y + b.h + 4 && b.y < by + h + 4);
+          if (hit) by = hit.y + hit.h + 4 + h <= panel.bottom ? hit.y + hit.h + 4 : hit.y - h - 4;   // 重なったら下（下が無ければ上）へ
+          drawBox(text, bx, by, sensor.color, "white");
+          if (memo) drawBox(memo, bx, by + boxH, "#fff3bf", "#3a4550");   // メモは値の下に黄色で
+          placed.push({ y: by, h });
+        });
+        ctx.restore();
+      }
+
+      // ===== 記録にメモを書く ========================================================
+      // グラフの記録をクリック（タップ）すると、その記録のメモを書く枠が出る。メモは主センサーの記録（item.memo）に入れ、
+      // 表のいちばん右の列・CSV にも出す。くらべているときは、相手のセンサーの同じ時刻の記録にあるメモも表の列に出す
+      let memoEdit = null;   // { key, seq }
+      function findBySeq(key, seq) {
+        const data = dataStore[key];
+        let lo = 0, hi = data.length - 1;   // 番号は昇順
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (data[mid].seq === seq) return data[mid];
+          if (data[mid].seq < seq) lo = mid + 1; else hi = mid - 1;
+        }
+        return null;
+      }
+      function memoAt(item, ms) {
+        if (item.memo) return item.memo;
+        for (const key of activeKeys()) {
+          if (key === selectedSensor) continue;
+          const found = itemAtTime(key, ms);
+          if (found && found.memo) return found.memo;
+        }
+        return "";
+      }
+      function openMemoEditor(index) {
+        const item = dataStore[selectedSensor][index];
+        if (!item) return;
+        memoEdit = { key: selectedSensor, seq: item.seq };
+        hover = index;
+        const sensor = sensors[selectedSensor];
+        els.memoTitle.textContent = `${timeText(item.time, fineTime[selectedSensor])}　${sensor.name} ${formatValue(item.value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""} のメモ`;
+        els.memoInput.value = item.memo || "";
+        els.memoDelete.hidden = !item.memo;
+        els.memoBox.hidden = false;
+        drawChart();
+        els.memoInput.focus();
+      }
+      // メモの枠を、その記録の点のそば（右下。はみ出すなら左・上）に置く
+      function placeMemoBox() {
+        if (!memoEdit) return;
+        const g = chartGeo, item = findBySeq(memoEdit.key, memoEdit.seq);
+        const index = item ? dataStore[memoEdit.key].indexOf(item) : -1;
+        if (!g || !item || index < g.start || index >= g.start + g.count) { els.memoBox.hidden = true; return; }
+        els.memoBox.hidden = false;
+        const panel = g.panels.find(p => p.key === memoEdit.key);
+        const x = g.xAt(index - g.start), y = panel && panel.yAt ? panel.yAt(item.value) : g.top;
+        const wrapW = els.canvasWrap.clientWidth, wrapH = els.canvasWrap.clientHeight;
+        const w = els.memoBox.offsetWidth, h = els.memoBox.offsetHeight;
+        els.memoBox.style.left = `${Math.max(4, Math.min(wrapW - w - 4, x + 14 + w > wrapW - 4 ? x - 14 - w : x + 14))}px`;
+        els.memoBox.style.top = `${Math.max(4, Math.min(wrapH - h - 4, y + 12 + h > wrapH - 4 ? y - 12 - h : y + 12))}px`;
+      }
+      function closeMemoEditor() {
+        if (!memoEdit) return;
+        memoEdit = null;
+        els.memoBox.hidden = true;
+        if (viewMode === "chart") drawChart();
+      }
+      function setMemo(key, seq, text) {
+        const item = findBySeq(key, seq);
+        if (!item) return;
+        const memo = String(text || "").trim();
+        if (memo) item.memo = memo; else delete item.memo;
+        const input = els.tableBody.querySelector(`tr[data-seq="${seq}"] .memo-input`);
+        if (input && key === selectedSensor && input.value !== memo) input.value = memo;
       }
 
       function roundRect(context, x, y, width, height, radius) {
@@ -3085,23 +3890,42 @@
 
       // CSV・TSVで共通の表データ（1行目は見出し）
       function buildRows() {
-        const sensor = sensors[selectedSensor];
-        const noteLabel = sensor.noteLabel || null;
-        const fine = fineTime[selectedSensor];
+        const cols = tableColumns();
+        const data = dataStore[selectedSensor];
+        if (!isCompare()) {
+          const sensor = sensors[selectedSensor];
+          return [
+            ["日時", "時刻", sensor.name, "単位", ...(cols.noteLabel ? [cols.noteLabel] : []), "メモ"],
+            ...data.map(item => [
+              item.time.toLocaleDateString("ja-JP"),
+              timeText(item.time, cols.fine),
+              item.value,
+              sensor.csvUnit,
+              ...(cols.noteLabel ? [item.note || ""] : []),
+              item.memo || ""
+            ])
+          ];
+        }
+        // くらべているときは、時刻ごとに 1 行、センサーごとに 1 列（単位は見出しに）
         return [
-          ["日時", "時刻", sensor.name, "単位", ...(noteLabel ? [noteLabel] : [])],
-          ...dataStore[selectedSensor].map(item => [
-            item.time.toLocaleDateString("ja-JP"),
-            timeText(item.time, fine),
-            item.value,
-            sensor.csvUnit,
-            ...(noteLabel ? [item.note || ""] : [])
-          ])
+          ["日時", "時刻", ...cols.keys.map(key => `${sensors[key].name}${sensors[key].csvUnit ? `（${sensors[key].csvUnit}）` : ""}`), "メモ"],
+          ...data.map(item => {
+            const ms = item.time.getTime();
+            return [
+              item.time.toLocaleDateString("ja-JP"),
+              timeText(item.time, cols.fine),
+              ...cols.keys.map(key => {
+                const found = key === selectedSensor ? item : itemAtTime(key, ms);
+                return found ? found.value : "";
+              }),
+              memoAt(item, ms)
+            ];
+          })
         ];
       }
 
       function downloadCsv() {
-        const sensor = sensors[selectedSensor];
+        const name = activeName();
         const data = dataStore[selectedSensor];
         if (!data.length) return;
 
@@ -3112,24 +3936,24 @@
         const link = document.createElement("a");
         const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
         link.href = url;
-        link.download = `AkaDako_${sensor.name}_${stamp}.csv`;
+        link.download = `AkaDako_${name}_${stamp}.csv`;
         document.body.appendChild(link);
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
-        showToast(`${sensor.name}のデータをCSVで保存しました`);
+        showToast(`${name}のデータをCSVで保存しました`);
       }
 
       // ExcelやGoogleスプレッドシートにそのまま貼れるよう、タブ区切りでコピーする
       async function copyTsv() {
-        const sensor = sensors[selectedSensor];
+        const name = activeName();
         const data = dataStore[selectedSensor];
         if (!data.length) return;
 
         const tsv = buildRows().map(row => row.join("\t")).join("\r\n");
         const copied = await writeClipboard(tsv);
         showToast(copied
-          ? `${sensor.name}のデータ${data.length.toLocaleString("ja-JP")}件をコピーしました`
+          ? `${name}のデータ${data.length.toLocaleString("ja-JP")}件をコピーしました`
           : "コピーできませんでした。ダウンロードをお使いください");
       }
 
@@ -3162,20 +3986,23 @@
       }
 
       function deleteCurrentData() {
-        const sensor = sensors[selectedSensor];
-        if (!dataStore[selectedSensor].length) return;
-        if (!window.confirm(`${sensor.name}の記録データをすべて削除しますか？`)) return;
-        dataStore[selectedSensor].length = 0;
-        seqCounters[selectedSensor] = 0;
-        fineTime[selectedSensor] = false;
+        const keys = activeKeys().filter(key => dataStore[key].length);
+        if (!keys.length) return;
+        const names = keys.map(key => sensors[key].name).join("・");
+        if (!window.confirm(`${names}の記録データをすべて削除しますか？`)) return;
+        keys.forEach(key => {
+          dataStore[key].length = 0;
+          seqCounters[key] = 0;
+          fineTime[key] = false;
+          shareOnCleared(key);   // 測定室側もこの端末の分を空にする
+        });
         resetChartView();
-        shareOnCleared(selectedSensor);   // 測定室側もこの端末の分を空にする
         resetTable();
         els.currentValue.textContent = "--";
         setReadingMeta(canRead() ? "記録データを削除しました" : waitingMessage());
         updateSummary();
         refreshView();
-        showToast(`${sensor.name}のグラフを削除しました`);
+        showToast(`${names}のグラフを削除しました`);
       }
 
       // ===== デモ（?mode=demo） ======================================================
@@ -3207,6 +4034,7 @@
       function applyDemoUI() {
         els.statusText.textContent = "デモ値（乱数）";
         els.statusChip.classList.add("connected");
+        els.statusChip.hidden = false;   // デモのときだけチップで知らせる（スイッチは出さない）
         els.connectBtn.hidden = true;
         els.recordBtn.disabled = false;
         els.readingMeta.textContent = waitingMessage();
@@ -3224,6 +4052,9 @@
       function resetChartView() {
         view = { count: CHART_POINTS, end: null };
         sel = null;
+        hover = null;
+        memoEdit = null;
+        els.memoBox.hidden = true;
       }
       function viewRange() {
         const total = dataStore[selectedSensor].length;
@@ -3349,21 +4180,33 @@
         const t = g.count < 2 ? 0 : Math.max(0, Math.min(1, (event.clientX - rect.left - g.left) / g.width));
         return g.start + Math.round(t * (g.count - 1));
       }
+      // press: 押しはじめ。動かさずに離したら「タップ」として、その記録のメモを開く（記録中でも書ける）
+      let press = null;
       els.canvas.addEventListener("pointerdown", event => {
-        if (event.button || isRecording || !chartGeo || dataStore[selectedSensor].length < 2) return;
+        if (event.button || !chartGeo || !chartGeo.count) return;
+        const hadSel = Boolean(sel && sel.done);
+        closeMemoEditor();
         const i = indexAt(event);
+        press = { x0: event.clientX, i, hadSel };
+        if (isRecording || dataStore[selectedSensor].length < 2) return;   // 記録中は範囲を選ばない
         sel = { a: i, b: i, from: i, x0: event.clientX, done: false };
         try { els.canvas.setPointerCapture(event.pointerId); } catch (error) { /* 対応していないブラウザ */ }
         event.preventDefault();
         drawChart();
       });
       els.canvas.addEventListener("pointermove", event => {
-        if (!sel || sel.done || !chartGeo) return;
+        if (!chartGeo || !chartGeo.count || memoEdit) return;
         const i = indexAt(event);
+        if (!sel || sel.done) {   // 範囲を選んでいる途中でなければ、乗せた記録の値を出す
+          setHover(i);
+          return;
+        }
+        hover = i;
         sel.a = Math.min(sel.from, i);
         sel.b = Math.max(sel.from, i);
         drawChart();
       });
+      els.canvas.addEventListener("pointerleave", () => { if (!memoEdit) setHover(null); });
       const selUp = event => {
         if (!sel || sel.done) return;
         // ほとんど動かしていないときは、選ぶのをやめる（押しただけで選んだ範囲を消せる）
@@ -3371,14 +4214,67 @@
         sel.done = true;
         drawChart();
       };
-      els.canvas.addEventListener("pointerup", selUp);
-      els.canvas.addEventListener("pointercancel", selUp);
+      els.canvas.addEventListener("pointerup", event => {
+        const tap = press && Math.abs(event.clientX - press.x0) < 6 ? press : null;
+        press = null;
+        selUp(event);
+        if (tap && !tap.hadSel) openMemoEditor(tap.i);   // 選んだ範囲を消すためのクリックではメモを開かない
+        else if (event.pointerType !== "mouse") setHover(null);   // 指を離したら値の表示は消す（マウスは乗せている間だけ出る）
+      });
+      els.canvas.addEventListener("pointercancel", event => { press = null; selUp(event); });
+      els.memoSave.addEventListener("click", () => {
+        if (!memoEdit) return;
+        setMemo(memoEdit.key, memoEdit.seq, els.memoInput.value);
+        closeMemoEditor();
+      });
+      els.memoDelete.addEventListener("click", () => {
+        if (!memoEdit) return;
+        setMemo(memoEdit.key, memoEdit.seq, "");
+        closeMemoEditor();
+      });
+      els.memoCancel.addEventListener("click", closeMemoEditor);
+      els.memoInput.addEventListener("keydown", event => {
+        if (event.key === "Escape") { event.preventDefault(); closeMemoEditor(); }
+        else if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); els.memoSave.click(); }
+      });
+      // 表のメモ欄: 書き換えたらその記録に入れる（番号で引く）
+      els.tableBody.addEventListener("change", event => {
+        if (!event.target.classList.contains("memo-input")) return;
+        const row = event.target.closest("tr");
+        if (row) setMemo(selectedSensor, Number(row.dataset.seq), event.target.value);
+      });
+      els.tableBody.addEventListener("keydown", event => {
+        if (event.key === "Enter" && event.target.classList.contains("memo-input") && !event.isComposing) event.target.blur();
+      });
       els.selZoom.addEventListener("click", () => {
         // 選んだ範囲をグラフいっぱいに出す。スクロールバーの灰色の部分も同じ長さになる
         if (!sel || !sel.done) return;
         const start = sel.a, end = sel.b + 1;
         sel = null;
         setView(start, end, end >= dataStore[selectedSensor].length);
+      });
+      // 選んだ範囲の外の記録を消す（くらべているときは相手のセンサーも同じ時間帯で残す）。番号はそのまま続く
+      els.selTrim.addEventListener("click", () => {
+        if (!sel || !sel.done) return;
+        const keys = activeKeys();
+        const primary = dataStore[selectedSensor];
+        const a = Math.max(0, sel.a), b = Math.min(primary.length - 1, sel.b);
+        if (a > b) { selClear(); return; }
+        const t0 = primary[a].time.getTime(), t1 = primary[b].time.getTime();
+        const kept = Object.fromEntries(keys.map(key => [key, sliceByTime(dataStore[key], t0, t1)]));
+        const removed = keys.reduce((n, key) => n + dataStore[key].length - kept[key].length, 0);
+        if (!removed) { selClear(); return; }
+        if (!window.confirm(`選んだ範囲の外にある記録 ${removed.toLocaleString("ja-JP")} 件を消去しますか？（${activeName()}）`)) return;
+        keys.forEach(key => {
+          dataStore[key].splice(0, dataStore[key].length, ...kept[key]);
+          shareOnCleared(key);   // 測定室側もこの端末の分を送り直す
+        });
+        sel = null;
+        resetChartView();
+        resetTable();
+        updateSummary();
+        refreshView();
+        showToast(`${removed.toLocaleString("ja-JP")}件を消去しました`);
       });
       els.selCancel.addEventListener("click", selClear);
       // 選んだ範囲を灰色で描き、指を離したあとはボタンを出す
@@ -3433,7 +4329,7 @@
       // ===== 測定室（s-link-logger から移植） =========================================
       // 複数の端末の測定データを集めて1つのページで見る。API も測定室のページも s-link-logger と同じもの
       // （API: https://logdb.s-link.education、測定室のページの URL は API が返す）。
-      // この端末の「いま選んでいるセンサーの記録」を1本のストリームとして 5 秒ごとに送る。
+      // この端末の「いま選んでいるセンサーの記録」（くらべているときはその組）を1本のストリームとして 5 秒ごとに送る。
       // センサーを切り替えたり記録を削除したりしたら、新しいセッションにしてサーバー側のこの端末の分を入れ替える。
       // サーバーが「どの連番まで受け取ったか」を返すので、Wi-Fi が切れていた間の記録もあとからまとめて送られる。
       const SHARE_API = String(PAGE_PARAMS.get("api") || "").replace(/\/+$/, "") || "https://logdb.s-link.education";
@@ -3461,9 +4357,14 @@
         err: document.getElementById("roomErr"), dialogClose: document.getElementById("roomDialogClose")
       };
       function newSession() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-      function shareSensors(key = selectedSensor) {
-        const s = sensors[key];
-        return [{ key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals === null ? 2 : s.decimals }];
+      // 送るセンサーの組（くらべているときは複数）。st.sensorKey には "temperature+humidity" のようにつないで覚える
+      function shareKey() { return activeKeys().join("+"); }
+      function shareKeys() { return String(st && st.sensorKey || selectedSensor).split("+").filter(key => sensors[key]); }
+      function shareSensors(keys = activeKeys()) {
+        return keys.map(key => {
+          const s = sensors[key];
+          return { key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals === null ? 2 : s.decimals };
+        });
       }
       function stLoad() {
         try {
@@ -3507,7 +4408,7 @@
         }
         const t0 = Date.now();
         const res = await shareApi("POST", "/streams", { name: name || "端末", sensors: shareSensors() });
-        st = { streamId: res.streamId, token: res.token, name: name || "", sensorKey: selectedSensor, room: null,
+        st = { streamId: res.streamId, token: res.token, name: name || "", sensorKey: shareKey(), room: null,
           session: newSession(), startedAt: null, lastAck: 0, clockOffset: 0, sentAt: 0 };
         measureClock(res.now, t0, Date.now());
         stSave();
@@ -3537,20 +4438,27 @@
       // 記録を消してやり直したとき（引数なし、または送っているセンサーの削除）: 新しいセッションにして、サーバー側のこの端末の分を空にする
       function shareOnCleared(sensorKey) {
         if (!st) return;
-        if (sensorKey && st.sensorKey !== sensorKey) return;
+        if (sensorKey && !shareKeys().includes(sensorKey)) return;
         st.session = newSession();
         st.startedAt = null;
         st.lastAck = 0;
         stSave();
       }
+      // 行は主センサー（組の末尾。activeKeys と同じ並び）の記録を基準に、ほかのセンサーの値を同じ時刻で引いて並べる（無ければ null）
       function shareRows() {
         const out = [];
-        const data = dataStore[st.sensorKey] || [];
+        const keys = shareKeys();
+        const base = keys[keys.length - 1];
+        const data = dataStore[base] || [];
         for (let i = 0; i < data.length && out.length < SHARE_BATCH; i++) {
           const r = data[i];
           if (r.seq <= st.lastAck) continue;
-          if (st.startedAt === null || st.startedAt === undefined) st.startedAt = r.time.getTime() + clockOffset;
-          out.push([r.seq, r.time.getTime() + clockOffset - st.startedAt, r.value]);
+          const ms = r.time.getTime();
+          if (st.startedAt === null || st.startedAt === undefined) st.startedAt = ms + clockOffset;
+          out.push([r.seq, ms + clockOffset - st.startedAt, ...keys.map(key => {
+            const found = key === base ? r : itemAtTime(key, ms);
+            return found ? found.value : null;
+          })]);
         }
         return out;
       }
@@ -3558,16 +4466,16 @@
         if (!isSending() || shareBusy) return;
         shareBusy = true;
         try {
-          if (st.sensorKey !== selectedSensor) {   // 選んでいるセンサーが変わった → 新しいセッションでそのセンサーの記録を送り直す
-            st.sensorKey = selectedSensor;
+          if (st.sensorKey !== shareKey()) {   // 選んでいるセンサー（の組）が変わった → 新しいセッションでその記録を送り直す
+            st.sensorKey = shareKey();
             shareOnCleared();
           }
-          const key = st.sensorKey;
+          const keys = shareKeys();
           const rows = shareRows();
           const lastValues = {};
-          lastValues[key] = typeof latestValues[key] === "number" ? latestValues[key] : null;
+          keys.forEach(key => { lastValues[key] = typeof latestValues[key] === "number" ? latestValues[key] : null; });
           const res = await shareApi("POST", `/streams/${st.streamId}/push`,
-            { session: st.session, startedAt: st.startedAt, sensors: shareSensors(key), lastValues, rows }, st.token);
+            { session: st.session, startedAt: st.startedAt, sensors: shareSensors(keys), lastValues, rows }, st.token);
           st.lastAck = Math.max(st.lastAck || 0, res.ackSeq || 0);
           st.sentAt = Date.now();
           if (res.roomEnd && st.room) {
@@ -3888,7 +4796,7 @@
       els.sensorDialogOk.addEventListener("click", () => {
         const sensorKey = pendingSensor;
         closeSensorDialog();
-        if (sensorKey) switchSensor(sensorKey);
+        if (sensorKey) pickSensor(sensorKey);
       });
       els.sensorDialogCancel.addEventListener("click", closeSensorDialog);
       els.sensorDialog.addEventListener("cancel", () => { pendingSensor = null; });   // Escキー
@@ -3909,6 +4817,9 @@
       }, { passive: true });
       els.chartViewBtn.addEventListener("click", () => setViewMode("chart"));
       els.tableViewBtn.addEventListener("click", () => setViewMode("table"));
+      els.compareToggle.addEventListener("click", () => setCompareOn(!compareOn));
+      els.layoutStack.addEventListener("click", () => setOverlay(false));
+      els.layoutOverlay.addEventListener("click", () => setOverlay(true));
       els.downloadBtn.addEventListener("click", downloadCsv);
       els.copyBtn.addEventListener("click", copyTsv);
       els.deleteBtn.addEventListener("click", deleteCurrentData);
@@ -3919,6 +4830,7 @@
 
       document.documentElement.style.setProperty("--active-color", sensors[selectedSensor].color);
       setConnectionUI(false);
+      renderCompareUI();
       updateSummary();
       setViewMode("chart");
       updateTabsArrows();
