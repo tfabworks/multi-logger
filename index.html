@@ -123,6 +123,20 @@
       box-shadow: 0 0 0 4px rgba(86,239,157,.22);
     }
 
+    /* デモのときだけチップに出す「終了」。押すと mode=demo を外して開き直す */
+    .chip-exit {
+      margin-left: 2px;
+      padding: 2px 9px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: rgba(255,255,255,.9);
+      font-size: .74rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .chip-exit:hover { background: white; }
+
     .primary-btn {
       min-height: 44px;
       padding: 8px 17px;
@@ -1240,6 +1254,7 @@
         <div id="statusChip" class="status-chip" aria-live="polite" hidden>
           <span class="status-dot"></span>
           <span id="statusText">未接続</span>
+          <button id="demoExit" class="chip-exit" type="button" hidden title="デモモードを終了して通常の画面に戻る">終了</button>
         </div>
       </div>
     </header>
@@ -1503,6 +1518,19 @@
       <div class="dialog-actions">
         <button id="sensorDialogCancel" class="dialog-cancel" type="button">キャンセル</button>
         <button id="sensorDialogOk" class="dialog-close" type="button">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ボード接続で MIDI ポートが1つも見つからなかったときだけ出す。「デモモードにする」で mode=demo を付けて開き直す -->
+  <dialog id="demoDialog" aria-labelledby="demoDialogTitle">
+    <div class="dialog-body">
+      <div class="dialog-icon" aria-hidden="true">?</div>
+      <h3 id="demoDialogTitle">ボードが見つかりませんでした</h3>
+      <p>USB ケーブルを確かめて、もう一度「ボード接続」を押してください。<br>ボードがないときは、乱数の値で画面を試せる「デモモード」が使えます。<span id="demoDialogNote"></span></p>
+      <div class="dialog-actions">
+        <button id="demoDialogCancel" class="dialog-cancel" type="button">閉じる</button>
+        <button id="demoDialogOk" class="dialog-close" type="button">デモモードにする</button>
       </div>
     </div>
   </dialog>
@@ -2321,6 +2349,11 @@
         sensorDialogText: document.getElementById("sensorDialogText"),
         sensorDialogOk: document.getElementById("sensorDialogOk"),
         sensorDialogCancel: document.getElementById("sensorDialogCancel"),
+        demoDialog: document.getElementById("demoDialog"),
+        demoDialogNote: document.getElementById("demoDialogNote"),
+        demoDialogOk: document.getElementById("demoDialogOk"),
+        demoDialogCancel: document.getElementById("demoDialogCancel"),
+        demoExit: document.getElementById("demoExit"),
         shareLabel: document.getElementById("shareLabel"),
         chartScroll: document.getElementById("chartScroll"),
         chartThumb: document.getElementById("chartThumb"),
@@ -2574,9 +2607,9 @@
         els.midiDiag.open = false;
       }
 
-      async function showMidiDiag(error) {
+      async function showMidiDiag(error, knownPorts) {
         const detail = String(error && error.message ? error.message : error);
-        const ports = lastMidiPorts || await listMidiPorts().catch(() => null);
+        const ports = knownPorts || lastMidiPorts || await listMidiPorts().catch(() => null);
         const lines = [`接続エラー: ${detail}`, ""];
 
         if (!ports) {
@@ -2636,7 +2669,11 @@
           showToast(/MIDI Access/.test(String(error))
             ? "Web MIDIを使えませんでした。ブラウザの設定を確認してください"
             : "ボードが見つかりませんでした。下の「接続できないときの情報」をご覧ください");
-          await showMidiDiag(error);
+          const ports = lastMidiPorts || await listMidiPorts().catch(() => null);
+          showMidiDiag(error, ports);
+          // MIDI ポートが1つも無い＝ボードが手元に無い（かケーブルが抜けている）ときだけデモを勧める。
+          // ポートはあるのに認識できない／Web MIDI を許可されなかったときは、直せる問題なので案内だけにする
+          if (ports && !ports.inputs.length && !ports.outputs.length) offerDemo();
         } finally {
           els.connectBtn.disabled = false;
         }
@@ -4001,11 +4038,31 @@
         els.statusText.textContent = "デモ値（乱数）";
         els.statusChip.classList.add("connected");
         els.statusChip.hidden = false;   // デモのときだけチップで知らせる（スイッチは出さない）
+        els.demoExit.hidden = false;
         els.connectBtn.hidden = true;
         els.recordBtn.disabled = false;
         els.readingMeta.textContent = waitingMessage();
-        els.notice.textContent = "※ デモモードです。ボードの代わりに乱数の値を表示しています（URL の mode=demo を外すと通常の画面になります）。";
+        els.notice.textContent = "※ デモモードです。ボードの代わりに乱数の値を表示しています。上の「終了」を押すか、URL の mode=demo を外すと通常の画面に戻ります。";
         ensureReadingLoop();
+      }
+
+      // デモの出入りは URL の mode=demo を付け外しして開き直す（本物の値と乱数が1つの記録に混ざらないように）。
+      // 開き直すと記録は消えるので、残っていればそのことを添える
+      function openDemo(on) {
+        const url = new URL(location.href);
+        if (on) url.searchParams.set("mode", "demo");
+        else url.searchParams.delete("mode");
+        location.href = url.href;
+      }
+      function offerDemo() {
+        const hasData = Object.values(dataStore).some(data => data.length);
+        els.demoDialogNote.textContent = hasData ? "（いまの記録は消えます）" : "";
+        if (typeof els.demoDialog.showModal === "function") els.demoDialog.showModal();
+        else els.demoDialog.setAttribute("open", "");
+      }
+      function closeDemoDialog() {
+        if (typeof els.demoDialog.close === "function") els.demoDialog.close();
+        else els.demoDialog.removeAttribute("open");
       }
 
       // ===== グラフの表示範囲とスクロールバー ======================================
@@ -4768,6 +4825,16 @@
       els.sensorDialog.addEventListener("cancel", () => { pendingSensor = null; });   // Escキー
       els.sensorDialog.addEventListener("click", event => {
         if (event.target === els.sensorDialog) closeSensorDialog();   // 外側をクリック
+      });
+      els.demoDialogOk.addEventListener("click", () => { closeDemoDialog(); openDemo(true); });
+      els.demoDialogCancel.addEventListener("click", closeDemoDialog);
+      els.demoDialog.addEventListener("click", event => {
+        if (event.target === els.demoDialog) closeDemoDialog();
+      });
+      els.demoExit.addEventListener("click", () => {
+        const hasData = Object.values(dataStore).some(data => data.length);
+        if (hasData && !window.confirm("デモモードを終了します。いまの記録は消えます。よろしいですか？")) return;
+        openDemo(false);
       });
       els.calibrateBtn.addEventListener("click", async () => {
         oxygenCorrectionRate = null;
