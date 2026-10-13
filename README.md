@@ -1,4 +1,4 @@
-# S-LINK Multi Logger(β)
+# S-LINK Multi Cloud Logger(β)
 
 AkaDako / S-LINK センサーボードの値をブラウザでリアルタイムに表示・記録する、1ファイル構成の教材用Webアプリです。
 

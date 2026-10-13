@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
-  <title>S-LINK Multi Logger(β)</title>
+  <title>S-LINK Multi Cloud Logger(β)</title>
+  <!-- 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap">
   <script src="https://s-link.education/js/s-link.js"></script>
   <style>
     :root {
@@ -82,9 +86,11 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(1.55rem, 3vw, 2.45rem);
-      line-height: 1.12;
-      letter-spacing: 0.02em;
+      font-family: "Inter", "Avenir Next", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+      font-size: clamp(1.2rem, 2.1vw, 1.65rem);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
     }
 
     .connection-panel {
@@ -1169,7 +1175,7 @@
     @media (max-height: 820px) {
       .page { padding: 8px 0 12px; }
       .hero { margin-bottom: 8px; padding: 8px 16px; border-radius: 18px; }
-      h1 { font-size: clamp(1.25rem, 2.2vw, 1.7rem); }
+      h1 { font-size: clamp(1.05rem, 1.8vw, 1.35rem); }
       .status-chip { min-height: 36px; padding: 5px 11px; }
       .primary-btn { min-height: 38px; padding: 6px 14px; }
       .sensor-tabs { margin: 0; padding: 6px 0 11px; }
@@ -1244,7 +1250,7 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
-        <h1>S-LINK Multi Logger(β)</h1>
+        <h1>S-LINK Multi Cloud Logger(β)</h1>
       </div>
       <div class="connection-panel">
         <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「2つ目」になる（上限2つ。古いほうから外れる） -->
