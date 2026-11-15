@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S-LINK Multi Cloud Logger つかいかた</title>
+<!--
+  小学生向けの説明書の元。manual/tools/build.sh pdf で ../manual.pdf になる（A4 縦）。
+  ・ふりがなは本文に {漢字|かんじ} と書く（下のスクリプトが <ruby> に直す）
+  ・画面写真は img/shot-*.png（manual/tools/build.sh shots で撮り直す）。
+    一部分だけ見せるときは data-crop="左 上 幅 高さ"（写真全体を 1 とした割合）
+-->
+<style>
+  @page { size: A4; margin: 0; }
+  :root {
+    --blue: #0877c9;
+    --blue-dark: #075a9b;
+    --sky: #00a5d8;
+    --ink: #1d3346;
+    --muted: #587086;
+    --line: #cfe2ef;
+    --pale: #eef7fd;
+    --yellow: #ffd54a;
+    --red: #ef5b5b;
+    --green: #18a06d;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html { background: #dfe7ee; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "BIZ UDPGothic", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 11.5pt;
+    line-height: 2;
+  }
+  rt { font-size: .48em; color: #44607a; }
+  p { margin: 0; }
+  a { color: var(--blue-dark); }
+
+  .page {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    padding: 13mm 14mm 16mm;
+    overflow: hidden;
+    background: white;
+    break-after: page;
+  }
+  .page:last-child { break-after: auto; }
+  @media screen { .page { margin: 8mm auto; box-shadow: 0 4px 22px rgba(0,0,0,.18); } }
+  .foot {
+    position: absolute;
+    left: 14mm; right: 14mm; bottom: 7mm;
+    display: flex; justify-content: space-between;
+    color: #8497a8; font-size: 8pt; line-height: 1;
+  }
+
+  /* ページの見出し */
+  .head {
+    display: flex; align-items: center; gap: 4mm;
+    margin-bottom: 5mm; padding: 2.5mm 5mm;
+    color: white; border-radius: 5mm;
+    background: linear-gradient(135deg, var(--blue), var(--sky));
+  }
+  .head .no {
+    flex: none; display: grid; place-items: center;
+    width: 11mm; height: 11mm; border-radius: 50%;
+    color: var(--blue-dark); background: white;
+    font-size: 15pt; font-weight: bold; line-height: 1;
+  }
+  .head h2 { margin: 0; font-size: 19pt; line-height: 1.75; }
+  .head rt { color: #e4f4ff; }
+  .lead { margin-bottom: 4mm; font-size: 12pt; }
+
+  h3 {
+    margin: 5mm 0 2mm; padding-left: 3mm;
+    border-left: 2mm solid var(--blue);
+    color: var(--blue-dark); font-size: 13.5pt; line-height: 1.8;
+  }
+  h3:first-child { margin-top: 0; }
+
+  /* 画面のボタンの名前 */
+  .ui {
+    padding: .05em .45em; border: .35mm solid #b9d6ea; border-radius: 1.6mm;
+    color: var(--blue-dark); background: var(--pale);
+    font-weight: bold; white-space: nowrap;
+  }
+
+  /* 画面写真 */
+  .shot {
+    position: relative; overflow: hidden;
+    border: .5mm solid var(--line); border-radius: 3mm;
+    background: #eef6fc; break-inside: avoid;
+  }
+  .shot img { display: block; width: 100%; }
+  .shot.full { aspect-ratio: 2560 / 1420; }   /* 下の何もないところを切る */
+  .cap { margin-top: 1mm; color: var(--muted); font-size: 9.5pt; line-height: 1.8; text-align: center; }
+
+  /* 手順 */
+  .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+  .steps > li {
+    position: relative; margin-bottom: 3mm; padding-left: 11mm;
+    counter-increment: step; break-inside: avoid;
+  }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1.2mm;
+    display: grid; place-items: center;
+    width: 7.5mm; height: 7.5mm; border-radius: 50%;
+    color: white; background: var(--blue);
+    font-size: 12pt; font-weight: bold; line-height: 1;
+  }
+  .steps .shot { margin: 1mm 0 1mm; }
+
+  /* かこみ */
+  .box {
+    margin-top: 4mm; padding: 3mm 5mm;
+    border: .5mm solid var(--line); border-radius: 4mm;
+    background: var(--pale); break-inside: avoid;
+  }
+  .box.tip { border-color: #f1d98a; background: #fff8dc; }
+  .box.warn { border-color: #f3b5b5; background: #fff0f0; }
+  .box .ttl { display: block; color: var(--blue-dark); font-weight: bold; }
+  .box.tip .ttl { color: #8a6500; }
+  .box.warn .ttl { color: #c0392b; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
+  .cols.wide-left { grid-template-columns: 1.25fr 1fr; }
+  .cols.wide-right { grid-template-columns: 1fr 1.5fr; }
+
+  /* 表紙 */
+  .cover { padding: 0; }
+  .cover-top {
+    position: relative; overflow: hidden;
+    padding: 13mm 16mm 8mm; color: white;
+    background: linear-gradient(135deg, var(--blue), var(--sky));
+  }
+  .cover-top::after {
+    content: ""; position: absolute; right: -28mm; top: -34mm;
+    width: 90mm; height: 90mm; border: 10mm solid rgba(255,255,255,.14); border-radius: 50%;
+  }
+  .cover-top .app { font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif; font-size: 20pt; font-weight: 600; line-height: 1.3; }
+  .cover-top h1 { margin: 1mm 0 0; font-size: 38pt; line-height: 1.45; letter-spacing: .06em; }
+  .cover-top .sub { font-size: 14pt; }
+  .cover-top rt { color: #e4f4ff; }
+  .cover-body { padding: 6mm 16mm 0; }
+  .can { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm; margin-top: 2mm; }
+  .can > div {
+    padding: 2mm 4mm 2.5mm; border-radius: 4mm; background: var(--pale);
+    border-left: 2.5mm solid var(--c, var(--blue)); line-height: 1.85; font-size: 10.5pt;
+  }
+  .can b { display: block; color: var(--c, var(--blue-dark)); font-size: 13pt; }
+  .toc { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; margin: 2mm 0 0; padding: 0; list-style: none; font-size: 10.5pt; }
+  .toc li { display: flex; gap: 2.5mm; align-items: baseline; border-bottom: .3mm dashed var(--line); }
+  .toc .n {
+    flex: none; display: inline-grid; place-items: center; width: 5.6mm; height: 5.6mm; border-radius: 50%;
+    color: white; background: var(--blue); font-size: 9pt; font-weight: bold; line-height: 1; transform: translateY(-.4mm);
+  }
+
+  /* 画面の見かた：写真の上の番号 */
+  .pin {
+    position: absolute; transform: translate(-50%, -50%);
+    display: grid; place-items: center;
+    width: 5.6mm; height: 5.6mm; border: .5mm solid white; border-radius: 50%;
+    color: white; background: #e6397a; box-shadow: 0 .4mm 1.2mm rgba(0,0,0,.4);
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9pt; font-weight: bold; line-height: 1;
+  }
+  .parts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6mm; margin: 4mm 0 0; padding: 0; list-style: none; font-size: 10.5pt; line-height: 1.9; }
+  .parts li { position: relative; padding: 1.2mm 0 1.2mm 8.5mm; border-bottom: .3mm dashed var(--line); break-inside: avoid; }
+  .parts .pin { position: absolute; left: 3mm; top: 4.6mm; box-shadow: none; }
+  .parts b { color: var(--blue-dark); }
+
+  /* 印の色 */
+  .lamps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 2mm; }
+  .lamp { padding: 2mm 3mm; border-radius: 3mm; background: var(--pale); font-size: 10.5pt; line-height: 1.85; text-align: center; }
+  .lamp .pill {
+    display: inline-flex; align-items: center; gap: 1.6mm; padding: .6mm 3mm; border-radius: 99mm;
+    color: white; background: #1583c9; font-size: 9.5pt; font-weight: bold; line-height: 1.9;
+  }
+  .lamp .dot { width: 2.6mm; height: 2.6mm; border-radius: 50%; background: #e9eef2; }
+  .lamp .st { padding: 0 1.8mm; border-radius: 99mm; background: rgba(255,255,255,.25); font-size: 8.5pt; }
+  .lamp.busy .dot { background: #ffb347; box-shadow: 0 0 0 1mm rgba(255,179,71,.3); }
+  .lamp.on .pill { color: #073b20; background: #56ef9d; }
+  .lamp.on .dot { background: #073b20; }
+  .lamp.on .st { color: #56ef9d; background: #073b20; }
+
+  /* センサーの表 */
+  .sensors { width: 100%; border-collapse: collapse; font-size: 10.5pt; line-height: 1.85; }
+  .sensors th { padding: .6mm 2mm; color: white; background: var(--blue); font-size: 10pt; text-align: left; }
+  .sensors th rt { color: #e4f4ff; }
+  .sensors td { padding: .7mm 2mm; border-bottom: .3mm solid var(--line); vertical-align: middle; }
+  .sensors tr:nth-child(even) td { background: #f6fbfe; }
+  .sensors .name { white-space: nowrap; font-weight: bold; }
+  .sensors .name i { display: inline-block; width: 3.2mm; height: 3.2mm; margin-right: 1.8mm; border-radius: 1mm; background: var(--c); }
+  .sensors .unit { white-space: nowrap; }
+  .tag { margin-left: 1mm; padding: 0 1.6mm; border-radius: 99mm; color: white; font-size: 8pt; font-weight: bold; white-space: nowrap; }
+  .tag.free { background: var(--green); }
+  .tag.ext { background: #e07d10; }
+
+  /* こまったときは */
+  .qa { margin: 0; }
+  .qa dt {
+    margin-top: 1.4mm; padding-left: 8mm; position: relative;
+    color: var(--blue-dark); font-weight: bold; break-after: avoid;
+  }
+  .qa dt::before {
+    content: "Q"; position: absolute; left: 0; top: 1.3mm;
+    display: grid; place-items: center; width: 6mm; height: 6mm; border-radius: 50%;
+    color: white; background: var(--red); font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9.5pt; line-height: 1;
+  }
+  .qa dd { margin: 0; padding-left: 8mm; font-size: 10.8pt; break-inside: avoid; }
+  .small { font-size: 10.5pt; }
+</style>
+</head>
+<body>
+
+<!-- ========== 1. 表紙 ========== -->
+<section class="page cover">
+  <div class="cover-top">
+    <div class="app">S-LINK Multi Cloud Logger(β)</div>
+    <h1>つかいかた</h1>
+    <p class="sub">センサーではかって、グラフにしよう</p>
+  </div>
+  <div class="cover-body">
+    <div class="shot full" style="width:152mm;margin:0 auto"><img src="img/shot-graph.png" alt="アプリの画面"></div>
+
+    <h3 style="margin-top:5mm">このアプリでできること</h3>
+    <div class="can">
+      <div style="--c:#ef5b5b"><b>はかる</b>{温度|おんど}や{明|あか}るさなどを、ボードのセンサーではかります。</div>
+      <div style="--c:#0799cf"><b>グラフにする</b>はかった{数|かず}が、そのままグラフになります。</div>
+      <div style="--c:#e0a800"><b>くらべる</b>2つのセンサーを{同時|どうじ}にはかって、くらべられます。</div>
+      <div style="--c:#18a06d"><b>のこす</b>{記録|きろく}をファイルにして、のこせます。</div>
+    </div>
+
+    <h3 style="margin-top:5mm">もくじ</h3>
+    <ol class="toc">
+      <li><span class="n">1</span><span>じゅんびをしよう</span></li>
+      <li><span class="n">2</span><span>{画面|がめん}の{見|み}かた</span></li>
+      <li><span class="n">3</span><span>はかってみよう</span></li>
+      <li><span class="n">4</span><span>グラフをよく{見|み}よう</span></li>
+      <li><span class="n">5</span><span>{表|ひょう}とメモ</span></li>
+      <li><span class="n">6</span><span>2つをくらべよう</span></li>
+      <li><span class="n">7</span><span>センサーのしゅるい</span></li>
+      <li><span class="n">8</span><span>{記録|きろく}をのこそう・こまったときは</span></li>
+    </ol>
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span></span></div>
+</section>
+
+<!-- ========== 2. じゅんび ========== -->
+<section class="page">
+  <div class="head"><span class="no">1</span><h2>じゅんびをしよう</h2></div>
+
+  <h3>{用意|ようい}するもの</h3>
+  <p>パソコン（Chromebook など）、S-LINK ボード（または AkaDako ボード）、USB ケーブル</p>
+
+  <h3>ボードをつなぐ</h3>
+  <ol class="steps">
+    <li>ボードとパソコンを、USB ケーブルでつなぎます。</li>
+    <li>ブラウザ（Chrome か Edge）で <b>https://log.699.jp/</b> をひらきます。</li>
+    <li>{画面|がめん}の{右上|みぎうえ}にある <span class="ui">ボード{接続|せつぞく}</span> をおします。<br>
+      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-start.png" alt="ボード接続が OFF のようす"></div>
+      <span class="small">ブラウザから「{許可|きょか}しますか」と{聞|き}かれたら、「{許可|きょか}」をえらびます。</span>
+    </li>
+    <li>ボタンが{緑色|みどりいろ}になって「ON」と{出|で}たら、じゅんびができました。<br>
+      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-connected.png" alt="ボード接続が ON のようす"></div>
+    </li>
+  </ol>
+
+  <h3>ボタンの{印|しるし}の{色|いろ}</h3>
+  <div class="lamps">
+    <div class="lamp"><span class="pill"><span class="dot"></span>ボード接続<span class="st">OFF</span></span><br>{灰色|はいいろ}：つながっていません</div>
+    <div class="lamp busy"><span class="pill"><span class="dot"></span>ボード接続<span class="st">…</span></span><br>オレンジ{色|いろ}でちかちか：つないでいるところです</div>
+    <div class="lamp on"><span class="pill"><span class="dot"></span>ボード接続<span class="st">ON</span></span><br>{緑色|みどりいろ}：つながりました</div>
+  </div>
+  <p class="small" style="margin-top:2mm">ON のときにもう{一度|いちど}おすと、OFF にもどります。ケーブルがぬけたときも OFF になります。</p>
+
+  <div class="box tip">
+    <span class="ttl">iPad でつかうとき</span>
+    iPad では「Scrub」というアプリでこのページをひらきます。Safari や Chrome ではボードにつなげません（カメラとマイクではかる「{動|うご}き」「{音量|おんりょう}」だけつかえます）。
+  </div>
+  <div class="box">
+    <span class="ttl">つかいかたを{見|み}たくなったら</span>
+    {右上|みぎうえ}の <span class="ui">? {使|つか}い{方|かた}</span> をおすと、この{説明書|せつめいしょ}がひらきます。
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>1</span></div>
+</section>
+
+<!-- ========== 3. 画面の見かた ========== -->
+<section class="page">
+  <div class="head"><span class="no">2</span><h2>{画面|がめん}の{見|み}かた</h2></div>
+  <p class="lead">{番号|ばんごう}のところに{何|なに}があるか、たしかめましょう。</p>
+
+  <div class="shot full">
+    <img src="img/shot-graph.png" alt="アプリの画面">
+    <span class="pin" style="left:1.2%;top:10.2%">1</span>
+    <span class="pin" style="left:69.5%;top:8.9%">2</span>
+    <span class="pin" style="left:80.5%;top:8.9%">3</span>
+    <span class="pin" style="left:92.2%;top:8.9%">4</span>
+    <span class="pin" style="left:1.3%;top:31%">5</span>
+    <span class="pin" style="left:1.3%;top:44.6%">6</span>
+    <span class="pin" style="left:1.3%;top:82.2%">7</span>
+    <span class="pin" style="left:1.3%;top:89.2%">8</span>
+    <span class="pin" style="left:8.3%;top:95.3%">9</span>
+    <span class="pin" style="left:62%;top:40%">10</span>
+    <span class="pin" style="left:54%;top:89.5%">11</span>
+    <span class="pin" style="left:24.6%;top:94.9%">12</span>
+    <span class="pin" style="left:81.6%;top:94.9%">13</span>
+  </div>
+
+  <ul class="parts">
+    <li><span class="pin">1</span><b>センサーのタブ</b><br>はかるものをえらびます。</li>
+    <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、2つのセンサーを{同時|どうじ}にはかれます。</li>
+    <li><span class="pin">3</span><b>ボード{接続|せつぞく}</b><br>ボードとつなぐスイッチです。</li>
+    <li><span class="pin">4</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
+    <li><span class="pin">5</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
+    <li><span class="pin">6</span><b>{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</b><br>{記録|きろく}した{数|かず}をまとめたものです。</li>
+    <li><span class="pin">7</span><b>グラフ／{表|ひょう}</b><br>{見|み}かたを{切|き}りかえます。</li>
+    <li><span class="pin">8</span><b>{記録|きろく}をはじめる</b><br>おすと{記録|きろく}がはじまり、もう{一度|いちど}おすと{止|と}まります。</li>
+    <li><span class="pin">9</span><b>{記録間隔|きろくかんかく}</b><br>{何秒|なんびょう}ごとに{記録|きろく}するかをえらびます。</li>
+    <li><span class="pin">10</span><b>グラフ</b><br>{横|よこ}が{時刻|じこく}、たてが、はかった{数|かず}です。</li>
+    <li><span class="pin">11</span><b>スクロールバー</b><br>グラフの{見|み}えるところを{動|うご}かします。</li>
+    <li><span class="pin">12</span><b>ダウンロード・コピー・{削除|さくじょ}</b><br>{記録|きろく}をのこしたり、{消|け}したりします。</li>
+    <li><span class="pin">13</span><b>{測定室|そくていしつ}</b><br>みんなの{記録|きろく}を1つの{画面|がめん}にあつめます。</li>
+  </ul>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>2</span></div>
+</section>
+
+<!-- ========== 4. はかってみよう ========== -->
+<section class="page">
+  <div class="head"><span class="no">3</span><h2>はかってみよう</h2></div>
+
+  <ol class="steps">
+    <li>はかりたいセンサーのタブをおします。えらんだタブは、わくに{色|いろ}がつきます。
+      <div class="shot" data-crop="0.005 0.082 0.99 0.106"><img src="img/shot-connected.png" alt="センサーのタブ"></div>
+    </li>
+    <li>{左|ひだり}の「{現在値|げんざいち}」に、いまの{数|かず}が{出|で}ます。{記録|きろく}していなくても、1{秒|びょう}ごとに{新|あたら}しくなります。</li>
+    <li><span class="ui">● {記録|きろく}をはじめる</span> をおします。はかった{数|かず}が、グラフにかかれていきます。
+      <div class="shot full"><img src="img/shot-recording.png" alt="記録しているようす"></div>
+      <p class="cap">センサーを{手|て}でにぎって、{温度|おんど}が{上|あ}がっていくところ</p>
+    </li>
+    <li>おわるときは <span class="ui">■ {記録|きろく}をとめる</span> をおします。</li>
+  </ol>
+
+  <div class="cols" style="margin-top:1mm">
+    <div class="box" style="margin-top:0">
+      <span class="ttl">{記録間隔|きろくかんかく}</span>
+      {何秒|なんびょう}ごとに{記録|きろく}するかを、0.5{秒|びょう}・1{秒|びょう}・2{秒|びょう}・5{秒|びょう}からえらべます。はじめは1{秒|びょう}です。
+    </div>
+    <div class="box" style="margin-top:0">
+      <span class="ttl">{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</span>
+      {記録|きろく}した{中|なか}で、いちばん{小|ちい}さい{数|かず}、ならした{数|かず}、いちばん{大|おお}きい{数|かず}です。
+    </div>
+  </div>
+  <div class="box tip">
+    <span class="ttl">おぼえておこう</span>
+    {記録|きろく}は、センサーごとにべつべつにのこります。タブをかえても、{前|まえ}のセンサーの{記録|きろく}は{消|き}えません。
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>3</span></div>
+</section>
+
+<!-- ========== 5. グラフをよく見よう ========== -->
+<section class="page">
+  <div class="head"><span class="no">4</span><h2>グラフをよく{見|み}よう</h2></div>
+
+  <h3>{数|かず}を{読|よ}む</h3>
+  <div class="cols wide-right">
+    <p>グラフの{上|うえ}にマウスをのせると、いちばん{近|ちか}い{記録|きろく}の{時刻|じこく}と{数|かず}が{出|で}ます。<br>タブレットでは、{指|ゆび}をおいている{間|あいだ}だけ{出|で}ます。</p>
+    <div><div class="shot" data-crop="0.232 0.262 0.752 0.545"><img src="img/shot-hover.png" alt="グラフにマウスをのせたようす"></div></div>
+  </div>
+
+  <h3>{見|み}えるところを{動|うご}かす</h3>
+  <p>グラフの{下|した}の{灰色|はいいろ}のバーをつかいます。{記録|きろく}がふえると、はじめは{新|あたら}しいほうの120{件|けん}が{見|み}えています。</p>
+  <div class="shot" data-crop="0.232 0.775 0.752 0.04" style="margin-top:1.5mm"><img src="img/shot-graph.png" alt="グラフの下のスクロールバー"></div>
+  <ul class="small" style="margin:1.5mm 0 0;padding-left:6mm">
+    <li>バーのまん{中|なか}を{左右|さゆう}にドラッグ … {見|み}える{時間|じかん}が{動|うご}きます。</li>
+    <li>バーの{両|りょう}はしのつまみをドラッグ … {見|み}える{長|なが}さがかわります。</li>
+  </ul>
+
+  <h3>{大|おお}きくして{見|み}る</h3>
+  <div class="cols wide-right">
+    <ol class="steps">
+      <li>{記録|きろく}をとめます。</li>
+      <li>グラフの{上|うえ}を、{見|み}たいところからところまで{左右|さゆう}にドラッグします。</li>
+      <li>{灰色|はいいろ}になったら <span class="ui">この{範囲|はんい}を{拡大|かくだい}</span> をおします。</li>
+    </ol>
+    <div>
+      <div class="shot" data-crop="0.232 0.262 0.752 0.545"><img src="img/shot-select.png" alt="範囲をえらんだようす"></div>
+      <p class="cap">もとにもどすときは、{下|した}のバーのつまみを{両|りょう}はしまで{広|ひろ}げます</p>
+    </div>
+  </div>
+
+  <div class="box warn">
+    <span class="ttl">ちゅうい</span>
+    <span class="ui">この{範囲以外|はんいいがい}のデータを{消去|しょうきょ}</span> をおすと、えらんだところの{外|そと}の{記録|きろく}が{消|き}えます。{消|け}した{記録|きろく}は、もとにもどせません。
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>4</span></div>
+</section>
+
+<!-- ========== 6. 表とメモ ========== -->
+<section class="page">
+  <div class="head"><span class="no">5</span><h2>{表|ひょう}とメモ</h2></div>
+
+  <h3>{表|ひょう}で{見|み}る</h3>
+  <p><span class="ui">{表|ひょう}</span> をおすと、{記録|きろく}が{番号|ばんごう}・{時刻|じこく}・{数|かず}のならんだ{表|ひょう}になります。<span class="ui">グラフ</span> をおすと、グラフにもどります。</p>
+  <div class="shot" data-crop="0.005 0.185 0.99 0.62" style="margin-top:2mm"><img src="img/shot-table.png" alt="表で見たようす"></div>
+
+  <h3>メモを{書|か}く</h3>
+  <p>「ここで{手|て}でにぎった」「まどをあけた」など、{気|き}づいたことを{記録|きろく}につけておけます。</p>
+  <div class="cols wide-right" style="margin-top:2mm">
+    <ol class="steps">
+      <li>グラフの、メモをつけたいところをクリックします。</li>
+      <li>{出|で}てきたわくに、メモを{書|か}きます。</li>
+      <li><span class="ui">{保存|ほぞん}</span> をおします。</li>
+    </ol>
+    <div><div class="shot" data-crop="0.232 0.262 0.752 0.545"><img src="img/shot-memo.png" alt="グラフにメモを書くようす"></div></div>
+  </div>
+
+  <div class="box">
+    <span class="ttl">メモのしるし</span>
+    メモのある{記録|きろく}には、グラフに{黄色|きいろ}いふきだしの{印|しるし}がつきます。マウスをのせると、{数|かず}といっしょにメモが{出|で}ます。
+  </div>
+  <div class="box tip">
+    <span class="ttl">{表|ひょう}でも{書|か}けます</span>
+    {表|ひょう}のいちばん{右|みぎ}の「メモ」のらんをクリックして{書|か}くこともできます。{記録|きろく}しているとちゅうでも{書|か}けます。
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>5</span></div>
+</section>
+
+<!-- ========== 7. くらべる ========== -->
+<section class="page">
+  <div class="head"><span class="no">6</span><h2>2つをくらべよう</h2></div>
+  <p class="lead">2つのセンサーを{同時|どうじ}にはかって、グラフを{上下|じょうげ}にならべます。</p>
+
+  <ol class="steps">
+    <li>1つ{目|め}のセンサーのタブをえらびます。</li>
+    <li>{右上|みぎうえ}の <span class="ui">くらべる</span> をおして、ON にします。</li>
+    <li>2つ{目|め}のセンサーのタブをおします。えらんだ2つのタブに、チェックの{印|しるし}がつきます。</li>
+    <li><span class="ui">● {記録|きろく}をはじめる</span> をおします。
+      <div class="shot full"><img src="img/shot-compare.png" alt="温度と湿度をくらべているようす"></div>
+      <p class="cap">{温度|おんど}と{湿度|しつど}を{同時|どうじ}にはかったところ</p>
+    </li>
+  </ol>
+
+  <div class="cols wide-left" style="margin-top:1mm">
+    <div>
+      <h3>ならべる・{重|かさ}ねる</h3>
+      <p>グラフの{右上|みぎうえ}の <span class="ui">{並|なら}べる</span> <span class="ui">{重|かさ}ねる</span> で、グラフの{出|だ}しかたをえらべます。<span class="ui">{重|かさ}ねる</span> にすると、2つが1まいのグラフになります。{左|ひだり}の{目|め}もりが1つ{目|め}、{右|みぎ}の{目|め}もりが2つ{目|め}のセンサーです。</p>
+    </div>
+    <div>
+      <div class="shot" data-crop="0.232 0.2 0.76 0.61"><img src="img/shot-overlay.png" alt="重ねて見たようす"></div>
+      <p class="cap">「{重|かさ}ねる」にしたところ</p>
+    </div>
+  </div>
+
+  <div class="box tip">
+    <span class="ttl">おぼえておこう</span>
+    {同時|どうじ}にはかれるのは2つまでです。3つ{目|め}のタブをおすと、{先|さき}にえらんだほうが{外|はず}れます。<span class="ui">くらべる</span> を OFF にすると、さいごにおしたセンサーだけになります。
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>6</span></div>
+</section>
+
+<!-- ========== 8. センサーのしゅるい ========== -->
+<section class="page">
+  <div class="head"><span class="no">7</span><h2>センサーのしゅるい</h2></div>
+
+  <table class="sensors">
+    <thead><tr><th>センサー</th><th>はかれるもの</th><th>{単位|たんい}</th></tr></thead>
+    <tbody>
+      <tr><td class="name"><i style="--c:#ef5b5b"></i>{温度|おんど}</td><td>{空気|くうき}のあたたかさ</td><td class="unit">℃</td></tr>
+      <tr><td class="name"><i style="--c:#f6a900"></i>{照度|しょうど}</td><td>{明|あか}るさ</td><td class="unit">lx（ルクス）</td></tr>
+      <tr><td class="name"><i style="--c:#7b61d1"></i>{距離|きょり}</td><td>センサーから{物|もの}までの{長|なが}さ</td><td class="unit">cm</td></tr>
+      <tr><td class="name"><i style="--c:#0799cf"></i>{湿度|しつど}</td><td>{空気|くうき}のしめりぐあい</td><td class="unit">%</td></tr>
+      <tr><td class="name"><i style="--c:#18a06d"></i>{気圧|きあつ}</td><td>{空気|くうき}がおす{力|ちから}</td><td class="unit">hPa（ヘクトパスカル）</td></tr>
+      <tr><td class="name"><i style="--c:#7fae1b"></i>{重力|じゅうりょく}</td><td>ボードにかかる{力|ちから}の{大|おお}きさ。じっとしていると{約|やく}9.8</td><td class="unit">m/s²</td></tr>
+      <tr><td class="name"><i style="--c:#5a6fd8"></i>{傾|かたむ}き</td><td>ボードのかたむき</td><td class="unit">°（{度|ど}）</td></tr>
+      <tr><td class="name"><i style="--c:#9b51e0"></i>{動|うご}き<span class="tag free">ボードなしでOK</span></td><td>パソコンのカメラにうつったものの{動|うご}きの{大|おお}きさ</td><td class="unit">なし</td></tr>
+      <tr><td class="name"><i style="--c:#ff7043"></i>{音量|おんりょう}<span class="tag free">ボードなしでOK</span></td><td>パソコンのマイクにとどいた{音|おと}の{大|おお}きさ</td><td class="unit">なし</td></tr>
+      <tr><td class="name"><i style="--c:#12b0a0"></i>{水温|すいおん}<span class="tag ext">べつのセンサー</span></td><td>{水|みず}のあたたかさ</td><td class="unit">℃</td></tr>
+      <tr><td class="name"><i style="--c:#d8489a"></i>{酸素|さんそ}<span class="tag ext">べつのセンサー</span></td><td>{空気|くうき}の{中|なか}の{酸素|さんそ}のわりあい</td><td class="unit">%</td></tr>
+      <tr><td class="name"><i style="--c:#1492c8"></i>{電流|でんりゅう}<span class="tag ext">べつのセンサー</span></td><td>{電気|でんき}の{流|なが}れる{量|りょう}</td><td class="unit">A（アンペア）</td></tr>
+      <tr><td class="name"><i style="--c:#e07d10"></i>{電圧|でんあつ}<span class="tag ext">べつのセンサー</span></td><td>{電気|でんき}をおし{出|だ}す{力|ちから}</td><td class="unit">V（ボルト）</td></tr>
+      <tr><td class="name"><i style="--c:#3a9d4e"></i>{電力|でんりょく}<span class="tag ext">べつのセンサー</span></td><td>{電気|でんき}のはたらきの{大|おお}きさ</td><td class="unit">W（ワット）</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cols" style="margin-top:4mm">
+    <div class="box" style="margin-top:0">
+      <span class="ttl"><span class="tag free" style="margin-left:0">ボードなしでOK</span> のセンサー</span>
+      パソコンのカメラやマイクをつかいます。「カメラ（マイク）をつかってもいいですか」と{聞|き}かれたら、「{許可|きょか}」をえらびます。
+    </div>
+    <div class="box" style="margin-top:0">
+      <span class="ttl"><span class="tag ext" style="margin-left:0">べつのセンサー</span> がいるもの</span>
+      タブをおすと、つなぐセンサーの{案内|あんない}が{出|で}ます。つなぎかたは{先生|せんせい}に{聞|き}いて、つないでから <span class="ui">OK</span> をおします。
+    </div>
+  </div>
+  <div class="cols wide-left" style="margin-top:4mm;align-items:center">
+    <div class="box tip" style="margin-top:0">
+      <span class="ttl">「AI」のタブ</span>
+      カメラの{画像|がぞう}を AI に{見|み}せて、{数|かず}で{答|こた}えてもらうはたらきです。つかうには{特別|とくべつ}な{登録|とうろく}がいるので、{先生|せんせい}といっしょにつかいましょう。
+    </div>
+    <div>
+      <div class="shot" data-crop="0.345 0.318 0.31 0.365" style="width:62mm;margin:0 auto"><img src="img/shot-water.png" alt="センサーの準備の案内"></div>
+      <p class="cap">{水温|すいおん}のタブをおしたときの{案内|あんない}</p>
+    </div>
+  </div>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>7</span></div>
+</section>
+
+<!-- ========== 9. 記録をのこそう・こまったときは ========== -->
+<section class="page">
+  <div class="head"><span class="no">8</span><h2>{記録|きろく}をのこそう</h2></div>
+
+  <div class="shot" data-crop="0.232 0.814 0.752 0.058"><img src="img/shot-graph.png" alt="ダウンロード・コピー・削除・測定室のボタン"></div>
+  <ul class="parts" style="margin-top:2mm;grid-template-columns:1fr">
+    <li style="padding-left:0"><b>ダウンロード</b> … {記録|きろく}を CSV というファイルにして、パソコンにのこします。{表計算|ひょうけいさん}ソフトでひらけます。</li>
+    <li style="padding-left:0"><b>コピー</b> … {記録|きろく}をコピーします。{表計算|ひょうけいさん}ソフトに、そのままはりつけられます。</li>
+    <li style="padding-left:0"><b>{削除|さくじょ}</b> … いまえらんでいるセンサーの{記録|きろく}を、ぜんぶ{消|け}します。おすと「{削除|さくじょ}しますか？」と{聞|き}かれます。</li>
+  </ul>
+  <div class="box warn" style="margin-top:3mm">
+    <span class="ttl">ちゅうい</span>
+    ページをとじたり、{読|よ}みこみ{直|なお}したりすると、{記録|きろく}は{消|き}えます。のこしたい{記録|きろく}は、{先|さき}にダウンロードしておきましょう。
+  </div>
+
+  <h3>{測定室|そくていしつ}（みんなの{記録|きろく}を1つの{画面|がめん}で{見|み}る）</h3>
+  <div class="cols wide-right">
+    <div>
+      <div class="shot" data-crop="0.312 0.366 0.376 0.27"><img src="img/shot-room.png" alt="測定室の画面"></div>
+    </div>
+    <ol class="steps small">
+      <li><span class="ui">{測定室|そくていしつ}</span> をおして、<span class="ui">{参加|さんか}する</span> をおします。</li>
+      <li>{先生|せんせい}に{聞|き}いた6けたの ID と、{自分|じぶん}の{端末|たんまつ}の{名前|なまえ}を{入|い}れます。</li>
+      <li>{測定室|そくていしつ}の{名前|なまえ}をたしかめて、<span class="ui">{参加|さんか}する</span> をおします。</li>
+    </ol>
+  </div>
+  <p class="small">いまえらんでいるセンサーの{記録|きろく}が{送|おく}られます。ボタンの{丸|まる}い{印|しるし}が{緑色|みどりいろ}なら、{送|おく}れています。メモは{送|おく}られません。</p>
+
+  <h3>こまったときは</h3>
+  <dl class="qa">
+    <dt>「ボード{接続|せつぞく}」が ON にならない</dt>
+    <dd>USB ケーブルをさし{直|なお}して、もう{一度|いちど}「ボード{接続|せつぞく}」をおします。</dd>
+    <dt>「ボードが{見|み}つかりませんでした」と{出|で}た</dt>
+    <dd>ケーブルをたしかめます。ボードがないときは「デモモードにする」をおすと、でたらめな{数|かず}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
+    <dt>グラフが{出|で}ない・「{記録|きろく}をはじめる」がおせない</dt>
+    <dd>「ボード{接続|せつぞく}」は ON ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
+    <dt>「{動|うご}き」「{音量|おんりょう}」がはかれない</dt>
+    <dd>カメラやマイクをつかうことを「{許可|きょか}」しているか、たしかめます。</dd>
+  </dl>
+  <p class="small" style="margin-top:1mm">それでもなおらないときは、{先生|せんせい}に{聞|き}きましょう。</p>
+  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>8</span></div>
+</section>
+
+<script>
+  // {漢字|かんじ} を <ruby> に直す（本文の文字だけ。script と style の中は見ない）
+  (() => {
+    const pattern = /\{([^|{}]+)\|([^{}]+)\}/g;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: node => /^(SCRIPT|STYLE)$/.test(node.parentNode.nodeName) || !node.nodeValue.includes("{")
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      const fragment = document.createDocumentFragment();
+      let last = 0;
+      node.nodeValue.replace(pattern, (match, base, reading, index) => {
+        fragment.append(node.nodeValue.slice(last, index));
+        const ruby = document.createElement("ruby");
+        ruby.append(base);
+        const rt = document.createElement("rt");
+        rt.textContent = reading;
+        ruby.append(rt);
+        fragment.append(ruby);
+        last = index + match.length;
+        return match;
+      });
+      fragment.append(node.nodeValue.slice(last));
+      node.replaceWith(fragment);
+    });
+  })();
+
+  // data-crop="左 上 幅 高さ"（写真全体を 1 とした割合）で、写真の一部分だけを見せる
+  (() => {
+    const IMAGE_RATIO = 2560 / 1600;   // 画面写真の横÷たて
+    document.querySelectorAll(".shot[data-crop]").forEach(box => {
+      const [x, y, w, h] = box.dataset.crop.split(/\s+/).map(Number);
+      const img = box.querySelector("img");
+      box.style.aspectRatio = `${w * IMAGE_RATIO} / ${h}`;
+      img.style.width = `${100 / w}%`;
+      img.style.marginLeft = `${-x / w * 100}%`;
+      img.style.marginTop = `${-y / (w * IMAGE_RATIO) * 100}%`;   // % は箱の幅が基準
+    });
+  })();
+</script>
+</body>
+</html>

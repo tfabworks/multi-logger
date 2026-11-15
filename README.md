@@ -59,6 +59,14 @@ AkaDako / S-LINK センサーボードの値をブラウザでリアルタイム
 - 端末の登録と測定室はブラウザ（localStorage）に残り、ページを開き直しても続く。最後の送信から 1 週間で自動で消える
 - QR コードの生成は `qrcode.js`（qrcode-generator v1.4.4、MIT。s-link-logger の `vendor/` から複製）を、押されたときだけ読み込む
 
+## 説明書（使い方）
+
+画面の上の「使い方」ボタンで、小学生向けの説明書 `manual.pdf` が別タブで開く。
+
+- 元は `manual/index.html`（ふりがなは `{漢字|かんじ}` と書く）。画面写真は `manual/img/`
+- 作り直すとき: `manual/tools/build.sh`（`shots` で画面写真の撮り直し、`pdf` で PDF の作成。引数なしで両方）。Chrome のヘッドレスモードを使う
+- 画面写真は、`s-link.js` をにせもののボード（`manual/tools/mock.js`）に差し替えた複製を、台本（`manual/tools/scenes.js`）どおりに動かして撮る。アプリの画面を変えたら撮り直して、説明や番号の位置を見直す
+
 ## URL パラメータ
 
 | パラメータ | 内容 |

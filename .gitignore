@@ -3,3 +3,4 @@
 *.png
 .claude/
 node_modules/
+!manual/img/*.png

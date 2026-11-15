@@ -46,7 +46,7 @@
     button { -webkit-tap-highlight-color: transparent; }
 
     .page {
-      width: min(1240px, calc(100% - 28px));
+      width: calc(100% - 28px);   /* 大きな画面でも幅いっぱいに広げる（上限なし） */
       margin: 0 auto;
       padding: 20px 0 34px;
     }
@@ -282,7 +282,7 @@
 
     .dashboard {
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-columns: clamp(260px, 17vw, 320px) minmax(0, 1fr);   /* 左のカードは広い画面で少しだけ広げ、残りはグラフに */
       gap: 16px;
       align-items: stretch;
     }
@@ -502,6 +502,20 @@
     .connect-toggle[aria-pressed="true"] .status-dot { background: #073b20; box-shadow: 0 0 0 4px rgba(7,59,32,.14); }
     .connect-toggle[aria-pressed="true"] .state { background: #073b20; color: #56ef9d; }
     @keyframes connect-blink { 50% { opacity: .35; } }
+    /* 「使い方」: スイッチと同じ形のリンク。左右の余白は高さの低い画面用の詰めにも負けないように別に決める */
+    .compare-toggle.help-link { gap: 6px; padding-left: 10px; padding-right: 14px; text-decoration: none; }
+    .help-link:hover { background: rgba(255,255,255,.2); }
+    .help-mark {
+      display: grid;
+      place-items: center;
+      width: 1.5em;
+      height: 1.5em;
+      border-radius: 50%;
+      background: rgba(255,255,255,.9);
+      color: var(--blue-dark);
+      font-size: .8rem;
+      font-weight: 900;
+    }
     .compare-list { margin-bottom: 10px; }
     .compare-rows { display: grid; gap: 6px; }
     .compare-row {
@@ -677,7 +691,9 @@
     .canvas-wrap {
       position: relative;
       width: 100%;
-      height: 404px;   /* 下のスクロールバー（26px）と合わせて、表と同じ 430px になる */
+      /* 下のスクロールバー（26px）と合わせて、表と同じ高さになる。
+         高さのある画面では、ページがちょうど画面に収まるところまでグラフを伸ばす（470px = グラフ以外の部品の高さ） */
+      height: max(404px, calc(100vh - 470px));
       min-height: 310px;
       overflow: hidden;
       border: 2px solid #dcebf4;
@@ -704,7 +720,7 @@
     .table-wrap {
       position: relative;
       width: 100%;
-      height: 430px;
+      height: max(430px, calc(100vh - 444px));
       min-height: 310px;
       overflow: auto;
       border: 2px solid #dcebf4;
@@ -1264,6 +1280,8 @@
           <span id="statusText">未接続</span>
           <button id="demoExit" class="chip-exit" type="button" hidden title="デモモードを終了して通常の画面に戻る">終了</button>
         </div>
+        <!-- 小学生向けの説明書（manual.pdf。元は manual/index.html）を別のタブで開く -->
+        <a id="helpBtn" class="compare-toggle help-link" href="manual.pdf" target="_blank" rel="noopener" title="使い方の説明書（PDF）を開く"><span class="help-mark" aria-hidden="true">?</span>使い方</a>
       </div>
     </header>
 
