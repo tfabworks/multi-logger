@@ -840,6 +840,8 @@
       font-size: .73rem;
       line-height: 1.7;
     }
+    /* 通常は空。iPad（Scrub 以外）とデモモードのときだけスクリプトが文面を入れる */
+    .notice:empty { display: none; }
 
     dialog {
       width: min(390px, calc(100% - 32px));
@@ -1513,7 +1515,7 @@
       <pre id="aiDiagBody"></pre>
     </details>
 
-    <p id="notice" class="notice">※ S-LINKへの接続にはWeb MIDI対応ブラウザが必要です。ローカルファイルで接続できない場合は、Live ServerなどのWebサーバーから開いてください。</p>
+    <p id="notice" class="notice"></p>
   </main>
 
   <dialog id="sensorDialog" aria-labelledby="sensorDialogTitle">
@@ -2413,14 +2415,13 @@
       let compareKeys = [];
       const compareErrors = {};   // 相手のセンサーが読めなかった理由（行に出す）
       function activeKeys() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }   // 古い → 新しい（主）
-      // 2つのグラフの出し方。false: 上下に並べる / true: 1枚に重ねる（ブラウザに覚える）
-      const LAYOUT_KEY = "akadako-multi:layout";
+      // 2つのグラフの出し方。false: 上下に並べる / true: 1枚に重ねる。
+      // ページを開いたときはいつも「並べる」から（前回の選択は覚えない）
       let overlay = false;
-      try { overlay = localStorage.getItem(LAYOUT_KEY) === "overlay"; } catch (error) { /* 使えないブラウザ */ }
+      try { localStorage.removeItem("akadako-multi:layout"); } catch (error) { /* 以前の版が覚えた選択を消す */ }
       function isOverlay() { return isCompare() && overlay && activeKeys().length === 2; }
       function setOverlay(on) {
         overlay = Boolean(on);
-        try { localStorage.setItem(LAYOUT_KEY, overlay ? "overlay" : "stack"); } catch (error) { /* 使えないブラウザ */ }
         renderLayoutToggle();
         updateHeadings();
         if (viewMode === "chart") drawChart();
