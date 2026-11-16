@@ -227,7 +227,7 @@
 
     <h3 style="margin-top:5mm">このアプリでできること</h3>
     <div class="can">
-      <div style="--c:#ef5b5b"><b>はかる</b>{温度|おんど}や{明|あか}るさなどを、ボードのセンサーではかります。</div>
+      <div style="--c:#ef5b5b"><b>はかる</b>{温度|おんど}や{明|あか}るさなどを、S-LiNKデバイスのセンサーではかります。</div>
       <div style="--c:#0799cf"><b>グラフにする</b>はかった{数|かず}が、そのままグラフになります。</div>
       <div style="--c:#e0a800"><b>くらべる</b>2つのセンサーを{同時|どうじ}にはかって、くらべられます。</div>
       <div style="--c:#18a06d"><b>のこす</b>{記録|きろく}をファイルにして、のこせます。</div>
@@ -253,11 +253,11 @@
   <div class="head"><span class="no">1</span><h2>じゅんびをしよう</h2></div>
 
   <h3>{用意|ようい}するもの</h3>
-  <p>パソコン（Chromebook など）、S-LiNK ボード（または AkaDako ボード）、USB ケーブル</p>
+  <p>パソコン（Chromebook など）、S-LiNKデバイス（または AkaDako ボード）、USB ケーブル</p>
 
-  <h3>ボードをつなぐ</h3>
+  <h3>S-LiNKデバイスをつなぐ</h3>
   <ol class="steps">
-    <li>ボードとパソコンを、USB ケーブルでつなぎます。</li>
+    <li>S-LiNKデバイスとパソコンを、USB ケーブルでつなぎます。</li>
     <li>ブラウザ（Chrome か Edge）で <b>https://log.699.jp/</b> をひらきます。</li>
     <li>ボタンはおさなくても、{自動|じどう}でつながります。{画面|がめん}の{右上|みぎうえ}の <span class="ui">S-LiNK</span> を{見|み}ます。<br>
       <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-start.png" alt="S-LiNK が未接続のようす"></div>
@@ -278,7 +278,7 @@
 
   <div class="box tip">
     <span class="ttl">iPad でつかうとき</span>
-    iPad では「Scrub」というアプリでこのページをひらきます。Safari や Chrome ではボードにつなげません（カメラとマイクではかる「{動|うご}き」「{音量|おんりょう}」だけつかえます）。
+    iPad では「Scrub」というアプリでこのページをひらきます。Safari や Chrome では<span style="white-space:nowrap">S-LiNKデバイス</span>につなげません（カメラとマイクではかる「{動|うご}き」「{音量|おんりょう}」だけつかえます）。
   </div>
   <div class="box">
     <span class="ttl">つかいかたを{見|み}たくなったら</span>
@@ -312,7 +312,7 @@
   <ul class="parts">
     <li><span class="pin">1</span><b>センサーのタブ</b><br>はかるものをえらびます。</li>
     <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、2つのセンサーを{同時|どうじ}にはかれます。</li>
-    <li><span class="pin">3</span><b>S-LiNK</b><br>ボードとつながっているかがわかります。</li>
+    <li><span class="pin">3</span><b>S-LiNK</b><br>つながっているかがわかります。</li>
     <li><span class="pin">4</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
     <li><span class="pin">5</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
     <li><span class="pin">6</span><b>{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</b><br>{記録|きろく}した{数|かず}をまとめたものです。</li>
@@ -346,7 +346,7 @@
   <div class="cols" style="margin-top:1mm">
     <div class="box" style="margin-top:0">
       <span class="ttl">{記録間隔|きろくかんかく}</span>
-      {何秒|なんびょう}ごとに{記録|きろく}するかを、0.5{秒|びょう}・1{秒|びょう}・2{秒|びょう}・5{秒|びょう}からえらべます。はじめは1{秒|びょう}です。
+      {何秒|なんびょう}ごとに{記録|きろく}するかを、0.5{秒|びょう}・1{秒|びょう}・2{秒|びょう}・5{秒|びょう}からえらべます。はじめは0.5{秒|びょう}です。
     </div>
     <div class="box" style="margin-top:0">
       <span class="ttl">{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</span>
@@ -473,10 +473,10 @@
       <tr><td class="name"><i style="--c:#7b61d1"></i>{距離|きょり}</td><td>センサーから{物|もの}までの{長|なが}さ</td><td class="unit">cm</td></tr>
       <tr><td class="name"><i style="--c:#0799cf"></i>{湿度|しつど}</td><td>{空気|くうき}のしめりぐあい</td><td class="unit">%</td></tr>
       <tr><td class="name"><i style="--c:#18a06d"></i>{気圧|きあつ}</td><td>{空気|くうき}がおす{力|ちから}</td><td class="unit">hPa（ヘクトパスカル）</td></tr>
-      <tr><td class="name"><i style="--c:#7fae1b"></i>{重力|じゅうりょく}</td><td>ボードにかかる{力|ちから}の{大|おお}きさ。じっとしていると{約|やく}9.8</td><td class="unit">m/s²</td></tr>
-      <tr><td class="name"><i style="--c:#5a6fd8"></i>{傾|かたむ}き</td><td>ボードのかたむき</td><td class="unit">°（{度|ど}）</td></tr>
-      <tr><td class="name"><i style="--c:#9b51e0"></i>{動|うご}き<span class="tag free">ボードなしでOK</span></td><td>パソコンのカメラにうつったものの{動|うご}きの{大|おお}きさ</td><td class="unit">なし</td></tr>
-      <tr><td class="name"><i style="--c:#ff7043"></i>{音量|おんりょう}<span class="tag free">ボードなしでOK</span></td><td>パソコンのマイクにとどいた{音|おと}の{大|おお}きさ</td><td class="unit">なし</td></tr>
+      <tr><td class="name"><i style="--c:#7fae1b"></i>{重力|じゅうりょく}</td><td>S-LiNKデバイスにかかる{力|ちから}の{大|おお}きさ。じっとしていると{約|やく}9.8</td><td class="unit">m/s²</td></tr>
+      <tr><td class="name"><i style="--c:#5a6fd8"></i>{傾|かたむ}き</td><td>S-LiNKデバイスのかたむき</td><td class="unit">°（{度|ど}）</td></tr>
+      <tr><td class="name"><i style="--c:#9b51e0"></i>{動|うご}き<span class="tag free">S-LiNKデバイスなしでOK</span></td><td>パソコンのカメラにうつったものの{動|うご}きの{大|おお}きさ</td><td class="unit">なし</td></tr>
+      <tr><td class="name"><i style="--c:#ff7043"></i>{音量|おんりょう}<span class="tag free">S-LiNKデバイスなしでOK</span></td><td>パソコンのマイクにとどいた{音|おと}の{大|おお}きさ</td><td class="unit">なし</td></tr>
       <tr><td class="name"><i style="--c:#12b0a0"></i>{水温|すいおん}<span class="tag ext">べつのセンサー</span></td><td>{水|みず}のあたたかさ</td><td class="unit">℃</td></tr>
       <tr><td class="name"><i style="--c:#d8489a"></i>{酸素|さんそ}<span class="tag ext">べつのセンサー</span></td><td>{空気|くうき}の{中|なか}の{酸素|さんそ}のわりあい</td><td class="unit">%</td></tr>
       <tr><td class="name"><i style="--c:#1492c8"></i>{電流|でんりゅう}<span class="tag ext">べつのセンサー</span></td><td>{電気|でんき}の{流|なが}れる{量|りょう}</td><td class="unit">A（アンペア）</td></tr>
@@ -487,7 +487,7 @@
 
   <div class="cols" style="margin-top:4mm">
     <div class="box" style="margin-top:0">
-      <span class="ttl"><span class="tag free" style="margin-left:0">ボードなしでOK</span> のセンサー</span>
+      <span class="ttl"><span class="tag free" style="margin-left:0">S-LiNKデバイスなしでOK</span> のセンサー</span>
       パソコンのカメラやマイクをつかいます。「カメラ（マイク）をつかってもいいですか」と{聞|き}かれたら、「{許可|きょか}」をえらびます。
     </div>
     <div class="box" style="margin-top:0">
@@ -541,7 +541,7 @@
     <dt>「S-LiNK」が「{接続|せつぞく}」にならない</dt>
     <dd>USB ケーブルをさし{直|なお}します。それでもだめなら、{右上|みぎうえ}の「S-LiNK {未接続|みせつぞく}」をおします。</dd>
     <dt>「S-LiNKデバイスが{接続|せつぞく}されていません」と{出|で}た</dt>
-    <dd>ボードをつかうときは「いいえ」をおして、ケーブルをたしかめます。ボードがないときは「はい」をおすと、デモモードになり、にせものの{数字|すうじ}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
+    <dd>S-LiNKデバイスをつかうときは「いいえ」をおして、ケーブルをたしかめます。ないときは「はい」をおすと、デモモードになり、にせものの{数字|すうじ}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
     <dt>グラフが{出|で}ない・「{記録|きろく}をはじめる」がおせない</dt>
     <dd>{右上|みぎうえ}の「S-LiNK」は{緑色|みどりいろ}（{接続|せつぞく}）ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
     <dt>「{動|うご}き」「{音量|おんりょう}」がはかれない</dt>

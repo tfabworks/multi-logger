@@ -1436,8 +1436,8 @@
           <button id="recordBtn" class="record-btn" type="button" disabled>● 記録をはじめる</button>
           <label class="interval-row">記録間隔
             <select id="intervalSelect" data-kind="sensor">
-              <option value="500">0.5秒</option>
-              <option value="1000" selected>1秒</option>
+              <option value="500" selected>0.5秒</option>
+              <option value="1000">1秒</option>
               <option value="2000">2秒</option>
               <option value="5000">5秒</option>
             </select>
@@ -1637,7 +1637,7 @@
       // （中身は akadako.js と同一のバンドル）。どちらでも動くように両方を見る。
       const SLINK = window.SLINK || window.AkaDako;
 
-      // ?mode=demo でボードの代わりに乱数の値を流す（見た目を確かめる用。s-link-logger の demo=1 と同じ仕組み）
+      // ?mode=demo でS-LiNKデバイスの代わりに乱数の値を流す（見た目を確かめる用。s-link-logger の demo=1 と同じ仕組み）
       const PAGE_PARAMS = new URLSearchParams(location.search);
       const DEMO = PAGE_PARAMS.get("mode") === "demo";
 
@@ -1913,7 +1913,7 @@
       // ===== AI計測（AkaDako 生成AI） ==============================================
       // Scratch の「生成AI(β)」ブロック（tfabworks/xcx-g2s の askGenerativeAI）と同じサーバーを使う。
       // - リクエストは Bedrock Converse 形式の content（画像 + テキスト）に board 情報と locale を足したもの
-      // - サーバーは「本物のボードがつながっているか」を署名付きUIDで、「利用資格」を
+      // - サーバーは「本物のS-LiNKデバイスがつながっているか」を署名付きUIDで、「利用資格」を
       //   AkaDako Cloud Plus のアクセスコード Cookie で確かめる。Cookie は xcratch.699.jp のものなので、
       //   このアプリを 699.jp 配下（log.699.jp）で配信して同一サイトにしている
       // - 応答は { content: "回答" | null, error: { content, type } | 文字列 | null }
@@ -1955,15 +1955,15 @@
         return dataUrl.slice(prefix.length);
       }
 
-      // ボードの署名付きUID。challenge は現在時刻(UNIX秒)の8バイト big-endian（xcx-g2s と同じ）
+      // S-LiNKデバイスの署名付きUID。challenge は現在時刻(UNIX秒)の8バイト big-endian（xcx-g2s と同じ）
       async function getAiBoardInfo() {
         const now = Date.now();
         if (aiBoardInfo && aiBoardInfo.board === board && now - aiBoardInfo.at < AI_BOARD_INFO_TTL_MS) {
           return aiBoardInfo.info;
         }
-        const raw = board && board.board;   // AkaDako ラッパーが持つ生のボード（xcx-g2s の AkaDakoBoard）
+        const raw = board && board.board;   // AkaDako ラッパーが持つ生のS-LiNKデバイス（xcx-g2s の AkaDakoBoard）
         if (!raw || typeof raw.boardSignedUid !== "function") {
-          throw new AiNoticeError("このs-link.jsではAI計測に必要なボード情報を取れません", {
+          throw new AiNoticeError("このs-link.jsではAI計測に必要なS-LiNKデバイス情報を取れません", {
             kind: "board",
             detail: [`board.board: ${raw ? typeof raw : "なし"}`]
           });
@@ -2002,7 +2002,7 @@
           board: await getAiBoardInfo(),
           locale: "ja"
         };
-        const boardLine = `ボード情報: version=${body.board.version} uid=${body.board.uid ? `${body.board.uid.length}文字` : "なし"}`;
+        const boardLine = `S-LiNKデバイス情報: version=${body.board.version} uid=${body.board.uid ? `${body.board.uid.length}文字` : "なし"}`;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
         let response;
@@ -2541,8 +2541,8 @@
         els.recordBtn.disabled = !canReadAny();
         if (!connected) {
           if (!canReadAny()) stopRecording();
-          oxygenCorrectionRate = null;   // ボードが変われば校正はやり直し
-          aiBoardInfo = null;            // 署名付きUIDもボードごとに取り直す
+          oxygenCorrectionRate = null;   // S-LiNKデバイスが変われば校正はやり直し
+          aiBoardInfo = null;            // 署名付きUIDもS-LiNKデバイスごとに取り直す
           setReadingMeta(waitingMessage());
         } else if (aiMode) {
           setReadingMeta(waitingMessage());
@@ -2553,7 +2553,7 @@
 
       // ===== Chromebook 対策 =====================================================
       // s-link.js は MIDIポート名を /STEAM BOX/ /MidiDako/ /S-LINK/ の3つで絞り込む。
-      // ChromeOS ではポート名の付き方が macOS と違うため、ボードが挿さっていても
+      // ChromeOS ではポート名の付き方が macOS と違うため、S-LiNKデバイスが挿さっていても
       // この絞り込みに落ちて "no available MIDIPort for the filters" になることがある。
       // そこで失敗したら、ポート名だけを偽装した MIDIAccess を渡して一度だけ再挑戦する。
       const BOARD_NAME_HINT = /s.?link|akadako|mididako|steam.?box|dako/i;
@@ -2570,7 +2570,7 @@
         };
       }
 
-      // ボードらしいポートを選ぶ。名前で当たらなければ、仮想ポートを除いて1つだけ残る場合はそれを使う
+      // S-LiNKデバイスらしいポートを選ぶ。名前で当たらなければ、仮想ポートを除いて1つだけ残る場合はそれを使う
       // （s-link.js もフィルタ未指定なら先頭のポートをそのまま使う実装になっている）
       function pickBoardPorts(ports) {
         if (!ports) return null;
@@ -2775,8 +2775,8 @@
         checkPorts();
       }
 
-      // 記録間隔の選択肢。AI表示中は長めの4種類に入れ替える（初期値は5秒）。
-      // 音量はマイクの値を読むだけで速いので、0.1秒も選べる（ボードのセンサーは MIDI の往復があるので 0.5秒まで）
+      // 記録間隔の選択肢。初期値は0.5秒（HTML の selected）。AI表示中は長めの4種類に入れ替える（初期値は5秒）。
+      // 音量はマイクの値を読むだけで速いので、0.1秒も選べる（S-LiNKデバイスのセンサーは MIDI の往復があるので 0.5秒まで）
       const RECORD_INTERVALS = {
         sensor: [["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
         volume: [["100", "0.1秒"], ["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
@@ -3222,7 +3222,7 @@
           const notice = error instanceof SensorNoticeError;
           if (!notice) console.error(error);
           const message = notice ? error.message
-            : error && error.name === "NotSupportedError" ? `このボードでは${sensor.name}を測れません`
+            : error && error.name === "NotSupportedError" ? `このS-LiNKデバイスでは${sensor.name}を測れません`
             : "センサー値を取得できませんでした";
           if (key === selectedSensor) {
             setReadingMeta(message, error instanceof AiNoticeError ? error.html : null);
@@ -4110,7 +4110,7 @@
       }
 
       // ===== デモ（?mode=demo） ======================================================
-      // ボードの代わりに、目盛りの範囲の中をゆっくり揺れながら動く乱数を流す（s-link-logger と同じ式）
+      // S-LiNKデバイスの代わりに、目盛りの範囲の中をゆっくり揺れながら動く乱数を流す（s-link-logger と同じ式）
       const DEMO_RANGES = {
         temperature: [-10, 50], brightness: [0, 2000], distance: [0, 200], humidity: [0, 100], pressure: [950, 1050],
         gravity: [0, 20], tilt: [-90, 90], motion: [0, 100], volume: [0, 100], waterTemperature: [0, 100], oxygen: [0, 30],
@@ -4143,7 +4143,7 @@
         els.connectBtn.hidden = true;
         els.recordBtn.disabled = false;
         els.readingMeta.textContent = waitingMessage();
-        els.notice.textContent = "※ デモモードです。ボードの代わりに乱数の値を表示しています。上の「終了」を押すか、URL の mode=demo を外すと通常の画面に戻ります。";
+        els.notice.textContent = "※ デモモードです。S-LiNKデバイスの代わりに乱数の値を表示しています。上の「終了」を押すか、URL の mode=demo を外すと通常の画面に戻ります。";
         ensureReadingLoop();
       }
 
