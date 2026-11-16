@@ -70,6 +70,7 @@ AkaDako ボードや S-LiNKデバイスのセンサーの値をブラウザで�
 - 元は `manual/index.html`（ふりがなは `{漢字|かんじ}` と書く）。画面写真は `manual/img/`
 - 作り直すとき: `manual/tools/build.sh`（`shots` で画面写真の撮り直し、`pdf` で PDF の作成。引数なしで両方）。Chrome のヘッドレスモードを使う
 - 画面写真は、`s-link.js` をにせもののS-LiNKデバイス（`manual/tools/mock.js`）に差し替えた複製を、台本（`manual/tools/scenes.js`）どおりに動かして撮る。アプリの画面を変えたら撮り直して、説明や番号の位置を見直す
+- 「共有しよう」の章の「重ねて表示」の写真（`shot-share-*.png`）だけは、測定室のページ（s-link-logger の `src/room.html`。場所は `ROOM_HTML` で変えられる）を、にせものの測定室（`manual/tools/room-mock.js`。3 つの班の記録を返す）で開いて撮る。`build.sh room` でこの 2 枚だけ撮り直せる。s-link-logger が手元に無いときは撮り直さず、今ある写真を使う
 
 ## URL パラメータ
 
