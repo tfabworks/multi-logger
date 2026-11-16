@@ -2684,11 +2684,17 @@
             board = null;
             setConnectionUI(false, "切断されました");
             showToast("S-LiNKとの接続が切れました");
+            // ケーブルは挿さったまま通信だけ切れることがある（スリープ明けなど）。
+            // ポートが残っていれば「新しく現れた」ものとして、少し待ってからつなぎ直す
+            console.info("[接続] 切断されました。ポートが残っていれば自動でつなぎ直します");
+            seenPortIds = new Set();
+            setTimeout(checkPorts, AUTO_RETRY_MS);
           });
           setConnectionUI(true);
           hideMidiDiag();
           showToast("S-LiNKに接続しました");
           ensureReadingLoop();
+          if (!midiAccess) startAutoConnect();   // 開いたときに許可が無く、手で押してつながった場合はここから見張りを始める
           return true;
         } catch (error) {
           console.error(error);
@@ -2721,11 +2727,16 @@
       //   （statechange が来ない環境＝Scrub の WebMIDIKit などのために、数秒ごとにも見る）
       // - 同じポートに何度もためさない。ポートの開閉でも statechange は来るので、「新しく現れた」ときだけ動く
       // - 挿した直後は入力と出力が別々に現れたり、起動が間に合わなかったりするので、少し待ってから数回ためす
+      // - それでもつながらない／つながったあとで通信だけ切れた、というときも、ポートがあるかぎり
+      //   AUTO_REDO_MS ごとに静かにためし直す（「挿してあるのに未接続のまま」で止まらないように）
       // 切るときはケーブルを抜く（s-link.js の onDisconnected で「未接続」に戻る）
       const AUTO_SETTLE_MS = 600;
       const AUTO_RETRY_MS = 1500;
       const AUTO_TRIES = 3;
       const AUTO_POLL_MS = 3000;
+      const AUTO_REDO_MS = 10000;
+      let lastAutoAttemptAt = 0;
+      let autoStarted = false;
       let midiAccess = null;
       let seenPortIds = new Set();
       let autoTimer = null;
@@ -2735,14 +2746,19 @@
         return midiAccess ? { inputs: livePorts(midiAccess.inputs), outputs: livePorts(midiAccess.outputs) } : null;
       }
 
-      async function autoConnect(triesLeft = AUTO_TRIES) {
+      // quiet=true は、あきらめたあとの定期的なやり直し（失敗しても何も出さない）
+      async function autoConnect(triesLeft = AUTO_TRIES, quiet = false) {
         autoTimer = null;
         if (isConnected() || connecting) return;
         if (!pickBoardPorts(currentPorts())) return;   // それらしいポートが無ければ静かに待つ
-        if (await connectBoard(true)) return;
+        lastAutoAttemptAt = Date.now();
+        const ok = await connectBoard(true);
+        lastAutoAttemptAt = Date.now();
+        if (ok) return;
+        console.info(`[接続] 自動接続に失敗しました（残り${triesLeft - 1}回）`, lastConnectError);
         if (triesLeft > 1) {
-          autoTimer = setTimeout(() => autoConnect(triesLeft - 1), AUTO_RETRY_MS);
-        } else {
+          autoTimer = setTimeout(() => autoConnect(triesLeft - 1, quiet), AUTO_RETRY_MS);
+        } else if (!quiet) {
           // ポートはあるのにつながらない。理由を下の「接続できないときの情報」に出しておく
           const ports = currentPorts();
           showToast("S-LiNKに自動で接続できませんでした。上の「S-LiNK 未接続」を押すと、もう一度ためせます");
@@ -2762,16 +2778,28 @@
         autoTimer = setTimeout(() => autoConnect(), AUTO_SETTLE_MS);
       }
 
+      // 3秒ごとの見張り。ポートが増えていればためし、増えていなくても、ポートがあるのに
+      // つながっていない状態が続いていれば AUTO_REDO_MS ごとにためし直す
+      function pollPorts() {
+        if (isConnected() || connecting) return;
+        checkPorts();
+        if (autoTimer === null && Date.now() - lastAutoAttemptAt >= AUTO_REDO_MS && pickBoardPorts(currentPorts())) {
+          autoConnect(1, true);
+        }
+      }
+
       async function startAutoConnect() {
-        if (DEMO || !SLINK || !navigator.requestMIDIAccess) return;
+        if (DEMO || !SLINK || !navigator.requestMIDIAccess || autoStarted) return;
+        autoStarted = true;
         try {
           midiAccess = await navigator.requestMIDIAccess({ sysex: true });
         } catch (error) {
           console.info("[接続] Web MIDI を使えないため、自動接続はしません", error);
+          autoStarted = false;   // あとで手で押してつながったら、そこから始め直す
           return;
         }
         midiAccess.addEventListener("statechange", checkPorts);
-        setInterval(() => { if (!isConnected() && !connecting) checkPorts(); }, AUTO_POLL_MS);
+        setInterval(pollPorts, AUTO_POLL_MS);
         checkPorts();
       }
 
