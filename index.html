@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
-  <title>S-LINK Multi Cloud Logger(β)</title>
+  <title>S-LiNK Multi Cloud Logger(β)</title>
   <!-- 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -495,12 +495,12 @@
     .compare-toggle[aria-pressed="true"] { border-color: #ffd54a; background: #ffd54a; color: #3a2f00; }
     .compare-toggle[aria-pressed="true"] .state { background: #3a2f00; color: #ffd54a; }
     .compare-toggle:disabled { opacity: .7; cursor: progress; }
-    /* ボード接続のスイッチ: ON は緑 */
+    /* S-LiNK の接続のようす（スイッチではなく表示。つながると緑）。つながっているあいだは押しても何も起きない */
     .connect-toggle .status-dot { margin-right: -2px; }
     .connect-toggle.connecting .status-dot { background: #ffb347; box-shadow: 0 0 0 4px rgba(255,179,71,.25); animation: connect-blink 1s ease-in-out infinite; }
-    .connect-toggle[aria-pressed="true"] { border-color: #56ef9d; background: #56ef9d; color: #073b20; }
-    .connect-toggle[aria-pressed="true"] .status-dot { background: #073b20; box-shadow: 0 0 0 4px rgba(7,59,32,.14); }
-    .connect-toggle[aria-pressed="true"] .state { background: #073b20; color: #56ef9d; }
+    .connect-toggle.connected { cursor: default; border-color: #56ef9d; background: #56ef9d; color: #073b20; }
+    .connect-toggle.connected .status-dot { background: #073b20; box-shadow: 0 0 0 4px rgba(7,59,32,.14); }
+    .connect-toggle.connected .state { background: #073b20; color: #56ef9d; }
     @keyframes connect-blink { 50% { opacity: .35; } }
     /* 「使い方」: スイッチと同じ形のリンク。左右の余白は高さの低い画面用の詰めにも負けないように別に決める */
     .compare-toggle.help-link { gap: 6px; padding-left: 10px; padding-right: 14px; text-decoration: none; }
@@ -1268,13 +1268,14 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
-        <h1>S-LINK Multi Cloud Logger(β)</h1>
+        <h1>S-LiNK Multi Cloud Logger(β)</h1>
       </div>
       <div class="connection-panel">
         <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「2つ目」になる（上限2つ。古いほうから外れる） -->
         <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
-        <!-- ボードの接続も「くらべる」と同じスイッチ。印の色: 灰=未接続 / 橙=接続中… / 緑=接続。デモのときはチップだけ出す -->
-        <button id="connectBtn" class="compare-toggle connect-toggle" type="button" aria-pressed="false" aria-live="polite" aria-label="ボード接続 未接続"><span class="status-dot"></span>ボード接続<span id="connectState" class="state">OFF</span></button>
+        <!-- S-LiNK の接続のようす。USB でつなぐと自動で接続するので、スイッチではなく表示。印の色: 灰=未接続 / 橙=接続しています… / 緑=接続。
+             つながっていないときに押すと、もう一度さがす（自動でつながらなかったときの保険）。デモのときはチップだけ出す -->
+        <button id="connectBtn" class="compare-toggle connect-toggle" type="button" aria-live="polite" aria-label="S-LiNK 未接続" title="未接続（押すと、もう一度さがします）"><span class="status-dot"></span>S-LiNK<span id="connectState" class="state">未接続</span></button>
         <div id="statusChip" class="status-chip" aria-live="polite" hidden>
           <span class="status-dot"></span>
           <span id="statusText">未接続</span>
@@ -1407,7 +1408,7 @@
           </div>
           <div id="valueBox" class="value-box">
             <span id="currentValue" class="value">--</span><span id="currentUnit" class="unit">℃</span>
-            <div id="readingMeta" class="reading-meta">接続後に測定できます</div>
+            <div id="readingMeta" class="reading-meta">S-LiNKデバイスを接続すると測定できます</div>
           </div>
           <div id="aiPanel" class="ai-panel" hidden>
             <video id="aiVideo" class="ai-video" playsinline muted></video>
@@ -1467,7 +1468,7 @@
         <div id="canvasWrap" class="canvas-wrap">
           <canvas id="chartCanvas" aria-label="センサー値の折れ線グラフ"></canvas>
           <div id="emptyState" class="empty-state">
-            <div class="empty-bubble">ボードに接続して「記録をはじめる」を押すと、ここにグラフが描かれます。</div>
+            <div class="empty-bubble">S-LiNKデバイスを接続して「記録をはじめる」を押すと、ここにグラフが描かれます。</div>
           </div>
           <!-- グラフの上をドラッグして選んだ範囲に出すボタン -->
           <div id="selBox" class="sel-box" hidden>
@@ -1548,15 +1549,17 @@
     </div>
   </dialog>
 
-  <!-- ボード接続で MIDI ポートが1つも見つからなかったときだけ出す。「デモモードにする」で mode=demo を付けて開き直す -->
+  <!-- つながっていないときにデモモードを勧める。「はい」で mode=demo を付けて開き直す。出すのは次の2つのとき（自動接続では出さない）:
+       - センサーのタブ（「動き」「音量」以外）を押したとき。ページを開いてから1回だけ
+       - 上の「S-LiNK 未接続」を押してさがしても MIDI ポートが1つも見つからなかったとき -->
   <dialog id="demoDialog" aria-labelledby="demoDialogTitle">
     <div class="dialog-body">
       <div class="dialog-icon" aria-hidden="true">?</div>
-      <h3 id="demoDialogTitle">ボードが見つかりませんでした</h3>
-      <p>USB ケーブルを確かめて、もう一度「ボード接続」を押してください。<br>ボードがないときは、乱数の値で画面を試せる「デモモード」が使えます。<span id="demoDialogNote"></span></p>
+      <h3 id="demoDialogTitle">S-LiNKデバイスが接続されていません</h3>
+      <p>デモモード（にせものの数字）に切り替えますか？<span id="demoDialogNote"></span></p>
       <div class="dialog-actions">
-        <button id="demoDialogCancel" class="dialog-cancel" type="button">閉じる</button>
-        <button id="demoDialogOk" class="dialog-close" type="button">デモモードにする</button>
+        <button id="demoDialogCancel" class="dialog-cancel" type="button">いいえ</button>
+        <button id="demoDialogOk" class="dialog-close" type="button">はい</button>
       </div>
     </div>
   </dialog>
@@ -1608,12 +1611,12 @@
     <div class="room-foot"><button id="roomDialogClose" class="room-btn" type="button">閉じる</button></div>
   </dialog>
 
-  <!-- iPad の Safari/Chrome には Web MIDI が無く S-LINK につなげないので、Scratch専用ブラウザ「Scrub」で開いてもらう -->
+  <!-- iPad の Safari/Chrome には Web MIDI が無く S-LiNK につなげないので、Scratch専用ブラウザ「Scrub」で開いてもらう -->
   <dialog id="scrubDialog" aria-labelledby="scrubDialogTitle">
     <div class="dialog-body">
       <div class="dialog-icon" aria-hidden="true">!</div>
       <h3 id="scrubDialogTitle">iPad では「Scrub」で開いてください</h3>
-      <p>この画面は Safari や Chrome では S-LINK につなげません。Scratch専用ブラウザ「Scrub」で開くと使えます。</p>
+      <p>この画面は Safari や Chrome では S-LiNK につなげません。Scratch専用ブラウザ「Scrub」で開くと使えます。</p>
       <div class="scrub-actions">
         <a id="scrubLaunch" class="dialog-close scrub-launch" href="#">Scrub で開く</a>
         <a class="scrub-store" href="https://apps.apple.com/jp/app/scrub/id1569777095" target="_blank" rel="noopener noreferrer">Scrub をインストール（App Store）</a>
@@ -2122,7 +2125,7 @@
       }
 
       // valueSize: 桁数が多い項目は現在値の文字を小さくする / statsStack: 最小・平均・最大を縦積みにする
-      // needsBoard: false のセンサーはS-LINKなしで測れる
+      // needsBoard: false のセンサーはS-LiNKなしで測れる
       const sensors = {
         temperature: {
           name: "温度",
@@ -2503,7 +2506,7 @@
         return Boolean(board && board.isConnected);
       }
 
-      // マイク・カメラのセンサーはS-LINKなしでも測れる
+      // マイク・カメラのセンサーはS-LiNKなしでも測れる
       function canRead(sensorKey = selectedSensor) {
         if (DEMO) return true;
         return sensors[sensorKey].needsBoard === false ? true : isConnected();
@@ -2512,12 +2515,12 @@
       function waitingMessage() {
         if (selectedSensor === "ai") {
           return canRead() ? "プロンプトを入力して「記録をはじめる」を押してください"
-            : "AIで計測するにはS-LINKを接続してください";
+            : "AIで計測するにはS-LiNKデバイスを接続してください";
         }
         if (canRead()) return "測定しています…";
         return selectedSensor === "volume" ? "マイクの使用を許可してください"
           : selectedSensor === "motion" ? "カメラの使用を許可してください"
-          : "接続後に測定できます";
+          : "S-LiNKデバイスを接続すると測定できます";
       }
 
       // 測定の状況は、センサー表示では現在値の下、AI表示では映像の下に出す
@@ -2531,10 +2534,10 @@
         els.statusText.textContent = text;
         els.statusChip.classList.toggle("connected", connected);
         els.connectBtn.classList.remove("connecting");
-        els.connectBtn.setAttribute("aria-pressed", String(connected));
-        els.connectBtn.setAttribute("aria-label", `ボード接続 ${text}`);
-        els.connectBtn.title = text;
-        els.connectState.textContent = connected ? "ON" : "OFF";
+        els.connectBtn.classList.toggle("connected", connected);
+        els.connectBtn.setAttribute("aria-label", `S-LiNK ${text}`);
+        els.connectBtn.title = connected ? text : `${text}（押すと、もう一度さがします）`;
+        els.connectState.textContent = connected ? "接続" : "未接続";
         els.recordBtn.disabled = !canReadAny();
         if (!connected) {
           if (!canReadAny()) stopRecording();
@@ -2622,7 +2625,7 @@
           lastMidiPorts = await listMidiPorts().catch(() => null);
           const pair = pickBoardPorts(lastMidiPorts);
           if (!pair) throw error;
-          console.info(`[接続] ポート名「${pair.input.name}」が絞り込みに一致しないため、S-LINKとみなして再試行します`);
+          console.info(`[接続] ポート名「${pair.input.name}」が絞り込みに一致しないため、S-LiNKとみなして再試行します`);
           return connectWithAlias(pair.input, pair.output);
         }
       }
@@ -2640,7 +2643,7 @@
         if (!ports) {
           lines.push("このブラウザは Web MIDI を使えません（または許可されませんでした）。");
         } else if (!ports.inputs.length && !ports.outputs.length) {
-          lines.push("MIDIポートが1つも見つかりません。ボードのUSBケーブルを挿し直してください。");
+          lines.push("MIDIポートが1つも見つかりません。S-LiNKデバイスのUSBケーブルを挿し直してください。");
         } else {
           lines.push("このブラウザが見つけたMIDIポート:");
           const show = (list, tag) => list.forEach(port =>
@@ -2655,24 +2658,23 @@
         els.midiDiag.open = true;
       }
 
-      async function connectBoard() {
-        if (isConnected()) {
-          stopRecording();
-          board.disconnect();
-          board = null;
-          setConnectionUI(false);
-          showToast("S-LINKを切断しました");
-          return;
-        }
+      // 接続する。auto=true は自動接続（USB を挿した／ページを開いた）からの呼び出しで、
+      // 失敗しても画面には何も出さずに false を返す（やり直すかどうかは呼び出し側が決める）。
+      // auto=false は「S-LiNK 未接続」の表示を押したとき。失敗の理由と、必要ならデモモードの案内を出す
+      let connecting = false;
+      let lastConnectError = null;
+      async function connectBoard(auto = false) {
+        if (isConnected() || connecting) return isConnected();
 
         if (!SLINK) {
-          showToast("s-link.jsを読み込めませんでした");
-          return;
+          if (!auto) showToast("s-link.jsを読み込めませんでした");
+          return false;
         }
 
+        connecting = true;
         els.connectBtn.disabled = true;
         els.connectBtn.classList.add("connecting");   // 印を橙にして点滅
-        els.connectBtn.setAttribute("aria-label", "ボード接続 接続しています…");
+        els.connectBtn.setAttribute("aria-label", "S-LiNK 接続しています…");
         els.connectBtn.title = "接続しています…";
         els.connectState.textContent = "…";
         els.statusText.textContent = "接続しています…";
@@ -2681,27 +2683,96 @@
           board.onDisconnected(() => {
             board = null;
             setConnectionUI(false, "切断されました");
-            showToast("S-LINKとの接続が切れました");
+            showToast("S-LiNKとの接続が切れました");
           });
           setConnectionUI(true);
           hideMidiDiag();
-          showToast("S-LINKに接続しました");
+          showToast("S-LiNKに接続しました");
           ensureReadingLoop();
+          return true;
         } catch (error) {
           console.error(error);
           board = null;
+          lastConnectError = error;
+          if (auto) {
+            setConnectionUI(false);
+            return false;
+          }
           setConnectionUI(false, "接続できませんでした");
           showToast(/MIDI Access/.test(String(error))
             ? "Web MIDIを使えませんでした。ブラウザの設定を確認してください"
-            : "ボードが見つかりませんでした。下の「接続できないときの情報」をご覧ください");
+            : "S-LiNKデバイスが見つかりませんでした。下の「接続できないときの情報」をご覧ください");
           const ports = lastMidiPorts || await listMidiPorts().catch(() => null);
           showMidiDiag(error, ports);
-          // MIDI ポートが1つも無い＝ボードが手元に無い（かケーブルが抜けている）ときだけデモを勧める。
+          // MIDI ポートが1つも無い＝デバイスが手元に無い（かケーブルが抜けている）ときだけデモを勧める。
           // ポートはあるのに認識できない／Web MIDI を許可されなかったときは、直せる問題なので案内だけにする
           if (ports && !ports.inputs.length && !ports.outputs.length) offerDemo();
+          return false;
         } finally {
+          connecting = false;
           els.connectBtn.disabled = false;
         }
+      }
+
+      // ===== 自動接続 ============================================================
+      // 「接続する」という操作をなくし、S-LiNK が USB でつながっていれば自動で接続する。
+      // - ページを開いたときに Web MIDI の許可をもらう（初回だけブラウザが聞く。断られたら何もしない）
+      // - それ以降は MIDI ポートの一覧を見張り、新しいポートが現れたら接続をためす
+      //   （statechange が来ない環境＝Scrub の WebMIDIKit などのために、数秒ごとにも見る）
+      // - 同じポートに何度もためさない。ポートの開閉でも statechange は来るので、「新しく現れた」ときだけ動く
+      // - 挿した直後は入力と出力が別々に現れたり、起動が間に合わなかったりするので、少し待ってから数回ためす
+      // 切るときはケーブルを抜く（s-link.js の onDisconnected で「未接続」に戻る）
+      const AUTO_SETTLE_MS = 600;
+      const AUTO_RETRY_MS = 1500;
+      const AUTO_TRIES = 3;
+      const AUTO_POLL_MS = 3000;
+      let midiAccess = null;
+      let seenPortIds = new Set();
+      let autoTimer = null;
+
+      const livePorts = map => [...map.values()].filter(port => port.state !== "disconnected");
+      function currentPorts() {
+        return midiAccess ? { inputs: livePorts(midiAccess.inputs), outputs: livePorts(midiAccess.outputs) } : null;
+      }
+
+      async function autoConnect(triesLeft = AUTO_TRIES) {
+        autoTimer = null;
+        if (isConnected() || connecting) return;
+        if (!pickBoardPorts(currentPorts())) return;   // それらしいポートが無ければ静かに待つ
+        if (await connectBoard(true)) return;
+        if (triesLeft > 1) {
+          autoTimer = setTimeout(() => autoConnect(triesLeft - 1), AUTO_RETRY_MS);
+        } else {
+          // ポートはあるのにつながらない。理由を下の「接続できないときの情報」に出しておく
+          const ports = currentPorts();
+          showToast("S-LiNKに自動で接続できませんでした。上の「S-LiNK 未接続」を押すと、もう一度ためせます");
+          showMidiDiag(lastConnectError || "自動接続に失敗しました", ports);
+        }
+      }
+
+      // ポートの一覧を見て、前回から増えていたら接続をためす（減っただけなら覚え直すだけ）
+      function checkPorts() {
+        const ports = currentPorts();
+        if (!ports) return;
+        const ids = new Set([...ports.inputs, ...ports.outputs].map(port => `${port.type}:${port.id}`));
+        const added = [...ids].some(id => !seenPortIds.has(id));
+        seenPortIds = ids;
+        if (!added || isConnected()) return;
+        clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => autoConnect(), AUTO_SETTLE_MS);
+      }
+
+      async function startAutoConnect() {
+        if (DEMO || !SLINK || !navigator.requestMIDIAccess) return;
+        try {
+          midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+        } catch (error) {
+          console.info("[接続] Web MIDI を使えないため、自動接続はしません", error);
+          return;
+        }
+        midiAccess.addEventListener("statechange", checkPorts);
+        setInterval(() => { if (!isConnected() && !connecting) checkPorts(); }, AUTO_POLL_MS);
+        checkPorts();
       }
 
       // 記録間隔の選択肢。AI表示中は長めの4種類に入れ替える（初期値は5秒）。
@@ -2858,7 +2929,12 @@
       // 外付けの機器が要るセンサーは、切り替える前に接続の確認を出す
       let pendingSensor = null;
 
-      function requestSensor(sensorKey) {
+      // skipDemoOffer=true は、デモモードの勧めに「いいえ」と答えたあとの続き
+      function requestSensor(sensorKey, skipDemoOffer = false) {
+        if (!skipDemoOffer && shouldOfferDemo(sensorKey)) {
+          offerDemo(sensorKey);
+          return;
+        }
         if (sensorKey === "ai") {
           enterAiMode();
           return;
@@ -4079,7 +4155,21 @@
         else url.searchParams.delete("mode");
         location.href = url.href;
       }
-      function offerDemo() {
+      // タブを押したときにデモモードを勧めるかどうか。
+      // - S-LiNK がいらない「動き」「音量」では勧めない
+      // - 1回聞いたら、ページを開き直すまで聞かない（これから挿すつもりの人のじゃまをしない）
+      // - 接続をためしているあいだ（挿した直後・ページを開いた直後）は勧めない
+      let demoOffered = false;
+      let demoPendingSensor = null;
+      function shouldOfferDemo(sensorKey) {
+        if (DEMO || demoOffered || isConnected() || connecting || autoTimer !== null) return false;
+        const sensor = sensors[sensorKey];
+        return sensorKey === "ai" || Boolean(sensor && sensor.needsBoard !== false);
+      }
+      // sensorKey を渡すと、「いいえ」のあとでそのタブの切り替え（外付けセンサーの案内も）へ進む
+      function offerDemo(sensorKey = null) {
+        demoOffered = true;
+        demoPendingSensor = sensorKey;
         const hasData = Object.values(dataStore).some(data => data.length);
         els.demoDialogNote.textContent = hasData ? "（いまの記録は消えます）" : "";
         if (typeof els.demoDialog.showModal === "function") els.demoDialog.showModal();
@@ -4806,7 +4896,7 @@
       }
 
       // ===== iPad 対策 ============================================================
-      // iPad の Safari/Chrome には Web MIDI が無く S-LINK につなげない。Scratch専用ブラウザ「Scrub」
+      // iPad の Safari/Chrome には Web MIDI が無く S-LiNK につなげない。Scratch専用ブラウザ「Scrub」
       // （UA に "Scrub" を含み、WebMIDIKit で Web MIDI を提供）で開き直してもらう。判定は 699.jp/d/scrub と同じ。
       // iPadOS 13 以降の Safari は UA が Mac と同じなので「Macintosh かつタッチ対応」も iPad とみなす。
       // 動作確認用に ?preview=ipad を付けると PC でも案内が出る。
@@ -4828,7 +4918,7 @@
         url.searchParams.delete("preview");
         // Scrub は scrub://openUrl?<URL> の「?」以降をそのまま開くURLとして受け取る
         els.scrubLaunch.href = `scrub://openUrl?${encodeURI(url.href)}`;
-        els.notice.textContent = "※ iPad では Scratch専用ブラウザ「Scrub」で開くと S-LINK に接続できます。Safari や Chrome ではカメラ・マイクの項目だけ測れます。";
+        els.notice.textContent = "※ iPad では Scratch専用ブラウザ「Scrub」で開くと S-LiNK に接続できます。Safari や Chrome ではカメラ・マイクの項目だけ測れます。";
         if (typeof els.scrubDialog.showModal === "function") els.scrubDialog.showModal();
         else els.scrubDialog.setAttribute("open", "");
       }
@@ -4838,7 +4928,11 @@
         if (event.target === els.scrubDialog) closeScrubGuide();   // 外側をクリック
       });
 
-      els.connectBtn.addEventListener("click", connectBoard);
+      els.connectBtn.addEventListener("click", () => {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+        connectBoard(false);   // つながっているときは何もしない
+      });
       els.recordBtn.addEventListener("click", () => isRecording ? stopRecording() : startRecording());
       els.sensorButtons.forEach(button => button.addEventListener("click", () => requestSensor(button.dataset.sensor)));
       els.sensorDialogOk.addEventListener("click", () => {
@@ -4852,10 +4946,17 @@
         if (event.target === els.sensorDialog) closeSensorDialog();   // 外側をクリック
       });
       els.demoDialogOk.addEventListener("click", () => { closeDemoDialog(); openDemo(true); });
-      els.demoDialogCancel.addEventListener("click", closeDemoDialog);
+      // 「いいえ」・外側をクリック・Escキー: 閉じて、押していたタブがあればその切り替えへ進む
+      function declineDemo() {
+        const sensorKey = demoPendingSensor;
+        demoPendingSensor = null;
+        if (sensorKey) requestSensor(sensorKey, true);
+      }
+      els.demoDialogCancel.addEventListener("click", () => { closeDemoDialog(); declineDemo(); });
       els.demoDialog.addEventListener("click", event => {
-        if (event.target === els.demoDialog) closeDemoDialog();
+        if (event.target === els.demoDialog) { closeDemoDialog(); declineDemo(); }
       });
+      els.demoDialog.addEventListener("cancel", () => setTimeout(declineDemo));   // Escキー（閉じてから進む）
       els.demoExit.addEventListener("click", () => {
         const hasData = Object.values(dataStore).some(data => data.length);
         if (hasData && !window.confirm("デモモードを終了します。いまの記録は消えます。よろしいですか？")) return;
@@ -4894,7 +4995,10 @@
       updateTabsArrows();
       els.canvasWrap.classList.add("can-select");
       if (DEMO) applyDemoUI();
-      else showScrubGuide();
+      else {
+        showScrubGuide();
+        startAutoConnect();
+      }
       initRoom();
     })();
   </script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S-LINK Multi Cloud Logger つかいかた</title>
+<title>S-LiNK Multi Cloud Logger つかいかた</title>
 <!--
   小学生向けの説明書の元。manual/tools/build.sh pdf で ../manual.pdf になる（A4 縦）。
   ・ふりがなは本文に {漢字|かんじ} と書く（下のスクリプトが <ruby> に直す）
@@ -218,7 +218,7 @@
 <!-- ========== 1. 表紙 ========== -->
 <section class="page cover">
   <div class="cover-top">
-    <div class="app">S-LINK Multi Cloud Logger(β)</div>
+    <div class="app">S-LiNK Multi Cloud Logger(β)</div>
     <h1>つかいかた</h1>
     <p class="sub">センサーではかって、グラフにしよう</p>
   </div>
@@ -245,7 +245,7 @@
       <li><span class="n">8</span><span>{記録|きろく}をのこそう・こまったときは</span></li>
     </ol>
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span></span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span></span></div>
 </section>
 
 <!-- ========== 2. じゅんび ========== -->
@@ -253,28 +253,28 @@
   <div class="head"><span class="no">1</span><h2>じゅんびをしよう</h2></div>
 
   <h3>{用意|ようい}するもの</h3>
-  <p>パソコン（Chromebook など）、S-LINK ボード（または AkaDako ボード）、USB ケーブル</p>
+  <p>パソコン（Chromebook など）、S-LiNK ボード（または AkaDako ボード）、USB ケーブル</p>
 
   <h3>ボードをつなぐ</h3>
   <ol class="steps">
     <li>ボードとパソコンを、USB ケーブルでつなぎます。</li>
     <li>ブラウザ（Chrome か Edge）で <b>https://log.699.jp/</b> をひらきます。</li>
-    <li>{画面|がめん}の{右上|みぎうえ}にある <span class="ui">ボード{接続|せつぞく}</span> をおします。<br>
-      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-start.png" alt="ボード接続が OFF のようす"></div>
+    <li>ボタンはおさなくても、{自動|じどう}でつながります。{画面|がめん}の{右上|みぎうえ}の <span class="ui">S-LiNK</span> を{見|み}ます。<br>
+      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-start.png" alt="S-LiNK が未接続のようす"></div>
       <span class="small">ブラウザから「{許可|きょか}しますか」と{聞|き}かれたら、「{許可|きょか}」をえらびます。</span>
     </li>
-    <li>ボタンが{緑色|みどりいろ}になって「ON」と{出|で}たら、じゅんびができました。<br>
-      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-connected.png" alt="ボード接続が ON のようす"></div>
+    <li>{緑色|みどりいろ}になって「{接続|せつぞく}」と{出|で}たら、じゅんびができました。<br>
+      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-connected.png" alt="S-LiNK が接続のようす"></div>
     </li>
   </ol>
 
-  <h3>ボタンの{印|しるし}の{色|いろ}</h3>
+  <h3>S-LiNK の{印|しるし}の{色|いろ}</h3>
   <div class="lamps">
-    <div class="lamp"><span class="pill"><span class="dot"></span>ボード接続<span class="st">OFF</span></span><br>{灰色|はいいろ}：つながっていません</div>
-    <div class="lamp busy"><span class="pill"><span class="dot"></span>ボード接続<span class="st">…</span></span><br>オレンジ{色|いろ}でちかちか：つないでいるところです</div>
-    <div class="lamp on"><span class="pill"><span class="dot"></span>ボード接続<span class="st">ON</span></span><br>{緑色|みどりいろ}：つながりました</div>
+    <div class="lamp"><span class="pill"><span class="dot"></span>S-LiNK<span class="st">未接続</span></span><br>{灰色|はいいろ}：つながっていません</div>
+    <div class="lamp busy"><span class="pill"><span class="dot"></span>S-LiNK<span class="st">…</span></span><br>オレンジ{色|いろ}でちかちか：つないでいるところです</div>
+    <div class="lamp on"><span class="pill"><span class="dot"></span>S-LiNK<span class="st">接続</span></span><br>{緑色|みどりいろ}：つながりました</div>
   </div>
-  <p class="small" style="margin-top:2mm">ON のときにもう{一度|いちど}おすと、OFF にもどります。ケーブルがぬけたときも OFF になります。</p>
+  <p class="small" style="margin-top:2mm">ケーブルをぬくと「{未接続|みせつぞく}」にもどります。つなぎ{直|なお}すと、また{自動|じどう}でつながります。</p>
 
   <div class="box tip">
     <span class="ttl">iPad でつかうとき</span>
@@ -284,7 +284,7 @@
     <span class="ttl">つかいかたを{見|み}たくなったら</span>
     {右上|みぎうえ}の <span class="ui">? {使|つか}い{方|かた}</span> をおすと、この{説明書|せつめいしょ}がひらきます。
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>1</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>1</span></div>
 </section>
 
 <!-- ========== 3. 画面の見かた ========== -->
@@ -312,7 +312,7 @@
   <ul class="parts">
     <li><span class="pin">1</span><b>センサーのタブ</b><br>はかるものをえらびます。</li>
     <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、2つのセンサーを{同時|どうじ}にはかれます。</li>
-    <li><span class="pin">3</span><b>ボード{接続|せつぞく}</b><br>ボードとつなぐスイッチです。</li>
+    <li><span class="pin">3</span><b>S-LiNK</b><br>ボードとつながっているかがわかります。</li>
     <li><span class="pin">4</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
     <li><span class="pin">5</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
     <li><span class="pin">6</span><b>{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</b><br>{記録|きろく}した{数|かず}をまとめたものです。</li>
@@ -324,7 +324,7 @@
     <li><span class="pin">12</span><b>ダウンロード・コピー・{削除|さくじょ}</b><br>{記録|きろく}をのこしたり、{消|け}したりします。</li>
     <li><span class="pin">13</span><b>{測定室|そくていしつ}</b><br>みんなの{記録|きろく}を1つの{画面|がめん}にあつめます。</li>
   </ul>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>2</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>2</span></div>
 </section>
 
 <!-- ========== 4. はかってみよう ========== -->
@@ -357,7 +357,7 @@
     <span class="ttl">おぼえておこう</span>
     {記録|きろく}は、センサーごとにべつべつにのこります。タブをかえても、{前|まえ}のセンサーの{記録|きろく}は{消|き}えません。
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>3</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>3</span></div>
 </section>
 
 <!-- ========== 5. グラフをよく見よう ========== -->
@@ -395,7 +395,7 @@
     <span class="ttl">ちゅうい</span>
     <span class="ui">この{範囲以外|はんいいがい}のデータを{消去|しょうきょ}</span> をおすと、えらんだところの{外|そと}の{記録|きろく}が{消|き}えます。{消|け}した{記録|きろく}は、もとにもどせません。
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>4</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>4</span></div>
 </section>
 
 <!-- ========== 6. 表とメモ ========== -->
@@ -425,7 +425,7 @@
     <span class="ttl">{表|ひょう}でも{書|か}けます</span>
     {表|ひょう}のいちばん{右|みぎ}の「メモ」のらんをクリックして{書|か}くこともできます。{記録|きろく}しているとちゅうでも{書|か}けます。
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>5</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>5</span></div>
 </section>
 
 <!-- ========== 7. くらべる ========== -->
@@ -458,7 +458,7 @@
     <span class="ttl">おぼえておこう</span>
     {同時|どうじ}にはかれるのは2つまでです。3つ{目|め}のタブをおすと、{先|さき}にえらんだほうが{外|はず}れます。<span class="ui">くらべる</span> を OFF にすると、さいごにおしたセンサーだけになります。
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>6</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>6</span></div>
 </section>
 
 <!-- ========== 8. センサーのしゅるい ========== -->
@@ -505,7 +505,7 @@
       <p class="cap">{水温|すいおん}のタブをおしたときの{案内|あんない}</p>
     </div>
   </div>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>7</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>7</span></div>
 </section>
 
 <!-- ========== 9. 記録をのこそう・こまったときは ========== -->
@@ -538,17 +538,17 @@
 
   <h3>こまったときは</h3>
   <dl class="qa">
-    <dt>「ボード{接続|せつぞく}」が ON にならない</dt>
-    <dd>USB ケーブルをさし{直|なお}して、もう{一度|いちど}「ボード{接続|せつぞく}」をおします。</dd>
-    <dt>「ボードが{見|み}つかりませんでした」と{出|で}た</dt>
-    <dd>ケーブルをたしかめます。ボードがないときは「デモモードにする」をおすと、でたらめな{数|かず}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
+    <dt>「S-LiNK」が「{接続|せつぞく}」にならない</dt>
+    <dd>USB ケーブルをさし{直|なお}します。それでもだめなら、{右上|みぎうえ}の「S-LiNK {未接続|みせつぞく}」をおします。</dd>
+    <dt>「S-LiNKデバイスが{接続|せつぞく}されていません」と{出|で}た</dt>
+    <dd>ボードをつかうときは「いいえ」をおして、ケーブルをたしかめます。ボードがないときは「はい」をおすと、デモモードになり、にせものの{数字|すうじ}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
     <dt>グラフが{出|で}ない・「{記録|きろく}をはじめる」がおせない</dt>
-    <dd>「ボード{接続|せつぞく}」は ON ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
+    <dd>{右上|みぎうえ}の「S-LiNK」は{緑色|みどりいろ}（{接続|せつぞく}）ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
     <dt>「{動|うご}き」「{音量|おんりょう}」がはかれない</dt>
     <dd>カメラやマイクをつかうことを「{許可|きょか}」しているか、たしかめます。</dd>
   </dl>
   <p class="small" style="margin-top:1mm">それでもなおらないときは、{先生|せんせい}に{聞|き}きましょう。</p>
-  <div class="foot"><span>S-LINK Multi Cloud Logger(β) つかいかた</span><span>8</span></div>
+  <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>8</span></div>
 </section>
 
 <script>
