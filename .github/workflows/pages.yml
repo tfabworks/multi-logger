@@ -25,5 +25,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      # アップロードした直後の成果物は、GitHub 側で一覧に出るまで数秒〜数十秒おくれることがある。
+      # すぐ deploy-pages を動かすと「No artifacts named "github-pages" were found」で失敗する
+      # （actions/deploy-pages#451）ので、一覧に出るまで待つ
+      - name: Wait until the artifact is listed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 40); do
+            count=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?name=github-pages" --jq '.total_count' || echo 0)
+            if [ "$count" -ge 1 ]; then sleep 3; exit 0; fi
+            sleep 3
+          done
+          echo "github-pages の成果物が一覧に出ませんでした"
+          exit 1
       - id: deployment
         uses: actions/deploy-pages@v4
