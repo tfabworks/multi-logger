@@ -98,8 +98,15 @@
       await record();
     },
 
+    // 3 つ（温度・湿度・照度）を重ねる。目もりが 左・右・いちばん右 に出る
     async overlay() {
-      await scenes.compare();
+      await connect();
+      $("compareToggle").click();
+      tab("humidity").click();
+      await wait(500);
+      tab("brightness").click();
+      await wait(500);
+      await record();
       $("layoutOverlay").click();
     },
 

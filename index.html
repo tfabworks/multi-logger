@@ -465,7 +465,7 @@
       white-space: nowrap;
     }
 
-    /* ===== くらべる（2つのセンサー） ===== */
+    /* ===== くらべる（3つまでのセンサー） ===== */
     .compare-toggle {
       display: inline-flex;
       align-items: center;
@@ -532,16 +532,27 @@
     .compare-row .name { font-size: .76rem; font-weight: 900; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .compare-row .val { font-size: 1.3rem; font-weight: 950; letter-spacing: -.03em; color: var(--row-color); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .compare-row .val small { margin-left: 3px; font-size: .72rem; color: var(--ink); }
-    .compare-row .stats { grid-column: 1 / -1; margin-top: 2px; font-size: .66rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .compare-row .stats.warn { color: #b95a10; white-space: normal; }
+    /* 数字の長いセンサー（気圧など）は 1 行に入らないので、「最小・平均・最大」の切れ目で折り返して最大まで見せる */
+    .compare-row .stats { grid-column: 1 / -1; margin-top: 2px; font-size: .66rem; font-weight: 700; color: var(--muted); word-break: keep-all; }
+    .compare-row .stats.warn { color: #b95a10; word-break: normal; }
     .compare-list .reading-meta { margin-top: 6px; }
     /* くらべているときはパネルが縦に並ぶので、グラフの箱を高くする（低い画面ではページがスクロールする） */
     .canvas-wrap[data-panels="2"] { min-height: 380px; }
+    .canvas-wrap[data-panels="3"] { min-height: 540px; }
 
     .control-stack {
       display: grid;
       gap: 9px;
       margin-top: auto;
+    }
+    /* グラフの箱が高くて（3つくらべたときなど）カードの下が画面の外に出ても、記録ボタンは画面の下に残す */
+    @media (min-width: 841px) {
+      .control-stack {
+        position: sticky;
+        bottom: 10px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .96);
+      }
     }
 
     /* グラフ／表 の切り替え。アクティブ側は選択中センサーの色で塗る */
@@ -1271,7 +1282,7 @@
         <h1>S-LiNK Multi Cloud Logger(β)</h1>
       </div>
       <div class="connection-panel">
-        <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「2つ目」になる（上限2つ。古いほうから外れる） -->
+        <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「追加」になる（上限3つ。古いほうから外れる）。チェックの付いたタブを押すと外れる -->
         <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
         <!-- S-LiNK の接続のようす。USB でつなぐと自動で接続するので、スイッチではなく表示。印の色: 灰=未接続 / 橙=接続しています… / 緑=接続。
              つながっていないときに押すと、もう一度さがす（自動でつながらなかったときの保険）。デモのときはチップだけ出す -->
@@ -1401,7 +1412,7 @@
       <aside id="sideCard" class="side-card" style="--active-color:#ef5b5b">
         <div class="reading-panel">
           <div class="current-label"><span id="currentSensorName">温度</span><span id="currentLabelSuffix"> の現在値</span></div>
-          <!-- くらべる ON で2つ目を選んでいる間は、現在値の箱のかわりにセンサーごとの行を出す -->
+          <!-- くらべる ON で2つ以上を選んでいる間は、現在値の箱のかわりにセンサーごとの行を出す -->
           <div id="compareList" class="compare-list" hidden>
             <div id="compareRows" class="compare-rows"></div>
             <div id="compareMeta" class="reading-meta"></div>
@@ -1456,8 +1467,8 @@
             <p id="chartDescription">横軸：時刻　縦軸：温度（℃）</p>
           </div>
           <div class="chart-head-right">
-            <!-- 2つをくらべているときだけ: 上下に並べる／1枚に重ねる（単位が違えば左右の軸、同じなら共通の軸） -->
-            <div id="layoutToggle" class="view-toggle view-toggle--mini" role="group" aria-label="2つのグラフの出し方" hidden>
+            <!-- くらべているときだけ: 上下に並べる／1枚に重ねる（縦軸は単位ごとに 1 本。3 本になる組は、線を描く幅が足りない画面では出さない） -->
+            <div id="layoutToggle" class="view-toggle view-toggle--mini" role="group" aria-label="グラフの出し方" hidden>
               <button id="layoutStack" class="view-btn is-active" type="button" aria-pressed="true">並べる</button>
               <button id="layoutOverlay" class="view-btn" type="button" aria-pressed="false">重ねる</button>
             </div>
@@ -2427,20 +2438,22 @@
       let toastTimer = null;
       let oxygenCorrectionRate = null;   // null = 未校正。次の読み取りで大気20.9%を基準に決める
 
-      // ===== くらべる（2つのセンサー） ==============================================
-      // 画面上の「くらべる」スイッチが ON のあいだは、タブを押すと切り替えではなく「2つ目」になる。
-      // 主センサー（selectedSensor。最後に押したタブ）のほかに compareKeys（その前に選んでいたセンサー）を同じ周期で読み、
+      // ===== くらべる（3つまでのセンサー） ==========================================
+      // 画面上の「くらべる」スイッチが ON のあいだは、タブを押すと切り替えではなく「追加」になる（COMPARE_MAX まで。こえたら古いほうから外れる）。
+      // チェックの付いたタブをもう一度押すと、そのセンサーが外れる（最後の 1 つは外れない）。
+      // 主センサー（selectedSensor。最後に押したタブ）のほかに compareKeys（その前に選んでいたセンサー。古い順）を同じ周期で読み、
       // 同じ時刻で各センサーの保存先に記録する。グラフは古いほうを上・主センサーを下に並べ、相手の記録は時刻で主センサーに合わせる。
       // 表・CSV・測定室は主センサーの記録を行の基準にして横に並べる。AI はほかと組み合わせない（問い合わせに数秒かかる）
+      const COMPARE_MAX = 3;
       let compareOn = false;
       let compareKeys = [];
       const compareErrors = {};   // 相手のセンサーが読めなかった理由（行に出す）
       function activeKeys() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }   // 古い → 新しい（主）
-      // 2つのグラフの出し方。false: 上下に並べる / true: 1枚に重ねる。
+      // くらべているグラフの出し方。false: 上下に並べる / true: 1枚に重ねる。
       // ページを開いたときはいつも「並べる」から（前回の選択は覚えない）
       let overlay = false;
       try { localStorage.removeItem("akadako-multi:layout"); } catch (error) { /* 以前の版が覚えた選択を消す */ }
-      function isOverlay() { return isCompare() && overlay && activeKeys().length === 2; }
+      function isOverlay() { return isCompare() && overlay && overlayFits(); }
       function setOverlay(on) {
         overlay = Boolean(on);
         renderLayoutToggle();
@@ -2448,14 +2461,44 @@
         if (viewMode === "chart") drawChart();
       }
       function renderLayoutToggle() {
-        els.layoutToggle.hidden = !(isCompare() && viewMode === "chart");
+        els.layoutToggle.hidden = !(isCompare() && viewMode === "chart" && overlayFits());
         els.layoutStack.classList.toggle("is-active", !overlay);
         els.layoutOverlay.classList.toggle("is-active", overlay);
         els.layoutStack.setAttribute("aria-pressed", String(!overlay));
         els.layoutOverlay.setAttribute("aria-pressed", String(overlay));
       }
-      // 単位が同じ組（温度と水温など）は左右に分けず、1本の共通の軸で重ねる
-      function overlaySameUnit(keys) { return keys.length === 2 && sensors[keys[0]].unit === sensors[keys[1]].unit; }
+      // 重ねるときの縦軸。単位が同じセンサー（温度と水温など）は 1 本の軸にまとめる。
+      // 戻り値は軸ごとの「keys の添字」の組で、出てきた順に 左・右・いちばん右（右の軸のさらに外）に置く
+      const OVERLAY_SIDES = ["左", "右", "いちばん右"];
+      function overlayAxes(keys) {
+        const axes = [];
+        keys.forEach((key, n) => {
+          const axis = axes.find(members => sensors[keys[members[0]]].unit === sensors[key].unit);
+          if (axis) axis.push(n); else axes.push([n]);
+        });
+        return axes;
+      }
+      // 軸が 3 本になる組は右の余白が 2 本ぶん要るので、線を描く幅が OVERLAY_MIN_PLOT に足りない画面では重ねない
+      // （グラフの幅でおよそ 395px 未満）。表を出している間はグラフの箱の幅が 0 なので、同じ幅の表の箱で測る
+      const OVERLAY_MIN_PLOT = 240;
+      function overlayFits() {
+        const axes = overlayAxes(activeKeys()).length;
+        if (axes < 3) return true;
+        const box = els.canvasWrap.hidden ? els.tableWrap : els.canvasWrap;
+        const width = Math.max(320, Math.floor(box.getBoundingClientRect().width));   // resizeCanvas と同じ幅
+        const margin = chartMargin(width, axes - 1);
+        return width - margin.left - margin.right >= OVERLAY_MIN_PLOT;
+      }
+      // 幅が変わって「重ねる」のできる・できないが変わったら、切り替えボタンと説明も合わせる。
+      // resize が来ない幅の変化（縦のスクロールバーが出たときなど）もあるので、グラフを描くたびにも見る
+      let overlayFitted = true;
+      function syncOverlayFit() {
+        const fits = overlayFits();
+        if (fits === overlayFitted) return;
+        overlayFitted = fits;
+        renderLayoutToggle();
+        updateHeadings();
+      }
       function isCompare() { return !aiMode && compareKeys.length > 0; }
       function canReadAny() { return activeKeys().some(key => canRead(key)); }
       function activeName() { return activeKeys().map(key => sensors[key].name).join("・"); }
@@ -2959,6 +3002,13 @@
 
       // skipDemoOffer=true は、デモモードの勧めに「いいえ」と答えたあとの続き
       function requestSensor(sensorKey, skipDemoOffer = false) {
+        if (compareOn && isCompare() && activeKeys().includes(sensorKey)) {
+          // くらべる ON でチェックの付いたタブを押した → そのセンサーを外す（デモモードの勧めより先に）。
+          // 足した直後の 2 回目（ダブルクリック）は、足したものがすぐ消えないように無視する
+          const justAdded = sensorKey === lastAdded.key && performance.now() - lastAdded.at < 700;
+          if (!justAdded) compareRemove(sensorKey);
+          return;
+        }
         if (!skipDemoOffer && shouldOfferDemo(sensorKey)) {
           offerDemo(sensorKey);
           return;
@@ -2970,7 +3020,7 @@
         const sensor = sensors[sensorKey];
         if (!sensor) return;
         if (activeKeys().includes(sensorKey) || (aiMode && sensorKey === savedSensor)) {
-          exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ。選んでいるタブを押しても何もしない
+          exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ。くらべる OFF で選んでいるタブを押しても何もしない
           return;
         }
         if (!sensor.connectGuide) {
@@ -3028,6 +3078,7 @@
         els.currentValue.textContent = "--";
         els.readingMeta.textContent = waitingMessage();
         els.currentUnit.textContent = sensor.unit;
+        if (!canReadAny()) stopRecording();   // 読めるセンサーが残っていなければ、記録はとめる（とめるボタンが押せなくなるので）
         els.recordBtn.disabled = !canReadAny();
         applyValueLayout(selectedSensor);
         updateOxygenPanel();
@@ -3050,28 +3101,44 @@
       }
 
       function updateHeadings() {
+        if (aiMode) return;   // AI表示の見出しは enterAiMode が入れる
         const keys = activeKeys();
         els.chartTitle.textContent = `${activeName()}の変化`;
         const label = key => `${sensors[key].name}${unitSuffix(sensors[key])}`;
         els.chartDescription.textContent = !isCompare()
           ? `横軸：時刻　縦軸：${label(selectedSensor)}`
           : !isOverlay() ? `横軸：時刻（共通）　縦軸：上から ${keys.map(label).join("・")}`
-          : overlaySameUnit(keys) ? `横軸：時刻　縦軸：${keys.map(label).join("・")}（共通の軸）`
-          : `横軸：時刻　縦軸：左 ${label(keys[0])}・右 ${label(keys[1])}`;
+          : overlayAxes(keys).length === 1 ? `横軸：時刻　縦軸：${keys.map(label).join("・")}（共通の軸）`
+          : `横軸：時刻　縦軸：${overlayAxes(keys).map((members, a) => `${OVERLAY_SIDES[a]} ${members.map(n => label(keys[n])).join("と")}`).join("・")}`;
       }
 
-      // タブを押したとき: 「くらべる」が OFF なら切り替え、ON なら 2つ目にする
+      // タブを押したとき: 「くらべる」が OFF なら切り替え、ON なら追加する
       function pickSensor(sensorKey) {
         if (compareOn) compareAdd(sensorKey);
         else switchSensor(sensorKey);
       }
-      // くらべる ON でタブを押した: いままでの主センサーを相手にして、押したセンサーを主にする（相手がいた場合はそれが外れる）
+      // くらべる ON でタブを押した: いままでの主センサーを相手に回して、押したセンサーを主にする（COMPARE_MAX をこえる分は古いほうから外れる）
+      const lastAdded = { key: null, at: 0 };   // さいごに足したセンサーと、その時刻（performance.now()）
       function compareAdd(sensorKey) {
         exitAiMode();
         if (!sensors[sensorKey] || activeKeys().includes(sensorKey)) return;
-        compareKeys = [selectedSensor];
+        const others = [...compareKeys, selectedSensor];
+        const dropped = others.splice(0, Math.max(0, others.length - (COMPARE_MAX - 1)));
+        compareKeys = others;
         selectedSensor = sensorKey;
+        lastAdded.key = sensorKey;
+        lastAdded.at = performance.now();
         applySensorUI();
+        if (dropped.length) showToast(`くらべられるのは${COMPARE_MAX}つまでなので、${dropped.map(key => sensors[key].name).join("・")}を外しました`);
+      }
+      // くらべる ON でチェックの付いたタブを押した: そのセンサーを外す。主センサーを外したら、その前に押したセンサーが主になる。
+      // 記録はセンサーごとの保存先に残る（もう一度選べば続きから）。最後の 1 つは外さない
+      function compareRemove(sensorKey) {
+        if (!compareKeys.length || !activeKeys().includes(sensorKey)) return;
+        if (sensorKey === selectedSensor) selectedSensor = compareKeys.pop();
+        else compareKeys = compareKeys.filter(key => key !== sensorKey);
+        applySensorUI();
+        showToast(`${sensors[sensorKey].name}を外しました`);
       }
       function setCompareOn(on) {
         compareOn = Boolean(on);
@@ -3083,7 +3150,7 @@
         els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
       }
 
-      // 左のカード: くらべているときは現在値の箱のかわりに、センサーごとの行（色・名前・現在値・最小/平均/最大・×）
+      // 左のカード: くらべているときは現在値の箱のかわりに、センサーごとの行（色・名前・現在値・最小/平均/最大）
       function renderCompareUI() {
         const compare = isCompare();
         Object.keys(compareErrors).forEach(key => { if (!activeKeys().includes(key)) delete compareErrors[key]; });
@@ -3135,7 +3202,8 @@
           const values = data.map(item => item.value);
           const min = Math.min(...values), max = Math.max(...values);
           const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-          stats.textContent = `最小 ${formatValue(min, sensor)}${sensor.unit}　平均 ${formatValue(avg, sensor)}${sensor.unit}　最大 ${formatValue(max, sensor)}${sensor.unit}`;
+          // 見出しと数字の間は折り返さない空白（ ）。折り返すのは全角の空白のところだけ
+          stats.textContent = `最小 ${formatValue(min, sensor)}${sensor.unit}　平均 ${formatValue(avg, sensor)}${sensor.unit}　最大 ${formatValue(max, sensor)}${sensor.unit}`;
         });
       }
 
@@ -3464,8 +3532,10 @@
       }
 
       // グラフの余白（左は Y 軸の目盛り、下は時刻の分）。スクロールバーもこの左右にそろえる
-      function chartMargin(width, rightAxis = false) {
-        return { top: 24, right: rightAxis ? (width < 470 ? 50 : 62) : 22, bottom: 45, left: width < 470 ? 55 : 68 };
+      // rightAxes: 右に描く軸の本数（重ねて単位が違うとき 1〜2）。1 本ぶんの幅は rightAxisWidth
+      function rightAxisWidth(width) { return width < 470 ? 50 : 62; }
+      function chartMargin(width, rightAxes = 0) {
+        return { top: 24, right: rightAxes ? rightAxisWidth(width) * rightAxes : 22, bottom: 45, left: width < 470 ? 55 : 68 };
       }
 
       function niceStep(range, targetTicks = 5) {
@@ -3479,6 +3549,7 @@
 
       function drawChart() {
         const keys = activeKeys();
+        syncOverlayFit();
         const overlayMode = isOverlay();
         els.canvasWrap.dataset.panels = String(overlayMode ? 1 : keys.length);   // パネルの数で箱の高さが変わる（CSS）
         const { width, height } = resizeCanvas();
@@ -3488,7 +3559,7 @@
 
         const allData = dataStore[selectedSensor];
         const vr = viewRange();
-        const margin = chartMargin(width, overlayMode && !overlaySameUnit(keys));   // 重ねて単位が違うときは右にも軸
+        const margin = chartMargin(width, overlayMode ? overlayAxes(keys).length - 1 : 0);   // 重ねて単位が違うときは右にも軸
         const plotW = width - margin.left - margin.right;
         placeScroll(margin.left, plotW);
         updateScroll(vr);
@@ -3546,6 +3617,7 @@
           const datas = keys.map(dataFor);
           panels = drawOverlay(keys, datas, {
             top: plotTop, bottom: plotBottom, left: margin.left, right: width - margin.right, small,
+            axisWidth: rightAxisWidth(width),
             xs: keys.map((key, n) => xsFor(key, datas[n]))
           });
         } else {
@@ -3606,78 +3678,123 @@
         return step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9)));
       }
 
-      // 2 つの線を 1 枚に重ねる。単位が違えば左の軸を 1 つ目・右の軸を 2 つ目（主）のセンサーの色で描き、
-      // 目盛りの本数をそろえて横線を共有する。単位が同じなら 1 本の共通の軸。戻り値はパネル情報（ホバー・メモ用）
+      // 重ねるときの線の種類（keys の順）。色の似たセンサーどうし（湿度と電流など）でも見分けられるように、
+      // 1 本目は実線、2 本目は破線、3 本目は点線にする。線の端は丸い（太さ 3）ので、点線は短い線を丸めて点にしている
+      const OVERLAY_DASHES = [[], [10, 7], [0.5, 7]];
+
+      // 2〜3 本の線を 1 枚に重ねる。縦軸は単位ごとに 1 本（overlayAxes）で、左・右・いちばん右（右の軸の外。p.axisWidth ずつ離す）の順に置く。
+      // センサーが 1 つだけの軸はそのセンサーの色、同じ単位の 2 つ以上で共有する軸は灰色で描き、
+      // 目盛りの本数をそろえて横線を共有する。戻り値はパネル情報（ホバー・メモ用）
       function drawOverlay(keys, datas, p) {
         const sensorsOf = keys.map(key => sensors[key]);
         const panelH = p.bottom - p.top;
-        const sameUnit = overlaySameUnit(keys);
-        let scales = datas.map((data, n) => data.length ? niceScale(data.map(item => item.value), sensorsOf[n], 5) : null);
-        if (sameUnit && (datas[0].length || datas[1].length)) {
-          const shared = niceScale([...datas[0], ...datas[1]].map(item => item.value), sensorsOf[0], 5);
-          scales = [shared, shared];
-        } else if (scales[0] && scales[1]) {
-          const count = Math.max(scales[0].count, scales[1].count);   // 本数をそろえる（少ないほうの上を広げる）
-          scales.forEach(scale => {
-            if (scale.count < count) { scale.yMax += (count - scale.count) * scale.step; scale.count = count; }
-          });
-        }
-        const yAts = scales.map(scale => scale ? value => p.top + ((scale.yMax - value) / (scale.yMax - scale.yMin)) * panelH : null);
-        const axisColor = n => sameUnit ? "#9cb5c5" : sensorsOf[n].color;
+        const axes = overlayAxes(keys).map((members, a) => {
+          const values = members.flatMap(n => datas[n].map(item => item.value));
+          const shared = members.length > 1;
+          return {
+            members,
+            x: a === 0 ? p.left : p.right + (a - 1) * p.axisWidth,
+            side: a === 0 ? -1 : 1,   // 数字を書く側（-1: 軸の左 / 1: 軸の右）
+            color: shared ? "#9cb5c5" : sensorsOf[members[0]].color,
+            textColor: shared ? "#667b8c" : sensorsOf[members[0]].color,
+            scale: values.length ? niceScale(values, sensorsOf[members[0]], 5) : null
+          };
+        });
+        const scaled = axes.filter(axis => axis.scale);
+        const count = Math.max(0, ...scaled.map(axis => axis.scale.count));   // 本数をそろえる（少ない軸は上を広げる）
+        scaled.forEach(({ scale }) => {
+          if (scale.count < count) { scale.yMax += (count - scale.count) * scale.step; scale.count = count; }
+        });
+        const yAts = keys.map((key, n) => {
+          const { scale } = axes.find(axis => axis.members.includes(n));
+          return scale ? value => p.top + ((scale.yMax - value) / (scale.yMax - scale.yMin)) * panelH : null;
+        });
 
-        // 横の目盛り線と左右の数字
-        const ref = scales[0] || scales[1];
+        // 横の目盛り線と、軸ごとの数字
         ctx.font = `${p.small ? 10 : 12}px system-ui, sans-serif`;
         ctx.textBaseline = "middle";
-        if (ref) {
-          for (let i = 0; i <= ref.count; i++) {
-            const y = p.top + panelH - (i / ref.count) * panelH;
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = "#d9e8f1";
-            ctx.beginPath();
-            ctx.moveTo(p.left, y);
-            ctx.lineTo(p.right, y);
-            ctx.stroke();
-            if (scales[0]) {
-              ctx.fillStyle = sameUnit ? "#667b8c" : sensorsOf[0].color;
-              ctx.textAlign = "right";
-              ctx.fillText((scales[0].yMin + i * scales[0].step).toFixed(tickDecimals(scales[0].step)), p.left - 9, y);
+        for (let i = 0; count && i <= count; i++) {
+          const y = p.top + panelH - (i / count) * panelH;
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#d9e8f1";
+          ctx.beginPath();
+          ctx.moveTo(p.left, y);
+          ctx.lineTo(p.right, y);
+          ctx.stroke();
+          scaled.forEach(axis => {
+            const { scale } = axis;
+            ctx.fillStyle = axis.textColor;
+            ctx.textAlign = axis.side < 0 ? "right" : "left";
+            ctx.fillText((scale.yMin + i * scale.step).toFixed(tickDecimals(scale.step)), axis.x + axis.side * 9, y);
+            if (axis.x > p.right) {   // 横線の届かない外の軸には、短い目盛りを付ける
+              ctx.strokeStyle = axis.color;
+              ctx.beginPath();
+              ctx.moveTo(axis.x, y);
+              ctx.lineTo(axis.x + 5, y);
+              ctx.stroke();
             }
-            if (!sameUnit && scales[1]) {
-              ctx.fillStyle = sensorsOf[1].color;
-              ctx.textAlign = "left";
-              ctx.fillText((scales[1].yMin + i * scales[1].step).toFixed(tickDecimals(scales[1].step)), p.right + 9, y);
-            }
-          }
+          });
         }
-        // 軸線（左: 1つ目の色、右: 2つ目の色。単位が同じなら灰色の左軸だけ）
+        // 軸線（下は灰色。縦は軸ごとの色）
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = axisColor(0);
-        ctx.beginPath();
-        ctx.moveTo(p.left, p.top);
-        ctx.lineTo(p.left, p.bottom);
-        ctx.stroke();
         ctx.strokeStyle = "#9cb5c5";
         ctx.beginPath();
         ctx.moveTo(p.left, p.bottom);
         ctx.lineTo(p.right, p.bottom);
         ctx.stroke();
-        if (!sameUnit) {
-          ctx.strokeStyle = axisColor(1);
+        axes.forEach(axis => {
+          ctx.strokeStyle = axis.color;
           ctx.beginPath();
-          ctx.moveTo(p.right, p.top);
-          ctx.lineTo(p.right, p.bottom);
+          ctx.moveTo(axis.x, p.top);
+          ctx.lineTo(axis.x, p.bottom);
           ctx.stroke();
-        }
-        // 軸の名前（左上・右上）
+        });
+        // センサーの名前（線と同じ色。前に線の見本を付ける）。軸が 1 本なら左上から右上へ等間隔に、
+        // 2 本以上なら左の軸の分を左上・右の軸の分を右上・いちばん右の軸の分をその軸の上に書く
+        const nameOf = n => `${sensorsOf[n].name}${unitSuffix(sensorsOf[n])}`;
+        const sampleW = 27, sampleGap = 5, nameGap = 10, lineH = p.small ? 13 : 15;
+        const nameWidth = n => sampleW + sampleGap + ctx.measureText(nameOf(n)).width;
+        const namesWidth = members => members.reduce((sum, n) => sum + nameWidth(n), 0) + nameGap * (members.length - 1);
+        const drawName = (n, x, y) => {   // x は見本の左端
+          const sampleY = y + (p.small ? 5 : 6);
+          ctx.save();
+          ctx.strokeStyle = sensorsOf[n].color;
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.setLineDash(OVERLAY_DASHES[n]);
+          ctx.beginPath();
+          ctx.moveTo(x + 1.5, sampleY);
+          ctx.lineTo(x + sampleW - 1.5, sampleY);
+          ctx.stroke();
+          ctx.restore();
+          ctx.textAlign = "left";
+          ctx.fillStyle = sensorsOf[n].color;
+          ctx.fillText(nameOf(n), x + sampleW + sampleGap, y);
+        };
+        const drawNames = (members, x, y, align) => {   // align が right のときは x が右端
+          if (align === "right") x -= namesWidth(members);
+          members.forEach(n => { drawName(n, x, y); x += nameWidth(n) + nameGap; });
+        };
         ctx.font = `bold ${p.small ? 10 : 12}px system-ui, sans-serif`;
         ctx.textBaseline = "top";
-        ctx.fillStyle = sensorsOf[0].color;
-        ctx.textAlign = "left";
-        ctx.fillText(`${sensorsOf[0].name}${unitSuffix(sensorsOf[0])}`, p.left + 7, p.top + 4);
-        ctx.fillStyle = sensorsOf[1].color;
-        ctx.textAlign = "right";
-        ctx.fillText(`${sensorsOf[1].name}${unitSuffix(sensorsOf[1])}`, p.right - 7, p.top + 4);
+        const room = p.right - p.left - 14;
+        if (axes.length === 1) {
+          const all = keys.map((key, n) => n);
+          if (namesWidth(all) > room) {
+            all.forEach(n => drawName(n, p.left + 7, p.top + 4 + n * lineH));   // 横に入りきらないときは、左上に縦に並べる
+          } else {
+            all.forEach(n => {
+              const t = n / (keys.length - 1);
+              drawName(n, p.left + 7 + t * (room - nameWidth(n)), p.top + 4);
+            });
+          }
+        } else {
+          // 左上と右上の名前が横に入りきらないときは、右上の分を 1 行下げる
+          const crowded = namesWidth(axes[0].members) + nameGap + namesWidth(axes[1].members) > room;
+          drawNames(axes[0].members, p.left + 7, p.top + 4, "left");
+          drawNames(axes[1].members, p.right - 7, p.top + 4 + (crowded ? lineH : 0), "right");
+          if (axes[2]) drawNames(axes[2].members, axes[2].x + p.axisWidth - 4, p.top - 20, "right");
+        }
 
         // 線（塗りは重なると濁るので薄く）と最新の点
         datas.forEach((data, n) => {
@@ -3700,7 +3817,9 @@
           ctx.lineWidth = 3;
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
+          ctx.setLineDash(OVERLAY_DASHES[n]);
           ctx.stroke();
+          ctx.setLineDash([]);
           const last = data[data.length - 1];
           const lastX = xs(data.length - 1), lastY = yAt(last.value);
           ctx.beginPath();
@@ -3904,7 +4023,7 @@
         const timeW = ctx.measureText(timeLabel).width + pad * 2;
         drawBox(timeLabel, x + 8 + timeW > g.left + g.width ? x - 8 - timeW : x + 8, g.top + 2, "rgba(58, 69, 80, .9)", "white");
 
-        const placed = [];   // 出した枠（重ねるときに 2 つが重ならないように）
+        const placed = [];   // 出した枠（重ねるときに枠どうしが重ならないように）
         g.panels.forEach(panel => {
           if (!panel.yAt || !panel.data.length) return;
           const item = panel.key === selectedSensor ? primary : nearestByTime(panel.data, ms);
@@ -3926,8 +4045,14 @@
           const bx = px + 12 + w > g.left + g.width ? px - 12 - w : px + 12;
           const h = boxH * (memo ? 2 : 1);
           let by = Math.min(panel.bottom - h - 2, Math.max(panel.top + 2, y - boxH / 2));
-          const hit = placed.find(b => by < b.y + b.h + 4 && b.y < by + h + 4);
-          if (hit) by = hit.y + hit.h + 4 + h <= panel.bottom ? hit.y + hit.h + 4 : hit.y - h - 4;   // 重なったら下（下が無ければ上）へ
+          // 先に出した枠と重なったら、どれとも重ならない位置を下（下に無ければ上）にさがす
+          const free = top => !placed.some(b => top < b.y + b.h + 4 && b.y < top + h + 4);
+          if (!free(by)) {
+            const below = placed.map(b => b.y + b.h + 4).filter(top => top >= by && top + h <= panel.bottom && free(top));
+            const above = placed.map(b => b.y - h - 4).filter(top => top <= by && top >= panel.top && free(top));
+            if (below.length) by = Math.min(...below);
+            else if (above.length) by = Math.max(...above);
+          }
           drawBox(text, bx, by, sensor.color, "white");
           if (memo) drawBox(memo, bx, by + boxH, "#fff3bf", "#3a4550");   // メモは値の下に黄色で
           placed.push({ y: by, h });
@@ -5012,6 +5137,7 @@
       els.deleteBtn.addEventListener("click", deleteCurrentData);
       window.addEventListener("resize", () => {
         updateTabsArrows();
+        syncOverlayFit();   // 軸が 3 本の組は、幅がせまくなると重ねられない
         if (viewMode === "chart") drawChart();
       });
 

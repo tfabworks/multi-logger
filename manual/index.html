@@ -229,7 +229,7 @@
     <div class="can">
       <div style="--c:#ef5b5b"><b>はかる</b>{温度|おんど}や{明|あか}るさなどを、S-LiNKデバイスのセンサーではかります。</div>
       <div style="--c:#0799cf"><b>グラフにする</b>はかった{数|かず}が、そのままグラフになります。</div>
-      <div style="--c:#e0a800"><b>くらべる</b>2つのセンサーを{同時|どうじ}にはかって、くらべられます。</div>
+      <div style="--c:#e0a800"><b>くらべる</b>2つか3つのセンサーを{同時|どうじ}にはかって、くらべられます。</div>
       <div style="--c:#18a06d"><b>のこす</b>{記録|きろく}をファイルにして、のこせます。</div>
     </div>
 
@@ -240,7 +240,7 @@
       <li><span class="n">3</span><span>はかってみよう</span></li>
       <li><span class="n">4</span><span>グラフをよく{見|み}よう</span></li>
       <li><span class="n">5</span><span>{表|ひょう}とメモ</span></li>
-      <li><span class="n">6</span><span>2つをくらべよう</span></li>
+      <li><span class="n">6</span><span>センサーをくらべよう</span></li>
       <li><span class="n">7</span><span>センサーのしゅるい</span></li>
       <li><span class="n">8</span><span>{共有|きょうゆう}しよう</span></li>
       <li><span class="n">9</span><span>{記録|きろく}をのこそう・こまったときは</span></li>
@@ -312,7 +312,7 @@
 
   <ul class="parts">
     <li><span class="pin">1</span><b>センサーのタブ</b><br>はかるものをえらびます。</li>
-    <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、2つのセンサーを{同時|どうじ}にはかれます。</li>
+    <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、センサーを3つまで{同時|どうじ}にはかれます。</li>
     <li><span class="pin">3</span><b>S-LiNK</b><br>つながっているかがわかります。</li>
     <li><span class="pin">4</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
     <li><span class="pin">5</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
@@ -431,8 +431,8 @@
 
 <!-- ========== 7. くらべる ========== -->
 <section class="page">
-  <div class="head"><span class="no">6</span><h2>2つをくらべよう</h2></div>
-  <p class="lead">2つのセンサーを{同時|どうじ}にはかって、グラフを{上下|じょうげ}にならべます。</p>
+  <div class="head"><span class="no">6</span><h2>センサーをくらべよう</h2></div>
+  <p class="lead">2つか3つのセンサーを{同時|どうじ}にはかって、グラフを{上下|じょうげ}にならべます。</p>
 
   <ol class="steps">
     <li>1つ{目|め}のセンサーのタブをえらびます。</li>
@@ -447,17 +447,17 @@
   <div class="cols wide-left" style="margin-top:1mm">
     <div>
       <h3>ならべる・{重|かさ}ねる</h3>
-      <p>グラフの{右上|みぎうえ}の <span class="ui">{並|なら}べる</span> <span class="ui">{重|かさ}ねる</span> で、グラフの{出|だ}しかたをえらべます。<span class="ui">{重|かさ}ねる</span> にすると、2つが1まいのグラフになります。{左|ひだり}の{目|め}もりが1つ{目|め}、{右|みぎ}の{目|め}もりが2つ{目|め}のセンサーです。</p>
+      <p>グラフの{右上|みぎうえ}の <span class="ui">{並|なら}べる</span> <span class="ui">{重|かさ}ねる</span> で、{出|だ}しかたをえらべます。<span class="ui">{重|かさ}ねる</span> にすると、1まいのグラフになります。{目|め}もりの{数字|すうじ}は、{同|おな}じ{色|いろ}の{線|せん}のセンサーのものです。2つ{目|め}は{切|き}れた{線|せん}、3つ{目|め}は{点|てん}の{線|せん}です。</p>
     </div>
     <div>
-      <div class="shot" data-crop="0.232 0.2 0.76 0.61"><img src="img/shot-overlay.png" alt="重ねて見たようす"></div>
-      <p class="cap">「{重|かさ}ねる」にしたところ</p>
+      <div class="shot" data-crop="0.232 0.2 0.76 0.61"><img src="img/shot-overlay.png" alt="3つを重ねて見たようす"></div>
+      <p class="cap">3つを「{重|かさ}ねる」にしたところ</p>
     </div>
   </div>
 
   <div class="box tip">
     <span class="ttl">おぼえておこう</span>
-    {同時|どうじ}にはかれるのは2つまでです。3つ{目|め}のタブをおすと、{先|さき}にえらんだほうが{外|はず}れます。<span class="ui">くらべる</span> を OFF にすると、さいごにおしたセンサーだけになります。
+    タブをもう1つおすと、3つまで{同時|どうじ}にはかれます。4つ{目|め}をおすと、いちばん{先|さき}にえらんだセンサーが{外|はず}れます。チェックのついたタブをもう{一度|いちど}おすと、そのセンサーが{外|はず}れます。<span class="ui">くらべる</span> を OFF にすると、さいごにえらんだセンサーだけになります。
   </div>
   <div class="foot"><span>S-LiNK Multi Cloud Logger(β) つかいかた</span><span>6</span></div>
 </section>
