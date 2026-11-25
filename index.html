@@ -1451,6 +1451,10 @@
               <option value="1000">1秒</option>
               <option value="2000">2秒</option>
               <option value="5000">5秒</option>
+              <option value="10000">10秒</option>
+              <option value="30000">30秒</option>
+              <option value="60000">1分</option>
+              <option value="600000">10分</option>
             </select>
           </label>
           <div id="oxygenPanel" class="oxygen-panel" hidden>
@@ -2433,7 +2437,7 @@
       let aiMode = false;           // true のあいだは左パネルにカメラ映像を出す
       let isRecording = false;
       let loopRunning = false;
-      let nextSaveAt = 0;
+      let nextSaveAt = -Infinity;
       let readingInProgress = false;
       let toastTimer = null;
       let oxygenCorrectionRate = null;   // null = 未校正。次の読み取りで大気20.9%を基準に決める
@@ -2846,12 +2850,14 @@
         checkPorts();
       }
 
-      // 記録間隔の選択肢。初期値は0.5秒（HTML の selected）。AI表示中は長めの4種類に入れ替える（初期値は5秒）。
+      // 記録間隔の選択肢。初期値は0.5秒（HTML の selected）。10秒より長い間隔は、何時間もかけてゆっくり変わるものを測るとき用。
+      // AI表示中は 5秒より長いものだけに入れ替える（初期値は5秒）。
       // 音量はマイクの値を読むだけで速いので、0.1秒も選べる（S-LiNKデバイスのセンサーは MIDI の往復があるので 0.5秒まで）
+      const LONG_INTERVALS = [["10000", "10秒"], ["30000", "30秒"], ["60000", "1分"], ["600000", "10分"]];
       const RECORD_INTERVALS = {
-        sensor: [["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
-        volume: [["100", "0.1秒"], ["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"]],
-        ai: [["5000", "5秒"], ["10000", "10秒"], ["60000", "1分"], ["600000", "10分"]]
+        sensor: [["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"], ...LONG_INTERVALS],
+        volume: [["100", "0.1秒"], ["500", "0.5秒"], ["1000", "1秒"], ["2000", "2秒"], ["5000", "5秒"], ...LONG_INTERVALS],
+        ai: [["5000", "5秒"], ...LONG_INTERVALS]
       };
       let savedInterval = null;
 
@@ -3216,7 +3222,7 @@
         }
         isRecording = true;
         aiSucceededSinceStart = false;
-        nextSaveAt = 0;   // 次の周期ですぐ1件目を記録する
+        nextSaveAt = -Infinity;   // 次の周期ですぐ1件目を記録する（2 件目は、そこから 1 回ぶんあと）
         els.recordBtn.classList.add("running");
         els.recordBtn.textContent = "■ 記録をとめる";
         els.canvasWrap.classList.remove("can-select");   // 記録中はグラフの範囲選択をしない
@@ -3247,10 +3253,17 @@
           const startedAt = performance.now();
           const recordInterval = Number(els.intervalSelect.value);
           const save = isRecording && startedAt >= nextSaveAt;
-          if (save) nextSaveAt = startedAt + recordInterval;
+          // 次に記録する時刻は「前の予定 + 間隔」で決める（実際に読めた時刻から数えると、1分・10分の間隔では少しずつ遅れていくため）。
+          // ただし、予定が近すぎるとき（最初の 1 件、読むのに時間がかかったとき、タブが裏に回って遅れたとき）は、いまから 1 回ぶんを数え直す。
+          // 0.8 倍は、遅れを取りもどすときに間隔がつまりすぎないようにするため（1秒間隔で 0.75秒より短くなると、時刻に 1/10 秒が付く）
+          if (save) {
+            const scheduled = nextSaveAt + recordInterval;
+            nextSaveAt = scheduled < startedAt + recordInterval * 0.8 ? startedAt + recordInterval : scheduled;
+          }
           await readOnce(save);
           const tick = isRecording ? Math.min(LIVE_INTERVAL, recordInterval) : LIVE_INTERVAL;
-          const wait = Math.max(0, tick - (performance.now() - startedAt));
+          let wait = Math.max(0, tick - (performance.now() - startedAt));
+          if (isRecording) wait = Math.min(wait, Math.max(0, nextSaveAt - performance.now()));   // 記録の予定の時刻ちょうどに起きる
           await new Promise(resolve => setTimeout(resolve, wait));
         }
       }
