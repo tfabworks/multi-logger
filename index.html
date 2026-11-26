@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
   <title>AkaDako Multi Cloud Logger(β)</title>
-  <!-- 学校のフィルタリングで *.699.jp しか通らない環境でも動くように、動作に要るファイルはすべてこのページと同じ場所から読む
-       （s-link.js は https://s-link.education/js/s-link.js の複製、書体は Google Fonts の Inter の複製） -->
-  <script src="s-link.js"></script>
+  <!-- 学校のフィルタリングで 699.jp しか通らない環境でも動くように、動作に要るものはすべて 699.jp から読む。
+       デバイスとつなぐライブラリ（akadako.js）は、本家の https://699.jp/src/js/akadako.js をそのまま読む（本家が更新されると、ここも新しくなる）。
+       書体は Google Fonts の Inter の複製を、このページと同じ場所から読む -->
+  <script src="https://699.jp/src/js/akadako.js"></script>
   <style>
     /* 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる */
     @font-face {
@@ -1979,7 +1980,7 @@
     (() => {
       "use strict";
 
-      // s-link.js は配信時期によってグローバル名が SLINK だったり AkaDako だったりする
+      // akadako.js（以前は s-link.js）は配信時期によってグローバル名が SLINK だったり AkaDako だったりする
       // （中身は akadako.js と同一のバンドル）。どちらでも動くように両方を見る。
       const SLINK = window.SLINK || window.AkaDako;
 
@@ -2574,7 +2575,7 @@
         }
         const raw = board && board.board;   // AkaDako ラッパーが持つ生のS-LiNKデバイス（xcx-g2s の AkaDakoBoard）
         if (!raw || typeof raw.boardSignedUid !== "function") {
-          throw new AiNoticeError("このs-link.jsではAI計測に必要なS-LiNKデバイス情報を取れません", {
+          throw new AiNoticeError("このakadako.jsではAI計測に必要なS-LiNKデバイス情報を取れません", {
             kind: "board",
             detail: [`board.board: ${raw ? typeof raw : "なし"}`]
           });
@@ -3258,7 +3259,7 @@
       }
 
       // ===== Chromebook 対策 =====================================================
-      // s-link.js は MIDIポート名を /STEAM BOX/ /MidiDako/ /S-LINK/ の3つで絞り込む。
+      // akadako.js は MIDIポート名を /STEAM BOX/ /MidiDako/ /S-LINK/ の3つで絞り込む。
       // ChromeOS ではポート名の付き方が macOS と違うため、S-LiNKデバイスが挿さっていても
       // この絞り込みに落ちて "no available MIDIPort for the filters" になることがある。
       // そこで失敗したら、ポート名だけを偽装した MIDIAccess を渡して一度だけ再挑戦する。
@@ -3277,7 +3278,7 @@
       }
 
       // S-LiNKデバイスらしいポートを選ぶ。名前で当たらなければ、仮想ポートを除いて1つだけ残る場合はそれを使う
-      // （s-link.js もフィルタ未指定なら先頭のポートをそのまま使う実装になっている）
+      // （akadako.js もフィルタ未指定なら先頭のポートをそのまま使う実装になっている）
       function pickBoardPorts(ports) {
         if (!ports) return null;
         const real = list => list.filter(port => !VIRTUAL_PORT.test(port.name || ""));
@@ -3373,7 +3374,7 @@
         if (isConnected() || connecting) return isConnected();
 
         if (!SLINK) {
-          if (!auto) showToast("s-link.jsを読み込めませんでした");
+          if (!auto) showToast("akadako.js を読み込めませんでした（699.jp につながるか、たしかめてください）");
           return false;
         }
 
@@ -3435,7 +3436,7 @@
       // - 挿した直後は入力と出力が別々に現れたり、起動が間に合わなかったりするので、少し待ってから数回ためす
       // - それでもつながらない／つながったあとで通信だけ切れた、というときも、ポートがあるかぎり
       //   AUTO_REDO_MS ごとに静かにためし直す（「挿してあるのに未接続のまま」で止まらないように）
-      // 切るときはケーブルを抜く（s-link.js の onDisconnected で「未接続」に戻る）
+      // 切るときはケーブルを抜く（akadako.js の onDisconnected で「未接続」に戻る）
       const AUTO_SETTLE_MS = 600;
       const AUTO_RETRY_MS = 1500;
       const AUTO_TRIES = 3;

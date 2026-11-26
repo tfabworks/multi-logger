@@ -157,7 +157,7 @@ s-link-logger（Logger Builder）の測定室を移植したもの。仕組み�
 | もの | 場所 |
 |---|---|
 | アプリ・説明書・測定室のページ | `log.699.jp`（このリポジトリ。GitHub Pages） |
-| S-LiNKデバイスとつなぐライブラリ | `s-link.js`（`https://s-link.education/js/s-link.js` の複製。akadako-js v1.0.1、2026-09-23 版。本家が更新されたら `curl -o s-link.js https://s-link.education/js/s-link.js` で入れ替える） |
+| S-LiNKデバイスとつなぐライブラリ | `https://699.jp/src/js/akadako.js`（本家をそのまま読む。akadako-js。本家が更新されると、こちらも新しくなる。2026-11-27 までは複製の `s-link.js` を `log.699.jp` から配っていた） |
 | 見出しの書体 | `fonts/`（Google Fonts の Inter 600 の latin と greek。ライセンスは `fonts/OFL.txt`） |
 | 測定室の API | `logdb.699.jp` |
 | AI 計測 | `xcratch.699.jp`（アクセスコードの登録は `699.jp/cp`） |
@@ -170,7 +170,7 @@ s-link-logger（Logger Builder）の測定室を移植したもの。仕組み�
 
 - 元は `manual/index.html`（ふりがなは `{漢字|かんじ}` と書く）。画面写真は `manual/img/`
 - 作り直すとき: `manual/tools/build.sh`（`shots` で画面写真の撮り直し、`pdf` で PDF の作成。引数なしで両方）。Chrome のヘッドレスモードを使う
-- 画面写真は、`s-link.js` をにせもののS-LiNKデバイス（`manual/tools/mock.js`）に差し替えた複製を、台本（`manual/tools/scenes.js`）どおりに動かして撮る。アプリの画面を変えたら撮り直して、説明や番号の位置を見直す
+- 画面写真は、`akadako.js` をにせもののS-LiNKデバイス（`manual/tools/mock.js`）に差し替えた複製を、台本（`manual/tools/scenes.js`）どおりに動かして撮る。アプリの画面を変えたら撮り直して、説明や番号の位置を見直す
 - `mock.js` はにせもののカメラも兼ねる（ヘッドレスの Chrome にはカメラが無いので、絵を描いた canvas の映像を `getUserMedia` で返す。絵は「つくえの上のセンサー」で、値が上がっているあいだは手がうつる）。時計を早回ししたままで、映像も「写真をとる」も動く
 - 場面どうしで記録がまざらないように、撮るときの URL には `?store=off` を付ける。「開き直しても続きから」の写真（`shot-restore.png`）だけは保存を使うので、専用のプロフィールで 2 回開いて撮る（1 回目に記録し、2 回目は実時間で待って撮る）
 - 写真まわりの場面: `memophoto`（メモの枠で写真をとったところ）・`photohover`（10秒ごとに撮ったグラフの黒い丸に乗せたところ）・`phototable`（表のカメラの印に乗せたところ）

@@ -27,11 +27,11 @@ shoot() {
 
 shots() {
   mkdir -p "$WORK" "$ROOT/manual/img"
-  # index.html の複製を作り、s-link.js をにせもののボードとカメラ（mock.js）に差し替えて、台本を足す
-  sed -e 's#<script src="s-link.js"></script>#<script src="mock.js"></script>#' \
+  # index.html の複製を作り、akadako.js をにせもののボードとカメラ（mock.js）に差し替えて、台本を足す
+  sed -e 's#<script src="https://699.jp/src/js/akadako.js"></script>#<script src="mock.js"></script>#' \
       -e 's#</body>#<script src="scenes.js"></script></body>#' \
       "$ROOT/index.html" > "$WORK/app.html"
-  grep -q 'src="mock.js"' "$WORK/app.html" || { echo "s-link.js の読み込みを差し替えられませんでした" >&2; exit 1; }
+  grep -q 'src="mock.js"' "$WORK/app.html" || { echo "akadako.js の読み込みを差し替えられませんでした" >&2; exit 1; }
   cp "$ROOT/manual/tools/mock.js" "$ROOT/manual/tools/scenes.js" "$WORK/"
   for scene in $SCENES; do
     # 台本は時計を早回しして進める（60 秒の記録も数秒で終わる）。にせもののカメラの映像と「写真をとる」も早回しのままで動く。
