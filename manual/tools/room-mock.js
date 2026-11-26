@@ -1,6 +1,7 @@
 // 説明書の「共有しよう」の画面写真を撮るための、にせものの測定室。
 // 測定室のページ（room.html）に読み込むと、サーバーのかわりに 3 つの班の記録を返し、
 // 「重ねて表示」まで進める。URL の #scene=before（重ねただけ）／#scene=after（時間をずらしてそろえた）で場面を選ぶ。
+// #scene=json は、公開中の測定室（上の帯に「JSON」ボタンが出る）の一覧をそのまま撮る。
 // アプリ本体（index.html）では使わない。
 (() => {
   "use strict";
@@ -52,7 +53,7 @@
     }
     return reply({
       now: Date.now(),
-      room: { name: "5年1組 理科", public: false, isOwner: false, lastUploadAt: Date.now() },
+      room: { name: "5年1組 理科", public: scene === "json", isOwner: false, lastUploadAt: NOW },
       devices: data.map(item => ({ ...item.device, lastSeen: Date.now() }))
     });
   };
@@ -60,6 +61,7 @@
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   window.addEventListener("load", async () => {
     await wait(800);
+    if (scene === "json") return;   // 公開中の一覧のまま
     document.getElementById("sel-all").click();
     await wait(200);
     document.getElementById("btn-overlay").click();

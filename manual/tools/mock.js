@@ -1,6 +1,7 @@
-// 説明書の画面写真を撮るための、にせもののS-LiNKデバイスとカメラ。
+// 説明書の画面写真を撮るための、にせもののS-LiNKデバイスとカメラと AI。
 // s-link.js のかわりに読み込むと、「AkaDako」の表示が本物と同じように「接続中」になり、
 // 「センサーを手でにぎる → はなす」ときのような値を返す。左のカードのカメラの映像には、絵（つくえの上のセンサー）が出る。
+// 「しらべる」が AI にきく通信（/agai/ai）には、送られてきた記録の数字を使って、それらしい答えを返す（外には通信しない）。
 // アプリ本体（index.html）では使わない。
 (() => {
   "use strict";
@@ -48,7 +49,8 @@
 
   const board = {
     isConnected: true,
-    board: {},
+    // AI にきくときに、アプリが「本物のデバイスがつながっているか」を確かめるために読む（署名付き UID とファームウェアの版）
+    board: { boardSignedUid: async () => [1, 2, 3, 4], version: { type: 2, major: 3, minor: 1 } },
     onDisconnected() {},
     disconnect() { this.isConnected = false; },
     analog: () => 0,
@@ -69,6 +71,53 @@
       board.isConnected = true;
       return board;
     }
+  };
+
+  // ===== にせものの AI =====
+  // 生成 AI（https://xcratch.699.jp/agai/ai）への要求だけを横取りして、{ content: 答え, error: null } を返す。ほかの通信はそのまま通す。
+  // 「しらべる」の要求は、文のはじめが「あなたは小学生に理科を教える先生です」で始まる。それ以外（AI のタブ）は数字を 1 つ答える
+  const short = time => String(time || "").replace(/\.\d$/, "");   // 10:15:41.8 → 10:15:41
+  function researchAnswer(text) {
+    const sum = /\n(.+?)（(.*?)）: 最小 ([-\d.]+)（.*?）、最大 ([-\d.]+)（(.*?)）、平均 [-\d.]+、はじめ ([-\d.]+)、おわり ([-\d.]+)/.exec(text);
+    if (!sum) return "記録の数が少ないので、まだよく分かりません。もう少し長く記録してみましょう。";
+    const [, name, unit, , max, maxAt, first, last] = sum;
+    const memos = [...((text.split("[メモ]")[1] || "").split("[")[0]).matchAll(/([\d:.]+) 「(.+?)」/g)].map(m => ({ at: short(m[1]), text: m[2] }));
+    if (/\[これまでのやりとり\]/.test(text)) {
+      return `手をはなすと、手のあたたかさがセンサーにつたわらなくなります。すると、センサーのねつがまわりの空気ににげていくので、${name}は少しずつ下がります。`
+        + `はじめの ${first}${unit} に近づくほど、下がり方はゆっくりになります。`;
+    }
+    return [
+      "1. 全体のようす",
+      `${name}は、はじめ ${first}${unit} でした。とちゅうで ${max}${unit} まで上がり、そのあと ${last}${unit} まで下がりました。`,
+      "",
+      "2. 目立つところ",
+      `いちばん高かったのは ${short(maxAt)} の ${max}${unit} です。${memos[0] ? `${memos[0].at} ごろから、急に上がりはじめています。` : ""}`,
+      "",
+      "3. メモとの関係",
+      memos.length >= 2 ? `「${memos[0].text}」のメモのあとで上がり、「${memos[1].text}」のメモのあとで下がっています。`
+        : memos.length ? `「${memos[0].text}」のメモのあとで、値が変わっています。` : "メモはありません。",
+      "",
+      "4. 考えられる理由",
+      "手のあたたかさがセンサーにつたわって、上がったと考えられます。手をはなすと、まわりの空気でひえて下がります。",
+      "",
+      "5. 次にしらべるとよいこと",
+      "・にぎる時間を長くすると、何度まで上がるか",
+      "・手をはなしてから、もとの温度にもどるまでの時間"
+    ].join("\n");
+  }
+  const realFetch = window.fetch ? window.fetch.bind(window) : null;
+  window.fetch = async (url, options) => {
+    if (!String(url).includes("/agai/ai")) {
+      if (!realFetch) throw new TypeError("fetch がありません");
+      return realFetch(url, options);
+    }
+    let text = "";
+    try {
+      const part = JSON.parse(options.body).content.find(one => typeof one.text === "string");
+      text = part ? part.text : "";
+    } catch (error) { /* 読めない要求には、数字を返す */ }
+    const content = text.startsWith("あなたは小学生に理科を教える先生です") ? researchAnswer(text) : "3";
+    return new Response(JSON.stringify({ content, error: null }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
 
   // ===== にせもののカメラ =====

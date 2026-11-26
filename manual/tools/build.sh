@@ -1,7 +1,7 @@
 #!/bin/bash
 # 説明書（manual.pdf）を作り直す。
 #   manual/tools/build.sh shots   … アプリの画面写真を撮り直す（manual/img/shot-*.png。測定室の 2 枚もふくむ）
-#   manual/tools/build.sh room    … 測定室の「重ねて表示」の写真だけを撮り直す（manual/img/shot-share-*.png）
+#   manual/tools/build.sh room    … 測定室のページの写真だけを撮り直す（manual/img/shot-share-*.png。「重ねて表示」と、公開中の「JSON」ボタン）
 #   manual/tools/build.sh pdf     … manual/index.html から manual.pdf を作る
 #   manual/tools/build.sh         … 両方
 # アプリの画面を変えたら shots → 写真を見て manual/index.html の説明や印の位置を直す → pdf の順に。
@@ -10,10 +10,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 WORK="${TMPDIR:-/tmp}/multi-logger-manual"
-SCENES="start connected recording graph hover memo memophoto photohover phototable select table compare overlay extpick extsun extprev room water"
+SCENES="start connected recording graph hover memo memophoto photohover phototable select table compare overlay extpick extsun extprev ask room water"
 # 「共有しよう」の写真は測定室のページ（room.html）を撮る。場所がちがうときは ROOM_HTML で指定する
 ROOM_HTML="${ROOM_HTML:-$ROOT/room.html}"
-ROOM_SCENES="before after"
+ROOM_SCENES="before after json"
 
 PROFILE="$WORK/profile"
 chrome() {

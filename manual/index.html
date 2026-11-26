@@ -128,6 +128,7 @@
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
   .cols.wide-left { grid-template-columns: 1.25fr 1fr; }
   .cols.wide-right { grid-template-columns: 1fr 1.5fr; }
+  .cols.ask-cols { grid-template-columns: 1fr 1.35fr; }
 
   /* 表紙 */
   .cover { padding: 0; }
@@ -180,15 +181,19 @@
   .lamps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 2mm; }
   .lamp { padding: 2mm 3mm; border-radius: 3mm; background: var(--pale); font-size: 10.5pt; line-height: 1.85; text-align: center; }
   .lamp .pill {
-    display: inline-flex; align-items: center; gap: 1.6mm; padding: .6mm 3mm; border-radius: 99mm;
+    display: inline-flex; align-items: center; gap: 1.6mm; padding: .9mm 2.6mm; border-radius: 2.4mm;
     color: white; background: #1583c9; font-size: 9.5pt; font-weight: bold; line-height: 1.9;
+  }
+  /* つながっていないときだけ、ボタンの形（枠つき）。つないでいるところ・つながっている間は、枠の無い平らな表示 */
+  .lamp .btn {
+    display: inline-flex; align-items: center; gap: 1.6mm; padding: 0 2.2mm; border: .45mm solid rgba(255,255,255,.6);
+    border-radius: 99mm; background: rgba(255,255,255,.14);
   }
   .lamp .dot { width: 2.6mm; height: 2.6mm; border-radius: 50%; background: #e9eef2; }
   .lamp .st { padding: 0 1.8mm; border-radius: 99mm; background: rgba(255,255,255,.25); font-size: 8.5pt; }
   .lamp.busy .dot { background: #ffb347; box-shadow: 0 0 0 1mm rgba(255,179,71,.3); }
-  .lamp.on .pill { color: #073b20; background: #56ef9d; }
-  .lamp.on .dot { background: #073b20; }
-  .lamp.on .st { color: #56ef9d; background: #073b20; }
+  .lamp.on .dot { background: #56ef9d; box-shadow: 0 0 0 1mm rgba(86,239,157,.28); }
+  .lamp.on .st { color: #d8ffe9; background: rgba(86,239,157,.3); }
 
   /* センサーの表 */
   .sensors { width: 100%; border-collapse: collapse; font-size: 10.5pt; line-height: 1.85; }
@@ -216,6 +221,26 @@
   }
   .qa dd { margin: 0; padding-left: 8mm; font-size: 10.8pt; break-inside: avoid; }
   .small { font-size: 10.5pt; }
+
+  /* プログラムの文字（等幅）。15 章 */
+  /* 日本語は本文と同じ書体にする（等幅の日本語の書体を PDF に埋めこむと、数 MB 大きくなる） */
+  code, pre.code { font-family: Menlo, Consolas, "Courier New", "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "BIZ UDPGothic", "Yu Gothic", "Meiryo", monospace; }
+  code { padding: 0 .7mm; border-radius: 1mm; color: #14405e; background: #e6f0f7; font-size: .88em; }
+  pre.code {
+    margin: 1.2mm 0 0; padding: 2mm 3.2mm; border: .4mm solid var(--line); border-radius: 2.5mm;
+    color: #14324a; background: #f4f8fb; font-size: 8.2pt; line-height: 1.6; white-space: pre-wrap; word-break: break-all;
+  }
+  .adv { font-size: 10.2pt; line-height: 1.85; }
+  .adv .lead { font-size: 11pt; margin-bottom: 3mm; }
+  .adv .steps > li { margin-bottom: 1.5mm; }
+  .adv .steps > li::before { top: .5mm; }
+  .adv h3 { margin: 3.5mm 0 1.5mm; font-size: 12.5pt; }
+  .keys { width: 100%; border-collapse: collapse; font-size: 9.8pt; line-height: 1.68; }
+  .keys td { padding: .4mm 2mm; border-bottom: .3mm solid var(--line); vertical-align: top; }
+  .keys td:first-child { width: 36mm; white-space: nowrap; }
+  .keys tr:nth-child(even) td { background: #f6fbfe; }
+  .adv .box { font-size: 9.6pt; line-height: 1.72; }
+  .adv .box ul { margin: 0; padding-left: 4.5mm; }
 </style>
 </head>
 <body>
@@ -228,7 +253,7 @@
     <p class="sub">センサーではかって、グラフにしよう</p>
   </div>
   <div class="cover-body">
-    <div class="shot full" style="width:139mm;margin:0 auto"><img src="img/shot-graph.png" alt="アプリの画面"></div>
+    <div class="shot full" style="width:127mm;margin:0 auto"><img src="img/shot-graph.png" alt="アプリの画面"></div>
 
     <h3 style="margin-top:5mm">このアプリでできること</h3>
     <div class="can">
@@ -249,10 +274,12 @@
       <li><span class="n">7</span><span>{自動|じどう}で{写真|しゃしん}をとろう</span></li>
       <li><span class="n">8</span><span>センサーをくらべよう</span></li>
       <li><span class="n">9</span><span>{外部|がいぶ}のデータとくらべよう</span></li>
-      <li><span class="n">10</span><span>センサーのしゅるい</span></li>
-      <li><span class="n">11</span><span>{共有|きょうゆう}しよう</span></li>
-      <li><span class="n">12</span><span>{記録|きろく}をのこそう</span></li>
-      <li><span class="n">13</span><span>こまったときは</span></li>
+      <li><span class="n">10</span><span>AI にしらべてもらおう</span></li>
+      <li><span class="n">11</span><span>センサーのしゅるい</span></li>
+      <li><span class="n">12</span><span>{共有|きょうゆう}しよう</span></li>
+      <li><span class="n">13</span><span>{記録|きろく}をのこそう</span></li>
+      <li><span class="n">14</span><span>こまったときは</span></li>
+      <li><span class="n">15</span><span>（{高度|こうど}な{使|つか}い{方|かた}）プログラム{解析|かいせき}</span></li>
     </ol>
   </div>
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span></span></div>
@@ -269,20 +296,20 @@
   <ol class="steps">
     <li>S-LiNKデバイスとパソコンを、USB ケーブルでつなぎます。</li>
     <li>ブラウザ（Chrome か Edge）で <b>https://log.699.jp/</b> をひらきます。</li>
-    <li>ボタンはおさなくても、{自動|じどう}でつながります。{画面|がめん}の{右上|みぎうえ}の <span class="ui">AkaDako</span> を{見|み}ます。<br>
-      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-start.png" alt="AkaDako が未接続のようす"></div>
+    <li>ボタンはおさなくても、{自動|じどう}でつながります。{画面|がめん}の{右上|みぎうえ}の「センサー」を{見|み}ます。<br>
+      <div class="shot" data-crop="0.565 0.006 0.42 0.074" style="width:140mm"><img src="img/shot-start.png" alt="センサーが未接続のようす"></div>
       <span class="small">ブラウザから「{許可|きょか}しますか」と{聞|き}かれたら、「{許可|きょか}」をえらびます（S-LiNKデバイスとカメラの2つを{聞|き}かれます）。</span>
     </li>
-    <li>{緑色|みどりいろ}になって「{接続中|せつぞくちゅう}」と{出|で}たら、じゅんびができました。<br>
-      <div class="shot" data-crop="0.645 0.006 0.35 0.074" style="width:118mm"><img src="img/shot-connected.png" alt="AkaDako が接続中のようす"></div>
+    <li>{丸|まる}い{印|しるし}が{緑色|みどりいろ}になって「{接続中|せつぞくちゅう}」と{出|で}たら、じゅんびができました。<br>
+      <div class="shot" data-crop="0.565 0.006 0.42 0.074" style="width:140mm"><img src="img/shot-connected.png" alt="センサーが接続中のようす"></div>
     </li>
   </ol>
 
-  <h3>AkaDako の{印|しるし}の{色|いろ}</h3>
+  <h3>「センサー」の{印|しるし}の{色|いろ}</h3>
   <div class="lamps">
-    <div class="lamp"><span class="pill"><span class="dot"></span>AkaDako<span class="st">未接続</span></span><br>{灰色|はいいろ}：つながっていません</div>
-    <div class="lamp busy"><span class="pill"><span class="dot"></span>AkaDako<span class="st">…</span></span><br>オレンジ{色|いろ}でちかちか：つないでいるところです</div>
-    <div class="lamp on"><span class="pill"><span class="dot"></span>AkaDako<span class="st">接続中</span></span><br>{緑色|みどりいろ}：つながりました</div>
+    <div class="lamp"><span class="pill"><span class="btn"><span class="dot"></span>センサー<span class="st">未接続</span></span></span><br>{灰色|はいいろ}：つながっていません（おすと、もう{一度|いちど}さがします）</div>
+    <div class="lamp busy"><span class="pill"><span class="dot"></span>センサー<span class="st">…</span></span><br>オレンジ{色|いろ}でちかちか：つないでいるところです</div>
+    <div class="lamp on"><span class="pill"><span class="dot"></span>センサー<span class="st">接続中</span></span><br>{緑色|みどりいろ}：つながりました</div>
   </div>
   <p class="small" style="margin-top:2mm">ケーブルをぬくと「{未接続|みせつぞく}」にもどります。つなぎ{直|なお}すと、また{自動|じどう}でつながります。</p>
 
@@ -302,41 +329,43 @@
   <div class="head"><span class="no">2</span><h2>{画面|がめん}の{見|み}かた</h2></div>
   <p class="lead">{番号|ばんごう}のところに{何|なに}があるか、たしかめましょう。</p>
 
-  <div class="shot full" style="width:160mm;margin:0 auto">
+  <div class="shot full" style="width:166mm;margin:0 auto">
     <img src="img/shot-graph.png" alt="アプリの画面">
     <span class="pin" style="left:1.2%;top:10.2%">1</span>
-    <span class="pin" style="left:67.1%;top:8.9%">2</span>
-    <span class="pin" style="left:78.1%;top:8.9%">3</span>
-    <span class="pin" style="left:92.2%;top:8.9%">4</span>
-    <span class="pin" style="left:1.3%;top:31%">5</span>
-    <span class="pin" style="left:1.3%;top:44.6%">6</span>
-    <span class="pin" style="left:1.3%;top:58.5%">7</span>
-    <span class="pin" style="left:22%;top:70.3%">8</span>
-    <span class="pin" style="left:1.3%;top:82.2%">9</span>
-    <span class="pin" style="left:1.3%;top:89.2%">10</span>
-    <span class="pin" style="left:8.3%;top:95.3%">11</span>
-    <span class="pin" style="left:62%;top:40%">12</span>
-    <span class="pin" style="left:54%;top:89.5%">13</span>
-    <span class="pin" style="left:24.6%;top:94.9%">14</span>
-    <span class="pin" style="left:81.6%;top:94.9%">15</span>
+    <span class="pin" style="left:60.1%;top:8.9%">2</span>
+    <span class="pin" style="left:71%;top:8.9%">3</span>
+    <span class="pin" style="left:78.6%;top:8.9%">4</span>
+    <span class="pin" style="left:92.2%;top:8.9%">5</span>
+    <span class="pin" style="left:1.3%;top:31%">6</span>
+    <span class="pin" style="left:1.3%;top:44.6%">7</span>
+    <span class="pin" style="left:1.3%;top:58.5%">8</span>
+    <span class="pin" style="left:22%;top:70.3%">9</span>
+    <span class="pin" style="left:1.3%;top:82.2%">10</span>
+    <span class="pin" style="left:1.3%;top:89.2%">11</span>
+    <span class="pin" style="left:8.3%;top:95.3%">12</span>
+    <span class="pin" style="left:62%;top:40%">13</span>
+    <span class="pin" style="left:54%;top:89.5%">14</span>
+    <span class="pin" style="left:24.6%;top:94.9%">15</span>
+    <span class="pin" style="left:81.6%;top:94.9%">16</span>
   </div>
 
   <ul class="parts" style="line-height:1.8">
     <li><span class="pin">1</span><b>センサーのタブ</b><br>はかるものをえらびます。</li>
-    <li><span class="pin">2</span><b>くらべる</b><br>ON にすると、センサーを3つまで{同時|どうじ}にはかれます。</li>
-    <li><span class="pin">3</span><b>AkaDako</b><br>つながっているかがわかります。</li>
-    <li><span class="pin">4</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
-    <li><span class="pin">5</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
-    <li><span class="pin">6</span><b>{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</b><br>{記録|きろく}した{数|かず}をまとめたものです。</li>
-    <li><span class="pin">7</span><b>カメラの{映像|えいぞう}</b><br>パソコンのカメラにうつっているものです。</li>
-    <li><span class="pin">8</span><b>{写真|しゃしん}の{記録|きろく}</b><br>{自動|じどう}で{写真|しゃしん}をとるかをえらびます。</li>
-    <li><span class="pin">9</span><b>グラフ／{表|ひょう}</b><br>{見|み}かたを{切|き}りかえます。</li>
-    <li><span class="pin">10</span><b>{記録|きろく}をはじめる</b><br>おすと{記録|きろく}がはじまり、もう{一度|いちど}おすと{止|と}まります。</li>
-    <li><span class="pin">11</span><b>{記録間隔|きろくかんかく}</b><br>{何秒|なんびょう}ごとに{記録|きろく}するかをえらびます。</li>
-    <li><span class="pin">12</span><b>グラフ</b><br>{横|よこ}が{時刻|じこく}、たてが、はかった{数|かず}です。</li>
-    <li><span class="pin">13</span><b>スクロールバー</b><br>グラフの{見|み}えるところを{動|うご}かします。</li>
-    <li><span class="pin">14</span><b>ダウンロード・コピー・{削除|さくじょ}</b><br>{記録|きろく}をのこしたり、{消|け}したりします。</li>
-    <li><span class="pin">15</span><b>{測定室|そくていしつ}</b><br>みんなの{記録|きろく}を1つの{画面|がめん}にあつめます。</li>
+    <li><span class="pin">2</span><b>くらべる</b><br>センサーを3つまで{同時|どうじ}にはかれます。</li>
+    <li><span class="pin">3</span><b>しらべる</b><br>AI に{記録|きろく}をしらべてもらいます。</li>
+    <li><span class="pin">4</span><b>センサー</b><br>つながっているかがわかります。</li>
+    <li><span class="pin">5</span><b>{使|つか}い{方|かた}</b><br>この{説明書|せつめいしょ}がひらきます。</li>
+    <li><span class="pin">6</span><b>{現在値|げんざいち}</b><br>いま、はかっている{数|かず}です。</li>
+    <li><span class="pin">7</span><b>{最小|さいしょう}・{平均|へいきん}・{最大|さいだい}</b><br>{記録|きろく}した{数|かず}をまとめたものです。</li>
+    <li><span class="pin">8</span><b>カメラの{映像|えいぞう}</b><br>パソコンのカメラにうつっているものです。</li>
+    <li><span class="pin">9</span><b>{写真|しゃしん}の{記録|きろく}</b><br>{自動|じどう}で{写真|しゃしん}をとるかをえらびます。</li>
+    <li><span class="pin">10</span><b>グラフ／{表|ひょう}</b><br>{見|み}かたを{切|き}りかえます。</li>
+    <li><span class="pin">11</span><b>{記録|きろく}をはじめる</b><br>おすとはじまり、もう{一度|いちど}おすと{止|と}まります。</li>
+    <li><span class="pin">12</span><b>{記録間隔|きろくかんかく}</b><br>{何秒|なんびょう}ごとに{記録|きろく}するかをえらびます。</li>
+    <li><span class="pin">13</span><b>グラフ</b><br>{横|よこ}が{時刻|じこく}、たてが、はかった{数|かず}です。</li>
+    <li><span class="pin">14</span><b>スクロールバー</b><br>グラフの{見|み}えるところを{動|うご}かします。</li>
+    <li><span class="pin">15</span><b>ダウンロード・コピー・{削除|さくじょ}</b><br>{記録|きろく}をのこしたり、{消|け}したりします。</li>
+    <li><span class="pin">16</span><b>{測定室|そくていしつ}</b><br>みんなの{記録|きろく}を1つの{画面|がめん}にあつめます。</li>
   </ul>
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>2</span></div>
 </section>
@@ -625,9 +654,64 @@
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>9</span></div>
 </section>
 
+<!-- ========== 11. AI にしらべてもらおう ========== -->
+<section class="page">
+  <div class="head"><span class="no">10</span><h2>AI にしらべてもらおう</h2></div>
+  <p class="lead">{右上|みぎうえ}の「しらべる」で、{記録|きろく}からわかることを AI にしらべてもらえます。</p>
+  <p class="small">つかうには、S-LiNKデバイスをつないでいることと、{特別|とくべつ}な{登録|とうろく}がいります（「AI」のタブとおなじです）。{先生|せんせい}といっしょにつかいましょう。</p>
+
+  <div class="cols ask-cols" style="margin-top:3mm">
+    <div>
+      <ol class="steps">
+        <li>{記録|きろく}をとります。メモを{書|か}いておくと、AI がメモのことも{考|かんが}えてくれます。</li>
+        <li><span class="ui">しらべる</span> をおします。</li>
+        <li>{少|すこ}しまつと、AI の{答|こた}えが{出|で}ます。</li>
+      </ol>
+      <ul class="parts one">
+        <li><span class="pin">1</span><b>しらべた{記録|きろく}</b> … センサーと{時刻|じこく}、グラフです。</li>
+        <li><span class="pin">2</span><b>AI の{答|こた}え</b> … {下|した}にもつづきます。</li>
+        <li><span class="pin">3</span><b>きく</b> … つづけて{聞|き}けます。</li>
+        <li><span class="pin">4</span><b>{印刷|いんさつ}</b> … {紙|かみ}に{出|だ}します。</li>
+        <li><span class="pin">5</span><b>✕</b> … とじます。</li>
+      </ul>
+    </div>
+    <div>
+      <div class="shot" data-crop="0.2 0.01 0.6 0.98">
+        <img src="img/shot-ask.png" alt="しらべるの画面">
+        <span class="pin" style="left:13.5%;top:11.9%">1</span>
+        <span class="pin" style="left:93.6%;top:41.2%">2</span>
+        <span class="pin" style="left:2.8%;top:85.5%">3</span>
+        <span class="pin" style="left:82.6%;top:4.3%">4</span>
+        <span class="pin" style="left:95.3%;top:7.5%">5</span>
+      </div>
+      <p class="cap">{手|て}でにぎった{記録|きろく}を、しらべてもらったところ</p>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top:3mm">
+    <div class="box small" style="margin-top:0">
+      <span class="ttl">AI が{書|か}いてくれること</span>
+      {全体|ぜんたい}のようす、{目立|めだ}つところ、メモとの{関係|かんけい}、{考|かんが}えられる{理由|りゆう}、{次|つぎ}にしらべるとよいこと、の5つです。
+    </div>
+    <div class="box small" style="margin-top:0">
+      <span class="ttl">もっと{聞|き}く・{紙|かみ}に{出|だ}す</span>
+      {下|した}のらんに{聞|き}きたいことを{書|か}いて <span class="ui">きく</span> をおすと、つづけて{答|こた}えてくれます。<span class="ui">{印刷|いんさつ}</span> をおすと、グラフと{答|こた}えを{紙|かみ}に{出|だ}せます。
+    </div>
+  </div>
+  <div class="box warn">
+    <span class="ttl">ちゅうい</span>
+    AI の{答|こた}えは、まちがっていることもあります。{自分|じぶん}の{記録|きろく}とくらべて、たしかめましょう。
+  </div>
+  <div class="box tip">
+    <span class="ttl">おぼえておこう</span>
+    しらべるのは、えらんでいるセンサーの{記録|きろく}の{全部|ぜんぶ}です（{画面|がめん}に{出|で}ていない、{前|まえ}の{時間|じかん}の{分|ぶん}もふくみます）。しらべるの{画面|がめん}を{出|だ}している{間|あいだ}も、はかることと{記録|きろく}はつづきます。
+  </div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>10</span></div>
+</section>
+
 <!-- ========== 10. センサーのしゅるい ========== -->
 <section class="page">
-  <div class="head"><span class="no">10</span><h2>センサーのしゅるい</h2></div>
+  <div class="head"><span class="no">11</span><h2>センサーのしゅるい</h2></div>
 
   <table class="sensors">
     <thead><tr><th>センサー</th><th>はかれるもの</th><th>{単位|たんい}</th></tr></thead>
@@ -670,12 +754,12 @@
       <p class="cap">{水温|すいおん}のタブをおしたときの{案内|あんない}</p>
     </div>
   </div>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>10</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>11</span></div>
 </section>
 
 <!-- ========== 11. 共有しよう（測定室） ========== -->
 <section class="page">
-  <div class="head"><span class="no">11</span><h2>{共有|きょうゆう}しよう</h2></div>
+  <div class="head"><span class="no">12</span><h2>{共有|きょうゆう}しよう</h2></div>
   <h3>{測定室|そくていしつ}に{参加|さんか}する（みんなの{記録|きろく}を1つの{画面|がめん}にあつめる）</h3>
   <div class="cols wide-right">
     <div>
@@ -706,12 +790,12 @@
   </div>
 
   <p class="small" style="margin-top:2mm"><b>{測定室|そくていしつ}をつくるとき（{先生|せんせい}）</b> … <span class="ui">{測定室|そくていしつ}</span> をおして <span class="ui">{作成|さくせい}する</span> をおし、{測定室|そくていしつ}の{名前|なまえ}と{端末|たんまつ}の{名前|なまえ}を{入|い}れると、6けたの ID ができます。この ID をみんなに{知|し}らせます。</p>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>11</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>12</span></div>
 </section>
 
 <!-- ========== 12. 記録をのこそう ========== -->
 <section class="page">
-  <div class="head"><span class="no">12</span><h2>{記録|きろく}をのこそう</h2></div>
+  <div class="head"><span class="no">13</span><h2>{記録|きろく}をのこそう</h2></div>
 
   <div class="shot" data-crop="0.232 0.814 0.752 0.058"><img src="img/shot-graph.png" alt="ダウンロード・コピー・削除・測定室のボタン"></div>
   <ul class="parts" style="margin-top:2mm;grid-template-columns:1fr">
@@ -734,28 +818,28 @@
     <span class="ttl">みんなでつかうパソコンでは</span>
     {前|まえ}につかった{人|ひと}の{記録|きろく}や{写真|しゃしん}が、つぎの{人|ひと}にも{見|み}えます。つかいおわったら、<span class="ui">{削除|さくじょ}</span> をおして{消|け}しておきましょう。
   </div>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>12</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>13</span></div>
 </section>
 
 <!-- ========== 13. こまったときは ========== -->
 <section class="page">
-  <div class="head"><span class="no">13</span><h2>こまったときは</h2></div>
+  <div class="head"><span class="no">14</span><h2>こまったときは</h2></div>
 
   <dl class="qa">
-    <dt>「AkaDako」が「{接続中|せつぞくちゅう}」にならない</dt>
-    <dd>USB ケーブルをさし{直|なお}します。それでもだめなら、{右上|みぎうえ}の「AkaDako {未接続|みせつぞく}」をおします。</dd>
+    <dt>{右上|みぎうえ}の「センサー」が「{接続中|せつぞくちゅう}」にならない</dt>
+    <dd>USB ケーブルをさし{直|なお}します。それでもだめなら、{右上|みぎうえ}の「センサー {未接続|みせつぞく}」をおします。</dd>
     <dt>「S-LiNKデバイスが{接続|せつぞく}されていません」と{出|で}た</dt>
     <dd>S-LiNKデバイスをつかうときは「いいえ」をおして、ケーブルをたしかめます。ないときは「はい」をおすと、デモモードになり、にせものの{数字|すうじ}で{画面|がめん}をためせます。もどるときは{上|うえ}の「{終了|しゅうりょう}」をおします。</dd>
     <dt>グラフが{出|で}ない・「{記録|きろく}をはじめる」がおせない</dt>
-    <dd>{右上|みぎうえ}の「AkaDako」は{緑色|みどりいろ}（{接続中|せつぞくちゅう}）ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
+    <dd>{右上|みぎうえ}の「センサー」は{緑色|みどりいろ}（{接続中|せつぞくちゅう}）ですか。「{記録|きろく}をはじめる」はおしましたか。</dd>
     <dt>カメラの{映像|えいぞう}が{出|で}ない・{写真|しゃしん}がとれない</dt>
     <dd>カメラのわくに{理由|りゆう}が{出|で}ています。カメラをつかうことを「{許可|きょか}」しているか、ほかのアプリがカメラをつかっていないかをたしかめて、わくの「もう{一度|いちど}ためす」をおします。カメラのないパソコンでは、{写真|しゃしん}はとれません。</dd>
     <dt>「{動|うご}き」「{音量|おんりょう}」がはかれない</dt>
     <dd>カメラやマイクをつかうことを「{許可|きょか}」しているか、たしかめます。</dd>
     <dt>「{外部|がいぶ}のデータは{見|み}るだけです」と{出|で}て、{記録|きろく}できない</dt>
     <dd>「{外部|がいぶ}」だけをえらんでいます。<span class="ui">くらべる</span> を ON にして、センサーのタブと「{外部|がいぶ}」のタブをえらぶと、{記録|きろく}にならびます。</dd>
-    <dt>「このファイルは{読|よ}めませんでした」と{出|で}た</dt>
-    <dd>「{前|まえ}の{記録|きろく}」でえらべるのは、このアプリの <span class="ui">ダウンロード</span> でのこした CSV か ZIP だけです。</dd>
+    <dt>「しらべる」をおしても、AI の{答|こた}えが{出|で}ない</dt>
+    <dd>S-LiNKデバイスをつないでいますか。{登録|とうろく}の{案内|あんない}が{出|で}たときは、{先生|せんせい}に{聞|き}きます。「しらべる{記録|きろく}がありません」と{出|で}たときは、{先|さき}に{記録|きろく}します。</dd>
     <dt>ひらいたら、{前|まえ}の{記録|きろく}が{出|で}てきた</dt>
     <dd>{前|まえ}の{記録|きろく}がのこっているからです。つづきから{記録|きろく}できます。いらないときは <span class="ui">{削除|さくじょ}</span> をおします。</dd>
     <dt>「ほかのタブでも{開|ひら}いているので、このタブの{記録|きろく}は{保存|ほぞん}されません」と{出|で}た</dt>
@@ -764,7 +848,64 @@
     <dd>このページがほかのタブやウィンドウのうしろにかくれると、{記録|きろく}がおそくなります。はかっているあいだは、このページを{前|まえ}に{出|だ}したままにします。パソコンがスリープすると、{記録|きろく}は{止|と}まります。</dd>
   </dl>
   <p class="small" style="margin-top:2mm">それでもなおらないときは、{先生|せんせい}に{聞|き}きましょう。</p>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>13</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>14</span></div>
+</section>
+
+<!-- ========== 16. （高度な使い方）プログラム解析 ========== -->
+<section class="page adv">
+  <div class="head"><span class="no">15</span><h2>（{高度|こうど}な{使|つか}い{方|かた}）プログラム{解析|かいせき}</h2></div>
+  <p class="lead">{測定室|そくていしつ}にあつめた{記録|きろく}を、{自分|じぶん}のプログラムから{読|よ}んでつかえます（{先生|せんせい}むけ）。</p>
+
+  <div class="shot" data-crop="0 0 1 0.1">
+    <img src="img/shot-share-json.png" alt="公開中の測定室のページの上の帯">
+    <span class="pin" style="left:91%;top:80%">1</span>
+  </div>
+  <ol class="steps" style="margin-top:2.5mm">
+    <li>{測定室|そくていしつ}をつくった{人|ひと}が、{測定室|そくていしつ}を「{公開|こうかい}する」にします。{測定室|そくていしつ}のページの{上|うえ}の{帯|おび}に <span class="ui">JSON</span> ボタンが{出|で}ます（{公開|こうかい}していない{間|あいだ}は{出|で}ません）。</li>
+    <li><span class="ui">JSON</span> をおすと、その{測定室|そくていしつ}の{測定|そくてい}の{結果|けっか}が、JSON という{形|かたち}（プログラムが{読|よ}みやすい{文字|もじ}のならび）で、{新|あたら}しいタブに{出|で}ます。</li>
+    <li>そのタブの URL が、{測定|そくてい}の{結果|けっか}を{返|かえ}す Web API です。この URL を{自分|じぶん}のプログラムから{読|よ}めば、{値|あたい}をつかえます（グラフを{自分|じぶん}でつくる、{値|あたい}が{大|おお}きくなったら{知|し}らせる、など）。
+      <pre class="code">https://logdb.699.jp/r/（測定室の内部の ID）?format=json</pre>
+    </li>
+  </ol>
+
+  <h3>JSON の{中身|なかみ}（おもなもの）</h3>
+  <table class="keys">
+    <tr><td><code>room</code></td><td>{測定室|そくていしつ}の{名前|なまえ}（<code>name</code>）など</td></tr>
+    <tr><td><code>devices</code></td><td>{参加|さんか}している{端末|たんまつ}のならび。{端末|たんまつ}ごとに、{下|した}のものが{入|はい}っています</td></tr>
+    <tr><td>　<code>name</code></td><td>{端末|たんまつ}の{名前|なまえ}</td></tr>
+    <tr><td>　<code>sensors</code></td><td>センサーのならび（<code>key</code>・<code>name</code>・<code>unit</code>）</td></tr>
+    <tr><td>　<code>lastValues</code></td><td>いまの{値|あたい}（{例|れい}: <code>{"temperature": 25.3, "humidity": 48.2}</code>）</td></tr>
+    <tr><td>　<code>rowCount</code></td><td>{記録|きろく}の{数|かず}</td></tr>
+    <tr><td>　<code>startedAt</code></td><td>{記録|きろく}をはじめた{時刻|じこく}（1970{年|ねん}からのミリ{秒|びょう}）</td></tr>
+    <tr><td>　<code>summary.points</code></td><td>{記録|きろく}。<code>[番号, はじめからの時間（ミリ秒）, 値, 値, …]</code> のならびです。{値|あたい}は <code>sensors</code> の{順|じゅん}。{多|おお}いときは300{点|てん}までに{間引|まび}かれます</td></tr>
+  </table>
+
+  <div class="cols" style="grid-template-columns:1.45fr 1fr;margin-top:1mm">
+    <div>
+      <h3>プログラムの{例|れい}（Python）</h3>
+      <pre class="code">import json, urllib.request
+
+URL = "https://logdb.699.jp/r/（内部のID）?format=json"
+data = json.load(urllib.request.urlopen(URL))
+for d in data["devices"]:
+    print(d["name"], d["lastValues"])
+
+# 実行すると、つぎのように出ます
+# 1班 {'humidity': 48.2, 'temperature': 25.3}</pre>
+      <p style="margin-top:1.5mm">{全部|ぜんぶ}の{記録|きろく}がほしいときは、つぎの URL を{読|よ}みます（<code>rows</code> に、{間引|まび}いていない{記録|きろく}が{同|おな}じ{形|かたち}で{入|はい}っています）。</p>
+      <pre class="code">https://logdb.699.jp/rooms/（内部の ID）/devices/（端末の deviceId）/rows?from=0</pre>
+    </div>
+    <div class="box warn" style="margin-top:3.5mm">
+      <span class="ttl">{気|き}をつけること</span>
+      <ul>
+        <li>つかえるのは、{測定室|そくていしつ}を{公開|こうかい}している{間|あいだ}だけです。{公開|こうかい}をやめると、{読|よ}めなくなります（エラーになります）。</li>
+        <li>{公開|こうかい}している{間|あいだ}は、URL を{知|し}っている{人|ひと}はだれでも、{測定|そくてい}の{値|あたい}・メモ・{写真|しゃしん}を{見|み}られます。</li>
+        <li>{端末|たんまつ}は5{秒|びょう}ごとに{値|あたい}を{送|おく}ります。プログラムから{読|よ}むのも、5{秒|びょう}に1{回|かい}くらいまでにします。</li>
+        <li>{測定室|そくていしつ}は、さいごに{値|あたい}が{送|おく}られてから1{週間|しゅうかん}で{消|き}えます。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>15</span></div>
 </section>
 
 <script>

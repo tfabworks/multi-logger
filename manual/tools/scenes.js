@@ -287,6 +287,16 @@
       $("layoutOverlay").click();
     },
 
+    // 「しらべる」: 記録とメモを AI（mock.js のにせもの）にしらべてもらったところ。答えのはじめが見えるように上へもどし、つづきの質問を書きかけにする
+    async ask() {
+      await scenes.graph();
+      $("askBtn").click();
+      await wait(800);
+      $("askLog").scrollTop = 0;
+      $("askInput").value = "どうして、手をはなすと下がるの？";
+      if (document.activeElement) document.activeElement.blur();
+    },
+
     async room() {
       await scenes.graph();
       $("shareBtn").click();
