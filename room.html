@@ -969,40 +969,34 @@
       ctx.fillStyle = 'white'; ctx.fill();
       ctx.strokeStyle = s.color; ctx.lineWidth = 3; ctx.stroke();
       var text = (panel.titled ? s.name + ' ' : '') + fmtVal(item[1], s) + (s.unit ? ' ' + s.unit : '');
+      // 主センサー（さいごのセンサー）の記録にメモがあれば、値の枠のすぐ下に、文（黄色い枠）と写真の見本を出す（手元の画面と同じ）
+      var memo = panel.si === series.length - 1 && opts && opts.memoAt ? opts.memoAt(item[0]) : null;
+      var memoText = memo && memo.text ? (memo.text.length > 28 ? memo.text.slice(0, 28) + '…' : memo.text) : '';
+      var ph = memo && memo.photo && opts.photoFor ? opts.photoFor(memo) : null;
+      var pic = ph && ph.state === 'ok' ? ph.img : null;
+      var picW = pic ? 104 : 0, picH = pic ? Math.round(104 * pic.naturalHeight / pic.naturalWidth) : 0;
       ctx.font = font;
-      var bw = ctx.measureText(text).width + pad * 2;
+      var bw = Math.max(Math.max(ctx.measureText(text).width, memoText ? ctx.measureText(memoText).width : 0) + pad * 2, picW);
       var bx = px + 12 + bw > rightEdge ? px - 12 - bw : px + 12;
-      var by = Math.min(panel.bottom - boxH - 2, Math.max(panel.top + 2, y - boxH / 2));
+      var textH = boxH * (memoText ? 2 : 1), h = textH + (pic ? picH + 3 : 0);
+      var by = Math.min(panel.bottom - h - 2, Math.max(panel.top + 2, y - boxH / 2));
       // 先に出した枠と重なったら、どれとも重ならない位置を下（下に無ければ上）にさがす
-      var free = function (top) { return !placed.some(function (b) { return top < b.y + b.h + 4 && b.y < top + boxH + 4; }); };
+      var free = function (top) { return !placed.some(function (b) { return top < b.y + b.h + 4 && b.y < top + h + 4; }); };
       if (!free(by)) {
-        var below = placed.map(function (b) { return b.y + b.h + 4; }).filter(function (top) { return top >= by && top + boxH <= panel.bottom && free(top); });
-        var above = placed.map(function (b) { return b.y - boxH - 4; }).filter(function (top) { return top <= by && top >= panel.top && free(top); });
+        var below = placed.map(function (b) { return b.y + b.h + 4; }).filter(function (top) { return top >= by && top + h <= panel.bottom && free(top); });
+        var above = placed.map(function (b) { return b.y - h - 4; }).filter(function (top) { return top <= by && top >= panel.top && free(top); });
         if (below.length) by = Math.min.apply(null, below);
         else if (above.length) by = Math.max.apply(null, above);
       }
       drawBox(text, bx, by, s.color, 'white');
-      placed.push({y: by, h: boxH});
+      if (memoText) drawBox(memoText, bx, by + boxH, '#fff3bf', '#3a4550');   // メモは値の下に黄色で
+      if (pic) {
+        var pl = Math.min(rightEdge - picW, Math.max(g.left, bx));
+        ctx.drawImage(pic, pl, by + textH + 3, picW, picH);
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(pl, by + textH + 3, picW, picH);
+      }
+      placed.push({y: by, h: h});
     });
-    // その記録のメモ（文は黄色い枠、写真は読めていれば小さく）。時刻の枠の下に出す
-    var memo = opts && opts.memoAt ? opts.memoAt(ref[0]) : null;
-    if (memo) {
-      var my = g.timeY + boxH + 4;
-      if (memo.text) {
-        var mt = memo.text.length > 28 ? memo.text.slice(0, 28) + '…' : memo.text;
-        ctx.font = font;
-        var mw = ctx.measureText(mt).width + pad * 2;
-        drawBox(mt, x + 8 + mw > rightEdge ? x - 8 - mw : x + 8, my, '#fff3bf', '#3a4550');
-        my += boxH + 3;
-      }
-      var ph = memo.photo && opts.photoFor ? opts.photoFor(memo) : null;
-      if (ph && ph.state === 'ok') {
-        var pw = 120, phh = Math.round(pw * ph.img.naturalHeight / ph.img.naturalWidth);
-        var pl = Math.min(rightEdge - pw, Math.max(g.left, x + 8 + pw > rightEdge ? x - 8 - pw : x + 8));
-        ctx.drawImage(ph.img, pl, my, pw, phh);
-        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(pl, my, pw, phh);
-      }
-    }
     ctx.restore();
   }
   // タイルの小さなグラフ。目盛りは出さず、線だけ（センサーが 1 つなら下を塗る。2 つ以上は、それぞれの範囲いっぱいに重ねる）
