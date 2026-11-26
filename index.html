@@ -1106,6 +1106,7 @@
     .ext-body .ext-err { margin: 9px 0 0; color: #c0392b; font-size: .82rem; }
     .ext-body .ext-err[hidden] { display: none; }
     .ext-body .dialog-actions { margin-top: 16px; }
+    #extDialog { max-height: calc(100vh - 24px); overflow: auto; }
 
     /* ===== カメラの映像と写真 ===== */
     /* 左のカード: カメラの映像（いつも出す）と、その下の「写真の記録」 */
@@ -1803,6 +1804,14 @@
           <option value="start">はじまりをそろえる</option>
           <option value="clock">時刻をそろえる</option>
         </select></label>
+      </div>
+      <label class="ext-choice"><input type="radio" name="extType" value="amedas"><span><b>アメダス</b><small>気象庁が全国ではかっている、雨・風・日照（10 分ごと）</small></span></label>
+      <div id="extAmedasBox" class="ext-detail" hidden>
+        <label>都道府県<select id="extAmPref"></select></label>
+        <label>地点<select id="extAmStation"></select></label>
+        <label>項目<select id="extAmItem"></select></label>
+        <span id="extAmNote" class="ext-file-name"></span>
+        <span>出典：気象庁</span>
       </div>
       <p id="extErr" class="ext-err" hidden></p>
       <div class="dialog-actions">
@@ -2984,6 +2993,11 @@
         extColBox: document.getElementById("extColBox"),
         extCol: document.getElementById("extCol"),
         extAlign: document.getElementById("extAlign"),
+        extAmedasBox: document.getElementById("extAmedasBox"),
+        extAmPref: document.getElementById("extAmPref"),
+        extAmStation: document.getElementById("extAmStation"),
+        extAmItem: document.getElementById("extAmItem"),
+        extAmNote: document.getElementById("extAmNote"),
         extErr: document.getElementById("extErr"),
         extCancel: document.getElementById("extCancel"),
         extOk: document.getElementById("extOk"),
@@ -3676,6 +3690,7 @@
           : !isOverlay() ? `横軸：時刻（共通）　縦軸：上から ${keys.map(label).join("・")}`
           : overlayAxes(keys).length === 1 ? `横軸：時刻　縦軸：${keys.map(label).join("・")}（共通の軸）`
           : `横軸：時刻　縦軸：${overlayAxes(keys).map((members, a) => `${OVERLAY_SIDES[a]} ${members.map(n => label(keys[n])).join("と")}`).join("・")}`;
+        if (keys.includes("external") && ext.type === "amedas") els.chartDescription.textContent += "　出典：気象庁（アメダス）";
       }
 
       // タブを押したとき: 「くらべる」が OFF なら切り替え、ON なら追加する
@@ -4249,6 +4264,7 @@
       function niceScale(values, sensor, ticks) {
         let rawMin = Math.min(...values);
         let rawMax = Math.max(...values);
+        const neverNegative = rawMin >= 0;
         if (rawMin === rawMax) {
           // 整数で記録する項目（動き・音量・AIの数）は値が同じでも軸が潰れないよう広めに取る
           const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 || sensor.decimals === null ? 5 : 1);
@@ -4257,7 +4273,8 @@
         }
         const range = rawMax - rawMin;
         const step = niceStep(range * 1.18, ticks);
-        const yMin = Math.floor((rawMin - range * 0.09) / step) * step;
+        // 値が全部 0 以上なら、軸を 0 より下に広げない（太陽の高さ・照度・降水量などで、マイナスの目盛りが出ないように）
+        const yMin = Math.max(neverNegative ? 0 : -Infinity, Math.floor((rawMin - range * 0.09) / step) * step);
         const yMax = Math.ceil((rawMax + range * 0.09) / step) * step;
         return { yMin, yMax, step, count: Math.round((yMax - yMin) / step) };
       }
@@ -5423,11 +5440,77 @@
         ["鹿児島県", 31.56, 130.56], ["沖縄県", 26.21, 127.68]
       ];
       // type: null（まだえらんでいない）/ "sun" / "file"。file: { name, series: [{ name, unit, points: [[時刻ms, 値], ...] }] }
-      const ext = { type: null, pref: "東京都", align: "start", col: 0, file: null };
+      //       "amedas" のとき station: { id, name, pref }, item: 項目（AMEDAS_ITEMS のキー）
+      const ext = { type: null, pref: "東京都", align: "start", col: 0, file: null, station: null, item: "rain" };
       let extVersion = 0;   // えらび直すたびに 1 ふやす（作り直しの合図）
       let extSig = "";      // いまの dataStore.external を作ったときの条件
       function extReady() {
-        return ext.type === "sun" || (ext.type === "file" && Boolean(ext.file && ext.file.series[ext.col]));
+        return ext.type === "sun" || (ext.type === "file" && Boolean(ext.file && ext.file.series[ext.col]))
+          || (ext.type === "amedas" && Boolean(ext.station && AMEDAS_ITEMS[ext.item]));
+      }
+      // ---- アメダス（気象庁） ----
+      // 値は logdb.699.jp が気象庁から取ってきたものを受け取る（*.699.jp だけで動かすため）。10 分ごとの値で、新しい値は観測から 10〜20 分おくれて出る。
+      // 行: [時刻(ms), 降水量(mm), 風速(m/s), 風向(1〜16。0 は静穏), 日照時間(分)]。時刻は、その 10 分間のおわり。さかのぼれるのは約 10 日
+      const AMEDAS_ITEMS = {
+        rain: { name: "降水量", unit: "mm", decimals: 1, col: 1, flag: 0, step: true },       // その 10 分間に降った量
+        wind: { name: "風速", unit: "m/s", decimals: 1, col: 2, flag: 1, step: false },
+        windDir: { name: "風向", unit: "°", decimals: 0, col: 3, flag: 2, step: true },       // 北が 0°、東が 90°、南が 180°、西が 270°
+        sun: { name: "日照時間", unit: "分", decimals: 0, col: 4, flag: 3, step: true }        // その 10 分間のうち、日が照っていた時間
+      };
+      const CAPITALS = {   // 都道府県をえらんだときに、はじめに出す地点（県庁のある市。ここに無い県は、県の名前と同じ地点）
+        北海道: "札幌", 岩手県: "盛岡", 宮城県: "仙台", 茨城県: "水戸", 栃木県: "宇都宮", 群馬県: "前橋", 埼玉県: "さいたま", 東京都: "東京", 神奈川県: "横浜",
+        石川県: "金沢", 山梨県: "甲府", 愛知県: "名古屋", 三重県: "津", 滋賀県: "大津", 兵庫県: "神戸", 島根県: "松江", 香川県: "高松", 愛媛県: "松山", 沖縄県: "那覇"
+      };
+      const amedas = { key: "", rows: [], from: 0, at: 0, loading: false, error: "" };
+      let amedasStations = null;   // [[番号, 名前, 都道府県, 項目の印], ...]。えらぶ画面で「アメダス」をえらんだときに読む
+      // 時刻 ms の値。降水量・日照時間・風向は、その時刻をふくむ 10 分間の値（まだ出ていなければ null）。風速は前後の値のあいだをまっすぐ結ぶ
+      function amedasValue(ms) {
+        const item = AMEDAS_ITEMS[ext.item], rows = ext.station && amedas.key === ext.station.id ? amedas.rows : [];
+        if (!item || !rows.length || ms > rows[rows.length - 1][0] || ms < rows[0][0] - 600000) return null;
+        let lo = 0, hi = rows.length - 1;
+        while (lo < hi) {   // ms 以上で、いちばん早い行
+          const mid = (lo + hi) >> 1;
+          if (rows[mid][0] >= ms) hi = mid; else lo = mid + 1;
+        }
+        const raw = rows[lo][item.col];
+        if (raw === null || raw === undefined) return null;
+        if (ext.item === "windDir") return raw === 0 ? null : (raw % 16) * 22.5;   // 16 方位の番号（16 が北）→ 角度。風が無いとき（0）は値なし
+        if (item.step) return raw;
+        const prev = lo > 0 ? rows[lo - 1] : null;
+        if (!prev || prev[item.col] === null || prev[item.col] === undefined) return raw;
+        return prev[item.col] + (raw - prev[item.col]) * (ms - prev[0]) / (rows[lo][0] - prev[0]);
+      }
+      function amedasLatest() {
+        const rows = ext.station && amedas.key === ext.station.id ? amedas.rows : [];
+        for (let i = rows.length - 1; i >= 0; i--) {
+          const value = amedasValue(rows[i][0]);
+          if (value !== null) return value;
+        }
+        return null;
+      }
+      // 要る時間帯（今日の 0 時か、主センサーの記録のはじめの、早いほうから）を取りに行く。5 分たつまでは取り直さない
+      async function loadAmedas(force = false) {
+        if (ext.type !== "amedas" || !ext.station || amedas.loading || !activeKeys().includes("external")) return;
+        const key = ext.station.id, now = Date.now(), today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const base = selectedSensor !== "external" ? dataStore[selectedSensor] : [];
+        const from = Math.max(now - 10 * 86400000, Math.min(today.getTime(), base.length ? base[0].time.getTime() : now));
+        if (!force && amedas.key === key && amedas.from <= from && now - amedas.at < 5 * 60000) return;
+        amedas.loading = true;
+        try {
+          const res = await shareApi("GET", `/amedas/${key}?from=${Math.floor(from)}&to=${now}`);
+          if (!ext.station || ext.station.id !== key) return;
+          Object.assign(amedas, { key, rows: Array.isArray(res.rows) ? res.rows : [], from, at: Date.now(), error: "" });
+          extVersion += 1;   // 線を作り直す（空だったところが、届いた値で埋まる）
+          resetTable();
+          updateSummary();
+          refreshView();
+        } catch (error) {
+          console.warn("[外部] アメダスを取れませんでした", error);
+          Object.assign(amedas, { key, from, error: "アメダスのデータを取れませんでした", at: Date.now() - 4 * 60000 });   // 1 分後にもう一度
+        } finally {
+          amedas.loading = false;
+        }
       }
       // 太陽の高さ（度）。地平線が 0、真上が 90、しずんでいる間はマイナス（画面に出すときは 0 にする → extValueAt）。天文年鑑の略算式（誤差は 0.1 度より小さい）
       function sunElevation(ms, lat, lon) {
@@ -5455,6 +5538,7 @@
       }
       // 時刻 ms の値。baseT0 は、いまの記録のはじまりの時刻（前の記録をそろえる基準）
       function extValueAt(ms, baseT0) {
+        if (ext.type === "amedas") return amedasValue(ms);
         if (ext.type === "sun") {
           const place = PREFS.find(pref => pref[0] === ext.pref) || PREFS[12];
           return Math.max(0, sunElevation(ms, place[1], place[2]));   // しずんでいる間（マイナス）は 0° にする（「太陽が出ていない＝0」。昼の山も大きく見える）
@@ -5470,6 +5554,9 @@
         const def = sensors.external;
         if (ext.type === "sun") {
           Object.assign(def, { name: "太陽の高さ", unit: "°", csvUnit: "°", decimals: 1 });
+        } else if (ext.type === "amedas" && extReady()) {
+          const item = AMEDAS_ITEMS[ext.item];
+          Object.assign(def, { name: `${ext.station.name}の${item.name}`, unit: item.unit, csvUnit: item.unit, decimals: item.decimals });
         } else if (extReady()) {
           const series = ext.file.series[ext.col];
           const same = Object.keys(sensors).map(key => sensors[key]).find(sensor => sensor !== def && sensor.name === series.name);   // 同じ名前のセンサーがあれば、単位と桁を合わせる（軸を共通にできる）
@@ -5482,6 +5569,11 @@
       function extNow() {
         if (!extReady()) throw new SensorNoticeError("「外部」のタブを押して、データをえらんでください");
         const alone = selectedSensor === "external";
+        if (ext.type === "amedas") {   // いま出ている、いちばん新しい値（観測から 10〜20 分おくれる）
+          const latest = amedasLatest();
+          if (latest === null) throw new SensorNoticeError(amedas.error || (amedas.at ? "この項目の値が、まだ出ていません" : "アメダスのデータを読みこんでいます…"));
+          return latest;
+        }
         if (ext.type === "file" && alone) throw new SensorNoticeError(`${ext.file.name} の記録を表示しています`);
         const base = alone ? [] : dataStore[selectedSensor];
         const now = Date.now();
@@ -5494,6 +5586,7 @@
         const list = dataStore.external;
         const clear = () => { if (list.length) { list.length = 0; timeIndex.external = null; } extSig = ""; };
         if (!activeKeys().includes("external") || !extReady()) { clear(); return; }
+        if (ext.type === "amedas") loadAmedas();   // 足りなければ取りに行く（届いたら作り直す）
         const alone = selectedSensor === "external";
         const base = alone ? null : dataStore[selectedSensor];
         const today = new Date();
@@ -5514,6 +5607,11 @@
             const t = today.getTime() + n * 600000;
             list.push({ time: new Date(t), value: extValueAt(t, t), seq: n + 1 });
           }
+        } else if (ext.type === "amedas") {
+          amedas.rows.forEach(row => {   // 今日の 0 時から、いま出ているところまで
+            const value = row[0] >= today.getTime() ? amedasValue(row[0]) : null;
+            if (value !== null) list.push({ time: new Date(row[0]), value, seq: list.length + 1 });
+          });
         } else {
           ext.file.series[ext.col].points.forEach(([t, value], n) => list.push({ time: new Date(t), value, seq: n + 1 }));
         }
@@ -5527,6 +5625,7 @@
         resetTable();
         store.metaPut("extFile", ext.file);
         store.touchUi();
+        if (ext.type === "amedas") loadAmedas(true);
       }
 
       // ---- ファイル（このアプリで保存した CSV・ZIP）を読む ----
@@ -5609,6 +5708,8 @@
         const type = extDialogType();
         els.extSunBox.hidden = type !== "sun";
         els.extFileBox.hidden = type !== "file";
+        els.extAmedasBox.hidden = type !== "amedas";
+        if (type === "amedas") loadAmedasStations();
         els.extFileName.textContent = extPicked ? extPicked.name : "まだえらんでいません";
         const series = extPicked ? extPicked.series : [];
         els.extColBox.hidden = series.length < 2;
@@ -5621,9 +5722,45 @@
         }));
         if (series[Number(current)]) els.extCol.value = current;
       }
+      // アメダスの地点の一覧（はじめて「アメダス」をえらんだときに読む）と、都道府県 → 地点 → 項目のえらぶ欄
+      let amedasWant = null;   // えらぶ欄にはじめに出しておく内容 { pref, id, item }
+      async function loadAmedasStations() {
+        if (!amedasStations) {
+          els.extAmNote.textContent = "地点を読みこんでいます…";
+          try {
+            amedasStations = (await shareApi("GET", "/amedas/stations")).stations;
+            els.extAmNote.textContent = "";
+          } catch (error) {
+            console.warn("[外部] アメダスの地点を読めませんでした", error);
+            els.extAmNote.textContent = "地点の一覧を読めませんでした。少ししてから、もう一度えらんでください";
+          }
+        }
+        renderAmedasPicker(amedasWant);
+        amedasWant = null;
+      }
+      function fillSelect(select, pairs, value) {
+        select.replaceChildren(...pairs.map(([key, label]) => {
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = label;
+          return option;
+        }));
+        if (pairs.some(([key]) => key === value)) select.value = value;
+      }
+      function renderAmedasPicker(want) {
+        const list = amedasStations || [];
+        fillSelect(els.extAmPref, PREFS.map(([name]) => [name, name]), (want && want.pref) || els.extAmPref.value || ext.pref);
+        const pref = els.extAmPref.value, inPref = list.filter(station => station[2] === pref);
+        const capital = inPref.find(station => station[1] === (CAPITALS[pref] || pref.replace(/[都府県]$/, "")));
+        fillSelect(els.extAmStation, inPref.map(station => [station[0], station[1]]), (want && want.id) || (capital ? capital[0] : ""));
+        const station = list.find(one => one[0] === els.extAmStation.value);
+        const items = Object.keys(AMEDAS_ITEMS).filter(key => station && station[3][AMEDAS_ITEMS[key].flag] === "1");   // その地点ではかっている項目だけ
+        fillSelect(els.extAmItem, items.map(key => [key, AMEDAS_ITEMS[key].name]), (want && want.item) || els.extAmItem.value);
+      }
       function openExtDialog() {
         extPicked = ext.file;
-        els.extDialog.querySelector(`input[name="extType"][value="${ext.type === "file" ? "file" : "sun"}"]`).checked = true;
+        amedasWant = ext.station ? { pref: ext.station.pref, id: ext.station.id, item: ext.item } : null;
+        els.extDialog.querySelector(`input[name="extType"][value="${["file", "amedas"].includes(ext.type) ? ext.type : "sun"}"]`).checked = true;
         els.extPref.value = ext.pref;
         els.extAlign.value = ext.align;
         els.extErr.hidden = true;
@@ -5643,7 +5780,14 @@
           els.extErr.hidden = false;
           return;
         }
+        const station = type === "amedas" ? (amedasStations || []).find(one => one[0] === els.extAmStation.value) : null;
+        if (type === "amedas" && (!station || !AMEDAS_ITEMS[els.extAmItem.value])) {
+          els.extErr.textContent = "地点と項目をえらんでください";
+          els.extErr.hidden = false;
+          return;
+        }
         applyExternal(type === "sun" ? { type, pref: els.extPref.value }
+          : type === "amedas" ? { type, station: { id: station[0], name: station[1], pref: station[2] }, item: els.extAmItem.value }
           : { type, file: extPicked, col: Number(els.extCol.value) || 0, align: els.extAlign.value });
         closeExtDialog();
         if (aiMode || !activeKeys().includes("external")) pickSensor("external");
@@ -5663,7 +5807,7 @@
           compareOn, compareKeys: [...compareKeys], overlay, view: viewMode,
           interval: els.intervalSelect.value, photoMode: els.photoMode.value, aiPrompt: els.aiPrompt.value,
           seq: { ...seqCounters }, fine: { ...fineTime },
-          external: { type: ext.type, pref: ext.pref, align: ext.align, col: ext.col }
+          external: { type: ext.type, pref: ext.pref, align: ext.align, col: ext.col, station: ext.station, item: ext.item }
         };
       }
       const store = (() => {
@@ -5814,8 +5958,12 @@
         // 外部のデータ（えらんだ内容と、前の記録のファイル）
         const savedExt = ui.external || {};
         const file = saved.extFile && Array.isArray(saved.extFile.series) ? saved.extFile : null;
+        const station = savedExt.station && /^\d{5}$/.test(String(savedExt.station.id)) && typeof savedExt.station.name === "string"
+          ? { id: String(savedExt.station.id), name: savedExt.station.name, pref: String(savedExt.station.pref || "") } : null;
         Object.assign(ext, {
-          type: savedExt.type === "sun" || (savedExt.type === "file" && file) ? savedExt.type : null,
+          station,
+          item: AMEDAS_ITEMS[savedExt.item] ? savedExt.item : "rain",
+          type: savedExt.type === "sun" || (savedExt.type === "file" && file) || (savedExt.type === "amedas" && station) ? savedExt.type : null,
           pref: PREFS.some(pref => pref[0] === savedExt.pref) ? savedExt.pref : ext.pref,
           align: savedExt.align === "clock" ? "clock" : "start",
           col: file && file.series[savedExt.col] ? savedExt.col : 0,
@@ -6515,6 +6663,9 @@
         }
         renderExtDialog();
       });
+      els.extAmPref.addEventListener("change", () => renderAmedasPicker({ pref: els.extAmPref.value }));
+      els.extAmStation.addEventListener("change", () => renderAmedasPicker({ pref: els.extAmPref.value, id: els.extAmStation.value }));
+      setInterval(() => loadAmedas(), 60000);   // アメダスの新しい値を取りに行く（中で 5 分おきに間引く）
       els.extOk.addEventListener("click", confirmExtDialog);
       els.extCancel.addEventListener("click", closeExtDialog);
       els.extDialog.addEventListener("click", event => { if (event.target === els.extDialog) closeExtDialog(); });

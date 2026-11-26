@@ -156,6 +156,22 @@
   .ov .win.photo-win { width: min(760px, calc(100vw - 24px)); }
   .photo-win img { display: block; width: 100%; max-height: 68vh; border-radius: 12px; background: #0d1b26; object-fit: contain; }
   .photo-win .cap { margin: 0; font-size: .88rem; font-weight: 800; white-space: pre-wrap; overflow-wrap: anywhere; }
+  /* グラフの記録を押したときのメモの枠。手元の画面と同じ形（上に写真の見本と虫めがね、下にメモの文、右上に ✕）。測定室では見るだけ */
+  .memo-box { position: absolute; z-index: 3; width: min(280px, calc(100% - 24px)); display: grid; gap: 6px; padding: 9px; border-radius: 12px; background: rgba(255,255,255,.97); box-shadow: 0 6px 20px rgba(0,0,0,.22); }
+  .memo-box[hidden] { display: none; }
+  .memo-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .memo-title { font-size: .78rem; font-weight: 900; color: #667b8c; }
+  .memo-close { flex: 0 0 auto; width: 26px; height: 26px; margin: -3px -3px 0 0; padding: 0; border: 0; border-radius: 50%; color: #667b8c; background: #eaf2f7; font-size: .8rem; font-weight: 900; line-height: 1; cursor: pointer; }
+  .memo-close:hover { color: #173042; background: #dbe8f0; }
+  .memo-photo { display: flex; align-items: center; gap: 8px; }
+  .memo-photo[hidden] { display: none; }
+  .thumb { position: relative; flex: 0 0 auto; display: inline-block; border-radius: 7px; background: #0d1b26; line-height: 0; overflow: hidden; }
+  .thumb img { display: block; width: 124px; height: 93px; object-fit: cover; }
+  .thumb-zoom { position: absolute; right: 2px; bottom: 2px; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: white; background: rgba(13, 27, 38, .74); cursor: pointer; }
+  .thumb-zoom svg { width: 14px; height: 14px; }
+  .memo-photo .memo-wait { color: #667b8c; font-size: .78rem; font-weight: 800; }
+  .memo-body { padding: 6px 9px; border: 2px solid #dcebf4; border-radius: 9px; background: white; font-size: .9rem; font-weight: 700; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .memo-body[hidden] { display: none; }
   .action-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
   .action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 47px; border: 2px solid var(--line); border-radius: 14px; color: var(--ink); background: white; font-weight: 900; cursor: pointer; transition: transform .14s ease, background .14s ease; }
   .action-btn:hover { transform: translateY(-1px); background: #f7fbfd; }
@@ -319,6 +335,18 @@
         </div>
         <div id="detail-plot" class="canvas-wrap">
           <canvas id="detail-chart"></canvas>
+          <!-- メモのある記録を押すと出る枠（見るだけ） -->
+          <div id="memo-box" class="memo-box" hidden>
+            <div class="memo-top">
+              <div id="memo-title" class="memo-title"></div>
+              <button id="memo-close" class="memo-close" type="button" aria-label="とじる" title="とじる">✕</button>
+            </div>
+            <div id="memo-photo" class="memo-photo">
+              <span id="memo-thumb" class="thumb" hidden><img id="memo-thumb-img" alt="写真"><button id="memo-zoom" class="thumb-zoom" type="button" aria-label="写真を大きく見る" title="大きく見る"></button></span>
+              <span id="memo-wait" class="memo-wait"></span>
+            </div>
+            <div id="memo-body" class="memo-body"></div>
+          </div>
           <div class="empty-state" id="detail-empty"><div class="empty-bubble">まだ記録がありません。端末で「記録をはじめる」を押すと、ここにグラフが描かれます。</div></div>
         </div>
         <div id="detail-scroll"></div>
@@ -625,9 +653,10 @@
   function tickDecimals(step) { return step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9))); }
   // 値の範囲（lo〜hi）から、きりのいい目盛り（step）と軸の上下（yMin/yMax）を決める
   function niceScale(lo, hi, decimals, ticks) {
+    var neverNegative = lo >= 0;   // 値が全部 0 以上なら、軸を 0 より下に広げない（手元の画面と同じ）
     if (lo === hi) { var pad = Math.max(Math.abs(lo) * 0.08, decimals ? 1 : 5); lo -= pad; hi += pad; }   // 整数で記録する項目は、値が同じでも軸が潰れないよう広めに取る
     var range = hi - lo, step = niceStep(range * 1.18, ticks);
-    var yMin = Math.floor((lo - range * 0.09) / step) * step, yMax = Math.ceil((hi + range * 0.09) / step) * step;
+    var yMin = Math.max(neverNegative ? 0 : -Infinity, Math.floor((lo - range * 0.09) / step) * step), yMax = Math.ceil((hi + range * 0.09) / step) * step;
     return {yMin: yMin, yMax: yMax, step: step, count: Math.round((yMax - yMin) / step)};
   }
   // 重ねるときの縦軸。単位が同じ線は 1 本の軸にまとめる。戻り値は軸ごとの「series の添字」の組で、出てきた順に 左・右・いちばん右 に置く
@@ -895,7 +924,7 @@
         ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
       }
       if (!mark.memo.text) return;
-      var dir = y - 15 - 8 < panel.top ? 1 : -1, by = y + dir * 15;   // ふつうは点の上。上に入らなければ下
+      var dir = mark.up ? -1 : 1, by = y + dir * 15;   // 山なら点の上、谷なら点の下（手元の画面と同じ）
       roundRect(ctx, x - 8, by - 6, 16, 12, 4);
       ctx.fillStyle = '#ffd54a'; ctx.fill();
       ctx.strokeStyle = '#3a4550'; ctx.lineWidth = 1.5; ctx.stroke();
@@ -1145,7 +1174,7 @@
         if (e.button || !canvas._geo) return;
         if (grab && grab(e)) return;
         var t = timeAt(e);
-        se.sel = {a: t, b: t, from: t, x0: e.clientX, canvas: canvas, done: false};
+        se.sel = {a: t, b: t, from: t, x0: e.clientX, canvas: canvas, done: false, hadSel: Boolean(se.sel && se.sel.done)};
         try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
         e.preventDefault();
         redraw();
@@ -1161,7 +1190,12 @@
         var c = se.sel;
         if (!c || c.done || c.canvas !== canvas) return;
         // ほとんど動かしていないときは、選ぶのをやめる（押しただけで選んだ範囲を消せる）
-        if (e.type === 'pointercancel' || Math.abs(e.clientX - c.x0) < 6) { se.clear(); return; }
+        if (e.type === 'pointercancel' || Math.abs(e.clientX - c.x0) < 6) {
+          se.clear();
+          // 押しただけ（選んだ範囲を消すための押しではないとき）→ その記録のメモを見る
+          if (e.type !== 'pointercancel' && !c.hadSel && se.onTap) se.onTap(e, canvas);
+          return;
+        }
         c.done = true;
         redraw();
       };
@@ -1246,6 +1280,51 @@
   var detail = {id: null, view: 'chart', overlay: false, hover: null};
   var detailScroll = makeScroll(function () { detailDraw(); });
   var detailSel = makeSelect(detailScroll, function () { detailDraw(); });
+  // グラフの記録を押す → その記録にメモがあれば、メモの枠を出す（無ければ閉じる）
+  var ICON_ZOOM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>';
+  $('memo-zoom').innerHTML = ICON_ZOOM;
+  function closeMemoBox() { detail.memo = null; $('memo-box').hidden = true; }
+  function placeMemoBox() {
+    var box = $('memo-box'), open = detail.memo, c = detail.id && rowsCache[detail.id], cv = $('detail-chart'), g = cv._geo;
+    if (!open) { box.hidden = true; return; }
+    var memos = memoCache[detail.id], memo = memos && memos.bySeq[open.seq];
+    if (!memo || !c || !g || detail.view !== 'chart' || open.t < g.xMin || open.t > g.xMax) { box.hidden = !memo ? (closeMemoBox(), true) : true; return; }
+    var series = seriesOf(c), main = series.length - 1, panel = null;
+    g.panels.forEach(function (pn) { if (pn.si === main) panel = pn; });
+    var s = series[main];
+    $('memo-title').textContent = timeText(open.t, isFine(c)) + '　' + s.name + ' ' + fmtVal(open.v, s) + (s.unit ? ' ' + s.unit : '') + ' のメモ';
+    $('memo-body').textContent = memo.text || '';
+    $('memo-body').hidden = !memo.text;
+    $('memo-photo').hidden = !memo.photo;
+    if (memo.photo) {
+      var ph = photoOf(detail.id, memo, function () { if (detail.memo === open) placeMemoBox(); });
+      $('memo-thumb').hidden = ph.state !== 'ok';
+      if (ph.state === 'ok') { if ($('memo-thumb-img').getAttribute('src') !== ph.url) $('memo-thumb-img').src = ph.url; }
+      $('memo-wait').textContent = ph.state === 'loading' ? '写真を読みこんでいます…' : ph.state === 'ng' ? '写真を読めませんでした' : '';
+    }
+    box.hidden = false;
+    // 点のそば（右下。はみ出すなら左・上）に置く
+    var x = cv.offsetLeft + g.X(open.t), y = cv.offsetTop + (panel && panel.yAt && has(open.v) ? panel.yAt(open.v) : g.top);
+    var wrap = $('detail-plot'), w = box.offsetWidth, h = box.offsetHeight;
+    box.style.left = Math.max(4, Math.min(wrap.clientWidth - w - 4, x + 14 + w > wrap.clientWidth - 4 ? x - 14 - w : x + 14)) + 'px';
+    box.style.top = Math.max(4, Math.min(wrap.clientHeight - h - 4, y + 12 + h > wrap.clientHeight - 4 ? y - 12 - h : y + 12)) + 'px';
+  }
+  detailSel.onTap = function (e, canvas) {
+    var c = detail.id && rowsCache[detail.id], t = hoverTime(canvas, e), g = canvas._geo;
+    if (!c || t === null || !g) { closeMemoBox(); return; }
+    var series = seriesOf(c), marks = marksOf(c, series);
+    var item = series.length ? nearest(series[series.length - 1].pts, t, g.xMin, g.xMax) : null;
+    var memo = item && marks ? marks.byTime[item[0]] : null;
+    if (!memo) { closeMemoBox(); return; }
+    detail.memo = {seq: memo.seq, t: item[0], v: item[1]};
+    $('memo-thumb-img').removeAttribute('src');
+    placeMemoBox();
+  };
+  $('memo-close').addEventListener('click', closeMemoBox);
+  $('memo-zoom').addEventListener('click', function () {
+    var memos = detail.memo && memoCache[detail.id], memo = memos && memos.bySeq[detail.memo.seq];
+    if (memo) openPhoto(detail.id, memo, $('detail-name').textContent + '　番号 ' + memo.seq);
+  });
   $('detail-scroll').appendChild(detailScroll.addBar());
   detailSel.attach($('detail-chart'), $('detail-plot'));
   // センサーごとの線（時刻と値）。記録が増えたときだけ作り直す
@@ -1298,8 +1377,11 @@
     c.rows.forEach(function (r, i) {
       var memo = memos.bySeq[r[0]];
       if (!memo) return;
-      var pt = series[main].pts[i];
-      list.push({t: pt[0], v: pt[1], si: main, memo: memo});
+      var pts = series[main].pts, pt = pts[i];
+      // ふきだしの向きは手元の画面と同じ: 山（前後より高い）なら点の上、谷なら点の下。端の記録は隣の 1 件とくらべる
+      var around = [pts[i - 1], pts[i + 1]].filter(function (q) { return q && has(q[1]); }).map(function (q) { return q[1]; });
+      var up = !around.length || pt[1] >= around.reduce(function (sum, v) { return sum + v; }, 0) / around.length;
+      list.push({t: pt[0], v: pt[1], si: main, memo: memo, up: up});
       byTime[pt[0]] = memo;
     });
     c._marks = {list: list, byTime: byTime}; c._marksLen = c.rows.length; c._marksOf = memos;
@@ -1416,6 +1498,7 @@
       photoFor: function (memo) { return photoOf(id, memo, function () { if (detail.id === id && detail.view === 'chart') detailDraw(); }); }});
     $('detail-empty').hidden = Boolean(geo);
     detailSel.place(cv, geo);
+    placeMemoBox();
   }
   // 表は古い順。増えた分だけ下に足す（いちばん下を見ているときは、新しい行についていく）
   var tableState = {sig: '', rendered: 0};
@@ -1496,12 +1579,13 @@
     $('detail-plot').hidden = view !== 'chart';
     $('detail-scroll').hidden = view !== 'chart';
     $('detail-table-wrap').hidden = view !== 'table';
+    if (view !== 'chart') closeMemoBox();
     var c = detail.id && rowsCache[detail.id];
     if (view === 'table' && c) detailTable(c);
     detailDraw();
   }
   async function openDetail(id) {
-    detail.id = id; detail.hover = null;
+    detail.id = id; detail.hover = null; detail.memo = null;
     detailScroll.reset();
     detailSel.sel = null;
     tableState.sig = '';
@@ -1531,7 +1615,7 @@
     detailDraw();
     if (detail.view === 'table') detailTable(c);
   }
-  function closeDetail() { detail.id = null; showView('list'); if (room) render(); }
+  function closeDetail() { closeMemoBox(); detail.id = null; showView('list'); if (room) render(); }
   $('detail-close').addEventListener('click', closeDetail);
   $('detail-view-chart').addEventListener('click', function () { setDetailView('chart'); });
   $('detail-view-table').addEventListener('click', function () { setDetailView('table'); });
@@ -1960,6 +2044,7 @@
     if (e.key !== 'Escape') return;
     var wins = ['ov-photo', 'ov-download', 'ov-invite', 'ov-settings'].filter(function (id) { return !$(id).hidden; });
     if (wins.length) { wins.forEach(function (id) { $(id).hidden = true; }); return; }
+    if (!$('memo-box').hidden) { closeMemoBox(); return; }
     if (!$('ov-detail').hidden) closeDetail();
     else if (!$('ov-overlay').hidden) closeOverlay();
   });
