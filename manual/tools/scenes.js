@@ -32,6 +32,56 @@
     await wait(100);
   }
 
+  // 左のカードの「写真の記録」をえらぶ
+  function photoMode(value) {
+    $("photoMode").value = value;
+    $("photoMode").dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  // 写真のある記録の番号と、記録の件数。表の行から読むので、いちど表に切りかえる（行は表を出しているときにだけ作られる）
+  const rows = () => [...document.querySelectorAll("#tableBody tr")];
+  async function photoRows() {
+    $("tableViewBtn").click();
+    await wait(200);
+    return { total: rows().length, seqs: rows().filter(tr => tr.querySelector(".row-photo")).map(tr => Number(tr.dataset.seq)) };
+  }
+  // 番号 seq の記録の、グラフの上での位置（左からの割合）。線を描く幅は、下のスクロールバーと同じ。見えているのは新しいほうの 120 件
+  function ratioOf(seq, total) {
+    const shown = Math.min(total, 120);
+    const bar = $("chartScroll").getBoundingClientRect(), rect = $("chartCanvas").getBoundingClientRect();
+    return (bar.left + (seq - 1 - (total - shown)) / (shown - 1) * bar.width - rect.left) / rect.width;
+  }
+
+  // アプリが記録を保存する IndexedDB を、台本からも開く（「開き直しても続きから」の場面用）。
+  // 同じデータベースへの操作は順番に片づくので、これが終わったときには、アプリが先に出した操作も終わっている
+  const DB_NAME = "akadako-multi";
+  function dbTurn(work) {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        Promise.resolve(work(db)).then(value => { db.close(); resolve(value); }, reject);
+      };
+    });
+  }
+  // アプリが保存先を開き終わるまで待つ（開く前の記録は保存されない）
+  async function storeReady() {
+    for (;;) {
+      const list = await indexedDB.databases();
+      if (list.some(item => item.name === DB_NAME && item.version >= 1)) break;
+      await wait(50);
+    }
+    await dbTurn(() => {});
+  }
+  // アプリが書きこみ終わるまで待って、保存された記録の件数を返す
+  function storeCount() {
+    return dbTurn(db => new Promise((resolve, reject) => {
+      const req = db.transaction("records", "readonly").objectStore("records").count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
   async function connect() {
     $("connectBtn").click();
     await wait(1500);
@@ -74,6 +124,73 @@
       tap(0.26);
       await wait(100);
       $("memoInput").value = "手でにぎった";
+    },
+
+    // メモに写真をつける。にぎっているとちゅうで記録をとめ、新しいほうの記録を押して「写真をとる」
+    // （build.sh がこの場面は早めに撮るので、左のカメラの映像にも手がうつっている）
+    async memophoto() {
+      await connect();
+      $("recordBtn").click();
+      await wait(22000);
+      $("recordBtn").click();
+      await wait(300);
+      tap(0.62);
+      await wait(100);
+      $("memoCam").click();
+      await wait(500);
+      $("memoInput").value = "手でにぎった";
+    },
+
+    // 写真の記録を「10秒ごと」にして記録する。写真のある記録に黒い丸がつく（ふきだしは文字のメモだけ）
+    async photos() {
+      await connect();
+      photoMode("10000");
+      await record();
+      await memo(0.36, "手でにぎった");
+      $("chartCanvas").dispatchEvent(new PointerEvent("pointerleave"));
+    },
+
+    // 写真のある記録（にぎっているとちゅうの 3 枚目）にマウスを乗せる
+    async photohover() {
+      await scenes.photos();
+      const { total, seqs } = await photoRows();
+      $("chartViewBtn").click();
+      await wait(200);
+      pointer("pointermove", ratioOf(seqs[2], total));
+      await wait(300);
+    },
+
+    // 表で、カメラの印にマウスを乗せる
+    async phototable() {
+      await scenes.photos();
+      const { seqs } = await photoRows();
+      const row = rows().find(tr => Number(tr.dataset.seq) === seqs[2]);
+      // 表を動かすと、浮かんだ写真は消える（アプリが scroll のイベントで消す）。早回しのあいだは画面の描き直しが無く、
+      // 台本で動かしたぶんのイベントが撮る瞬間に届いて写真が消えてしまうので、この場面ではアプリに届かないようにする
+      const wrap = $("tableWrap");
+      window.addEventListener("scroll", event => { if (event.target === wrap) event.stopPropagation(); }, true);
+      wrap.scrollTop = Math.max(0, row.offsetTop - 150);
+      await wait(200);
+      row.querySelector(".row-photo").dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      await wait(500);
+    },
+
+    // 「開き直しても続きから」の 1 回目: 保存を使って（URL に store=off を付けないで）記録する。build.sh はこの写真を使わない
+    async restore1() {
+      await storeReady();
+      await connect();
+      photoMode("10000");
+      await record();
+      await memo(0.36, "手でにぎった");
+      await wait(1500);   // 保存は 0.4 秒ためてから書く
+      document.title = `saved ${await storeCount()}`;
+    },
+
+    // 2 回目: 同じ保存先で開き直したところ。「前の記録のつづきから表示しています」は 2.6 秒で消えるので、出たままにして撮る
+    async restore2() {
+      const toast = $("toast");
+      const keep = () => { if (toast.textContent && !toast.classList.contains("show")) toast.classList.add("show"); };
+      new MutationObserver(keep).observe(toast, { attributes: true, attributeFilter: ["class"] });
     },
 
     async select() {
@@ -125,7 +242,8 @@
 
   // 色が変わるとちゅうで撮られないように、動きのある見た目を止める
   const still = document.createElement("style");
-  still.textContent = "*, *::before, *::after { transition: none !important; animation: none !important; }";
+  still.textContent = "*, *::before, *::after { transition: none !important; animation: none !important; }"
+    + " .cam-view.is-shot::after { display: none !important; }";   // 写真をとった合図（白く光る）が、動きを止めると白いまま残るので消す
   document.head.appendChild(still);
 
   window.addEventListener("load", async () => {

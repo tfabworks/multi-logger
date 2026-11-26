@@ -1,6 +1,7 @@
-// 説明書の画面写真を撮るための、にせもののS-LiNKデバイス。
-// s-link.js のかわりに読み込むと、「S-LiNK」の表示が本物と同じように「接続」になり、
-// 「センサーを手でにぎる → はなす」ときのような値を返す。アプリ本体（index.html）では使わない。
+// 説明書の画面写真を撮るための、にせもののS-LiNKデバイスとカメラ。
+// s-link.js のかわりに読み込むと、「AkaDako」の表示が本物と同じように「接続中」になり、
+// 「センサーを手でにぎる → はなす」ときのような値を返す。左のカードのカメラの映像には、絵（つくえの上のセンサー）が出る。
+// アプリ本体（index.html）では使わない。
 (() => {
   "use strict";
 
@@ -68,5 +69,96 @@
       board.isConnected = true;
       return board;
     }
+  };
+
+  // ===== にせもののカメラ =====
+  // ヘッドレスの Chrome にはカメラが無いので、絵を描いた canvas の映像を getUserMedia で返す。
+  // 絵は「つくえの上のセンサー」で、手でにぎっているあいだ（14〜40 秒）は手がかぶさる。
+  const CAM_W = 640, CAM_H = 480;
+  const camCanvas = document.createElement("canvas");
+  camCanvas.width = CAM_W;
+  camCanvas.height = CAM_H;
+  const cc = camCanvas.getContext("2d");
+  function pill(x, y, w, h, r, fill, stroke) {
+    cc.beginPath();
+    cc.roundRect(x, y, w, h, r);
+    cc.fillStyle = fill;
+    cc.fill();
+    if (stroke) { cc.strokeStyle = stroke; cc.lineWidth = 3; cc.stroke(); }
+  }
+  let camTick = 0;
+  function drawCam() {
+    const held = connectedAt !== null && holding();
+    // つくえ
+    cc.fillStyle = "#ead7b4";
+    cc.fillRect(0, 0, CAM_W, CAM_H);
+    cc.fillStyle = "#e2cca3";
+    for (let y = 60; y < CAM_H; y += 120) cc.fillRect(0, y, CAM_W, 5);
+    // ノートとえんぴつ
+    cc.save();
+    cc.translate(118, 118);
+    cc.rotate(-0.12);
+    pill(-92, -84, 184, 168, 8, "#ffffff", "#c9d6df");
+    cc.fillStyle = "#b9d3e6";
+    for (let i = 0; i < 6; i++) cc.fillRect(-72, -52 + i * 22, 144, 3);
+    cc.restore();
+    cc.save();
+    cc.translate(250, 96);
+    cc.rotate(0.5);
+    pill(-70, -7, 118, 14, 3, "#f3b62c");
+    pill(48, -7, 16, 14, 3, "#e98d8d");
+    cc.beginPath();
+    cc.moveTo(-70, -7); cc.lineTo(-92, 0); cc.lineTo(-70, 7); cc.closePath();
+    cc.fillStyle = "#e9cfa4";
+    cc.fill();
+    cc.restore();
+    // USB ケーブル
+    cc.beginPath();
+    cc.moveTo(398, 250);
+    cc.bezierCurveTo(470, 180, 520, 120, 640, 70);
+    cc.strokeStyle = "#4b5661";
+    cc.lineWidth = 9;
+    cc.lineCap = "round";
+    cc.stroke();
+    // センサー（ボード）
+    cc.save();
+    cc.translate(330, 290);
+    cc.rotate(-0.08);
+    cc.fillStyle = "rgba(90, 60, 20, .18)";
+    cc.beginPath();
+    cc.roundRect(-84, -52, 180, 124, 14);
+    cc.fill();
+    pill(-90, -60, 180, 120, 14, "#d9433f", "#a92f2c");
+    pill(-70, -42, 62, 40, 5, "#ffffff");
+    pill(10, -40, 44, 44, 5, "#2c3640");
+    pill(62, -24, 28, 30, 3, "#b7c0c8");
+    cc.fillStyle = "#f6d24a";
+    for (let i = 0; i < 6; i++) cc.fillRect(-66 + i * 24, 28, 12, 18);
+    cc.restore();
+    // 手（にぎっているあいだだけ）
+    if (held) {
+      cc.save();
+      cc.translate(360, 330);
+      cc.rotate(-0.5);
+      const skin = "#f2c29b", edge = "#d79e75";
+      pill(-40, 10, 190, 300, 60, skin, edge);            // うで・手のひら
+      for (let i = 0; i < 4; i++) pill(-38 + i * 46, -112 + Math.abs(i - 1.3) * 16, 40, 160, 20, skin, edge);   // 指
+      pill(-96, 30, 44, 120, 22, skin, edge);             // おや指
+      pill(-36, 20, 182, 120, 40, skin);                  // 指のつけ根の線をかくす
+      cc.restore();
+    }
+    // 映像が止まって見えないように、毎回どこかを少しだけ変える（見えない 1 点）
+    camTick += 1;
+    cc.fillStyle = camTick % 2 ? "#ead7b4" : "#ead7b5";
+    cc.fillRect(0, 0, 1, 1);
+  }
+  let camTimer = null;
+  const media = navigator.mediaDevices || {};
+  if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { value: media });
+  media.getUserMedia = async constraints => {
+    if (!constraints || !constraints.video) throw new DOMException("マイクはありません", "NotFoundError");
+    drawCam();
+    if (camTimer === null) camTimer = setInterval(drawCam, 200);
+    return camCanvas.captureStream(15);
   };
 })();

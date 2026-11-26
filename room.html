@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S-LINK Logger 測定室</title>
+<style>
+  /* 見た目とグラフの描き方は、手元で測定する画面（Multi Cloud Logger。../akadako-multi/index.html）にそろえている。
+     カード・現在値・グラフ・表・ボタンの形は同じで、帯と背景とボタンの色だけをオレンジ系にして、
+     「いま見ているのは測定室」だと一目で分かるようにしている（手元の画面は青）。帯の左には「測定室」の札も出す */
+  :root {
+    --accent: #c9560c; --accent-dark: #9a3f06; --accent-soft: #fff1e0;
+    --blue: #0877c9; --green: #19a978; --red: #ee5c5c; --ink: #17324a; --muted: #64788a; --line: #cfe2ef;
+    --shadow: 0 12px 30px rgba(20, 58, 90, 0.14);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0; color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    background:
+      radial-gradient(circle at 8% 3%, rgba(255, 178, 71, 0.30) 0 80px, transparent 81px),
+      radial-gradient(circle at 94% 8%, rgba(201, 86, 12, 0.13) 0 120px, transparent 121px),
+      linear-gradient(180deg, #fffaf2 0%, #fdf0de 100%);
+  }
+  button, select, input { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+  .page { width: calc(100% - 28px); margin: 0 auto; padding: 20px 0 34px; }
+
+  /* ---- 帯 ---- */
+  .hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; padding: 16px 22px; color: white; border-radius: 24px; background: linear-gradient(135deg, #b0450a 0%, #e2861b 100%); box-shadow: var(--shadow); overflow: hidden; position: relative; }
+  .hero::after { content: ""; position: absolute; width: 230px; height: 230px; right: -80px; top: -100px; border: 26px solid rgba(255, 255, 255, 0.13); border-radius: 50%; }
+  .title-wrap { display: flex; align-items: center; gap: clamp(9px, 1.2vw, 15px); z-index: 1; min-width: 0; }
+  .room-mark { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px 6px 10px; border-radius: 999px; color: var(--accent-dark); background: white; box-shadow: 0 4px 0 rgba(0,0,0,.12); font-size: .98rem; font-weight: 900; white-space: nowrap; }
+  .room-mark svg { width: 21px; height: 21px; }
+  h1 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(1.2rem, 2.1vw, 1.65rem); font-weight: 800; line-height: 1.2; }
+  .connection-panel { display: flex; align-items: center; gap: 10px; z-index: 1; flex-wrap: wrap; justify-content: flex-end; }
+  .status-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 13px; border: 2px solid rgba(255,255,255,.5); border-radius: 999px; background: rgba(0,0,0,.2); font-size: .88rem; font-weight: 800; white-space: nowrap; }
+  .status-dot { width: 11px; height: 11px; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 0 4px rgba(255,255,255,.16); }
+  .status-chip.connected .status-dot { background: #56ef9d; box-shadow: 0 0 0 4px rgba(86,239,157,.22); }
+  .status-chip.stopped .status-dot { background: #ff9c9c; }
+  #meta { font-size: .78rem; font-weight: 800; white-space: nowrap; }
+  .primary-btn { min-height: 42px; padding: 6px 16px; border: 0; border-radius: 14px; color: var(--accent-dark); background: white; box-shadow: 0 4px 0 rgba(0,0,0,.12); font-weight: 900; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+  .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 0 rgba(0,0,0,.13); }
+  .primary-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.12); }
+  .primary-btn.ghost { color: white; background: rgba(0,0,0,.2); border: 2px solid rgba(255,255,255,.5); box-shadow: none; }
+  #owner-tools { display: inline-flex; gap: 10px; }
+
+  /* ---- カードとボタン ---- */
+  .card, .side-card, .chart-card, .tile { border: 1px solid rgba(207,226,239,.95); border-radius: 24px; background: rgba(255,255,255,.94); box-shadow: var(--shadow); }
+  .btn { min-height: 38px; padding: 4px 14px; border: 2px solid var(--line); border-radius: 12px; color: var(--ink); background: white; font-size: .86rem; font-weight: 900; white-space: nowrap; cursor: pointer; }
+  .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dark); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { color: white; background: var(--accent); border-color: var(--accent); }
+  .btn.primary:hover:not(:disabled) { color: white; background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn.danger { color: #b63b3b; border-color: #f1c2c2; }
+  .primary-btn.danger-armed, .btn.danger-armed { background: var(--red) !important; color: white !important; border-color: transparent !important; }
+  .gap { flex: 1 1 auto; }
+  .hint { font-size: .78rem; font-weight: 700; color: var(--muted); line-height: 1.6; }
+
+  /* ---- 一覧（端末ごとのタイル） ---- */
+  #tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px 16px; border-radius: 18px; font-size: .88rem; font-weight: 800; }
+  #tools label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  #tools input[type="checkbox"], .tile-head input { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+  #owner-sel { display: inline-flex; gap: 10px; }
+  #tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  #empty { padding: 44px 20px; text-align: center; }
+  .empty-bubble { display: inline-block; max-width: 420px; padding: 20px 24px; border-radius: 22px; background: rgba(255,241,224,.94); border: 2px dashed #e9b27c; color: var(--accent-dark); font-weight: 900; line-height: 1.7; }
+  .tile { display: grid; gap: 9px; padding: 14px; cursor: pointer; transition: transform .14s ease; }
+  .tile:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .tile.picked { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,86,12,.2), var(--shadow); }
+  .tile.stale { opacity: .62; }
+  .tile-head { display: flex; align-items: center; gap: 8px; font-size: 1.02rem; font-weight: 900; }
+  .tile-head .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { padding: 2px 8px; border-radius: 999px; color: var(--accent-dark); background: var(--accent-soft); font-size: .68rem; font-weight: 900; white-space: nowrap; }
+  .seen { color: var(--muted); font-size: .72rem; font-weight: 800; white-space: nowrap; }
+  .seen::before { content: '●'; margin-right: 3px; color: #56d39d; }
+  .stale .seen::before { color: #c3c3c3; }
+  .mini { width: 100%; height: 92px; display: block; border: 2px solid #dcebf4; border-radius: 14px; background: linear-gradient(rgba(8,119,201,.025), rgba(8,119,201,.025)), #fff; }
+  .foot { display: flex; justify-content: space-between; color: var(--muted); font-size: .72rem; font-weight: 800; }
+
+  /* ---- 現在値（手元の画面の左のカードと同じ） ---- */
+  .current-label { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; color: var(--muted); font-size: .8rem; font-weight: 900; letter-spacing: .08em; }
+  .current-label::before { content: ""; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: var(--active-color, var(--accent)); }
+  .value-box { padding: 17px 10px 15px; border-radius: 19px; text-align: center; background: linear-gradient(180deg, #f7fcff, #edf8fc); border: 2px solid #dceef6; }
+  .value { display: inline-block; min-width: 4ch; font-size: clamp(2.55rem, 6vw, 4.3rem); line-height: .95; font-weight: 950; letter-spacing: -.05em; color: var(--active-color, var(--accent)); font-variant-numeric: tabular-nums; }
+  .value.value--compact { font-size: clamp(2.1rem, 4.8vw, 3.5rem); }
+  .value.value--narrow { font-size: clamp(1.9rem, 4.25vw, 3.15rem); letter-spacing: -.065em; }
+  .unit { margin-left: 5px; color: var(--ink); font-size: 1.02rem; font-weight: 900; }
+  .reading-meta { min-height: 21px; margin-top: 9px; color: var(--muted); font-size: .78rem; font-weight: 700; }
+  .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0 15px; }
+  .mini-stat { padding: 8px 4px; border-radius: 12px; background: #f3f8fb; text-align: center; }
+  .mini-stat span { display: block; color: var(--muted); font-size: .66rem; font-weight: 800; }
+  .mini-stat strong { display: block; margin-top: 3px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+  .compare-rows { display: grid; gap: 6px; }
+  .compare-row { --row-color: var(--accent); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 7px 10px; border-left: 5px solid var(--row-color); border-radius: 12px; background: #f3f8fb; }
+  .compare-row .name { font-size: .76rem; font-weight: 900; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .compare-row .val { font-size: 1.3rem; font-weight: 950; letter-spacing: -.03em; color: var(--row-color); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .compare-row .val small { margin-left: 3px; font-size: .72rem; color: var(--ink); }
+  .compare-row .stats { grid-column: 1 / -1; margin-top: 2px; font-size: .66rem; font-weight: 700; color: var(--muted); word-break: keep-all; }
+  .tile .compare-row { padding: 4px 10px; }
+  .tile .compare-row .val { font-size: 1.15rem; }
+
+  /* ---- 1 台を大きく見る・重ねて表示（手元の画面と同じ 2 列） ---- */
+  .crumb { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .crumb h2 { margin: 0; min-width: 0; font-size: clamp(1.1rem, 2vw, 1.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .back-btn { min-height: 42px; padding: 4px 16px 4px 12px; border-radius: 14px; }
+  .dashboard { display: grid; grid-template-columns: clamp(260px, 17vw, 320px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+  .side-card { display: flex; flex-direction: column; padding: 18px; min-width: 0; }
+  .control-stack { display: grid; gap: 9px; margin-top: auto; padding-top: 12px; }
+  .view-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 2px solid var(--line); border-radius: 15px; background: #f3f8fb; }
+  .view-btn { min-height: 38px; border: 0; border-radius: 11px; color: var(--muted); background: transparent; font-weight: 900; cursor: pointer; transition: background .14s ease, color .14s ease; }
+  .view-btn:hover { color: var(--accent-dark); }
+  .view-btn.is-active { color: white; background: var(--active-color, var(--accent)); box-shadow: 0 2px 0 rgba(0,0,0,.14); }
+  .view-toggle--mini { padding: 3px; border-radius: 12px; }
+  .view-toggle--mini .view-btn { min-height: 28px; padding: 0 10px; border-radius: 9px; font-size: .78rem; }
+  .chart-card { min-width: 0; padding: 17px 17px 14px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+  .chart-title-group { min-width: 0; }
+  .chart-title-group h2 { margin: 0; font-size: clamp(1.15rem, 2.2vw, 1.55rem); }
+  .chart-title-group p { margin: 4px 0 0; color: var(--muted); font-size: .78rem; font-weight: 700; }
+  .chart-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .chart-head-right select { min-height: 34px; padding: 3px 8px; border: 2px solid var(--line); border-radius: 10px; color: var(--ink); background: white; font-size: .84rem; font-weight: 800; }
+  .chart-head-right .btn { min-height: 34px; padding: 2px 11px; border-radius: 10px; font-size: .78rem; }
+  .sample-count { padding: 7px 11px; border-radius: 999px; color: var(--accent-dark); background: var(--accent-soft); font-size: .75rem; font-weight: 900; white-space: nowrap; }
+  .canvas-wrap { position: relative; width: 100%; height: max(404px, calc(100vh - 430px)); min-height: 310px; overflow: hidden; border: 2px solid #dcebf4; border-radius: 18px; background: linear-gradient(rgba(8,119,201,.025), rgba(8,119,201,.025)), #fff; }
+  /* センサーを上下に並べるときは、パネルの数だけ箱を高くする（低い画面ではページがスクロールする） */
+  .canvas-wrap[data-panels="2"] { min-height: 380px; }
+  .canvas-wrap[data-panels="3"] { min-height: 540px; }
+  .canvas-wrap[data-panels="4"] { min-height: 700px; }
+  .canvas-wrap[data-panels="5"] { min-height: 860px; }
+  .canvas-wrap[data-panels="6"] { min-height: 1020px; }
+  .canvas-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .canvas-wrap canvas.on-line { cursor: grab; }
+  .canvas-wrap canvas.dragging { cursor: grabbing; }
+  .empty-state { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; text-align: center; padding: 25px; }
+  .table-wrap { position: relative; width: 100%; height: max(430px, calc(100vh - 404px)); min-height: 310px; overflow: auto; border: 2px solid #dcebf4; border-radius: 18px; background: white; }
+  .data-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .data-table th, .data-table td { padding: 8px 14px; border-bottom: 1px solid #edf5f9; text-align: right; font-size: .88rem; white-space: nowrap; }
+  .data-table th { position: sticky; top: 0; z-index: 1; color: var(--accent-dark); background: var(--accent-soft); box-shadow: inset 0 -2px 0 #f0d5b6; font-size: .76rem; }
+  .data-table th:first-child, .data-table td:first-child { width: 5em; color: var(--muted); }
+  .data-table tbody tr:nth-child(even) { background: #f8fcfd; }
+  .data-table td.value-cell { font-weight: 900; }
+  .action-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
+  .action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 47px; border: 2px solid var(--line); border-radius: 14px; color: var(--ink); background: white; font-weight: 900; cursor: pointer; transition: transform .14s ease, background .14s ease; }
+  .action-btn:hover { transform: translateY(-1px); background: #f7fbfd; }
+  .action-btn svg { width: 20px; height: 20px; }
+  /* グラフで選んだ範囲の真ん中に出すボタン */
+  .sel-box { position: absolute; z-index: 2; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.96); box-shadow: 0 6px 20px rgba(0,0,0,.22); white-space: nowrap; }
+  .sel-box .btn { min-height: 34px; border-radius: 10px; font-size: .82rem; }
+  /* グラフの下のスクロールバー。灰色の部分の中央をドラッグで見える範囲を動かし、両端をドラッグで範囲の長さを変える（手元の画面と同じ） */
+  .chart-scroll { position: relative; height: 20px; margin: 6px 8px 0; border-radius: 10px; background: #edf2f5; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .chart-scroll .thumb { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #c3ccd3; cursor: grab; touch-action: none; }
+  .chart-scroll .thumb.dragging { cursor: grabbing; background: #b3bec6; }
+  .chart-scroll .thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chart-scroll .grip { position: absolute; top: 0; bottom: 0; width: 18px; border-radius: 10px; background: #8b99a5; cursor: ew-resize; touch-action: none; }
+  .chart-scroll .grip::before { content: ""; position: absolute; top: 6px; bottom: 6px; left: 6px; width: 2px; border-left: 2px solid #eef2f5; border-right: 2px solid #eef2f5; }
+  .chart-scroll .grip.l { left: 0; }
+  .chart-scroll .grip.r { right: 0; }
+  .chart-scroll .span-label { font-size: 11px; font-weight: 800; color: #3b4d61; white-space: nowrap; pointer-events: none; }
+  /* 重ねて表示: 左のカードに端末ごとの行（線の色・いまの値・動かす・ずらす） */
+  .dev-row .ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; color: var(--muted); font-size: .74rem; font-weight: 800; }
+  .dev-row .ctl label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .dev-row .ctl input[type="radio"] { margin: 0; accent-color: var(--accent); }
+  .dev-row .ctl input[type="number"] { width: 68px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: .8rem; font-weight: 800; }
+  .dev-row.moving { box-shadow: inset 0 0 0 2px var(--row-color); }
+
+  /* ---- 小さな窓（測定室 ID・ダウンロード・設定） ---- */
+  .ov { position: fixed; inset: 0; z-index: 20; background: rgba(8, 33, 52, .55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .win { background: white; border-radius: 22px; width: min(460px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  .win-head { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 1rem; font-weight: 900; color: var(--accent-dark); }
+  .win-body { flex: 1 1 auto; overflow: auto; padding: 14px 16px; display: grid; gap: 12px; align-content: start; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .86rem; font-weight: 800; }
+  input[type="text"] { width: 100%; padding: 7px 10px; border: 2px solid var(--line); border-radius: 10px; color: var(--ink); background: white; font-size: .9rem; }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+  .field { display: grid; gap: 4px; font-size: .76rem; font-weight: 800; color: var(--muted); }
+  .code { font-size: 44px; font-weight: 900; letter-spacing: .14em; color: var(--accent-dark); text-align: center; padding: 10px; background: var(--accent-soft); border-radius: 14px; font-variant-numeric: tabular-nums; }
+  .url { display: flex; gap: 6px; }
+  .url input { flex: 1 1 auto; font-size: .78rem; }
+  .err { font-size: .78rem; font-weight: 800; color: var(--red); }
+  .dl-list { display: grid; gap: 8px; }
+  .dl-list .btn { min-height: 44px; font-size: .9rem; }
+  #ov-download { z-index: 30; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 10px); padding: 8px 16px; border-radius: 999px; background: rgba(23,50,74,.92); color: white; font-size: .82rem; font-weight: 800; opacity: 0; transition: .2s; pointer-events: none; z-index: 40; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-height: 820px) {
+    .page { padding: 8px 0 12px; }
+    .hero { margin-bottom: 8px; padding: 8px 16px; border-radius: 18px; }
+    h1 { font-size: clamp(1.05rem, 1.8vw, 1.35rem); }
+    .status-chip { min-height: 36px; padding: 5px 11px; }
+    .primary-btn { min-height: 36px; padding: 5px 14px; }
+    .room-mark { padding: 4px 12px 4px 9px; font-size: .9rem; }
+    #tools { margin-bottom: 10px; padding: 7px 14px; }
+    .crumb { margin-bottom: 8px; }
+    .back-btn { min-height: 36px; }
+    .side-card { padding: 12px; }
+    .chart-card { padding: 11px 12px 10px; }
+    .current-label { margin-bottom: 6px; }
+    .value-box { padding: 9px 8px 8px; }
+    .value { font-size: clamp(2rem, 4.4vw, 3rem); }
+    .value.value--compact { font-size: clamp(1.7rem, 3.6vw, 2.5rem); }
+    .value.value--narrow { font-size: clamp(1.55rem, 3.2vw, 2.3rem); }
+    .reading-meta { margin-top: 5px; }
+    .mini-stats { margin: 8px 0 10px; }
+    .mini-stat { padding: 6px 4px; }
+    .compare-row { padding: 4px 8px; }
+    .compare-row .val { font-size: 1.1rem; }
+    .view-btn { min-height: 32px; }
+    .chart-head { margin-bottom: 6px; }
+    .chart-title-group h2 { font-size: 1.1rem; }
+    .chart-title-group p { margin-top: 2px; }
+    .table-wrap { height: clamp(220px, calc(100vh - 300px), 430px); min-height: 0; }
+    .canvas-wrap { height: clamp(194px, calc(100vh - 326px), 404px); min-height: 0; }
+    .action-bar { margin-top: 9px; gap: 8px; }
+    .action-btn { min-height: 40px; }
+  }
+  @media (max-width: 840px) {
+    .hero { align-items: flex-start; flex-direction: column; }
+    .connection-panel { justify-content: flex-start; }
+    .action-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard { grid-template-columns: 1fr; }
+    .control-stack { margin-top: 0; }
+    .canvas-wrap { height: 390px; }
+  }
+  @media (max-width: 580px) {
+    .page { width: calc(100% - 16px); padding-top: 8px; }
+    .hero { padding: 15px; border-radius: 19px; }
+    .canvas-wrap { height: 330px; }
+    .action-bar { grid-template-columns: 1fr; }
+    .chart-head { align-items: flex-start; flex-direction: column; }
+    .chart-head-right { justify-content: flex-start; }
+    #tiles { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero" id="bar">
+    <div class="title-wrap">
+      <span class="room-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="18" cy="5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="2"/><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" stroke="currentColor" stroke-width="2"/></svg>測定室</span>
+      <h1 id="room-name"></h1>
+    </div>
+    <div class="connection-panel">
+      <span id="meta"></span>
+      <span id="status" class="status-chip"><span class="status-dot"></span><span id="status-text">読み込み中</span></span>
+      <span id="owner-tools" hidden>
+        <button id="btn-invite" class="primary-btn" type="button">測定室 ID</button>
+        <button id="btn-settings" class="primary-btn ghost" type="button">設定</button>
+      </span>
+      <button id="btn-json" class="primary-btn ghost" type="button" hidden title="この測定室のデータを JSON で開く（外部プログラムから参照する形。公開中だけ）">JSON</button>
+    </div>
+  </header>
+
+  <!-- 一覧: 端末ごとのタイル -->
+  <section id="view-list">
+    <div id="tools" class="card">
+      <label><input type="checkbox" id="sel-all"> すべて選ぶ</label>
+      <button id="btn-overlay" class="btn primary" type="button" disabled>重ねて表示</button>
+      <span id="owner-sel" hidden>
+        <button id="btn-reset" class="btn" type="button" disabled title="選んだ端末の、いままでのデータを測定室から消す（端末側の記録は消えない）">リセット</button>
+        <button id="btn-kick" class="btn danger" type="button" disabled title="選んだ端末を測定室から退出させる">退出</button>
+      </span>
+      <span class="gap"></span>
+      <span id="count" class="hint"></span>
+      <button id="btn-download" class="btn" type="button">全データをダウンロード</button>
+    </div>
+    <main id="tiles"></main>
+    <div id="empty" hidden><div class="empty-bubble" id="empty-text">まだ端末がありません。実行用ページの「測定室」→「参加する」で入れます。</div></div>
+  </section>
+
+  <!-- 1 台を大きく見る（手元の画面と同じ並び: 左に現在値、右にグラフ・表） -->
+  <section id="ov-detail" hidden>
+    <div class="crumb">
+      <button id="detail-close" class="btn back-btn" type="button">← 一覧にもどる</button>
+      <h2 id="detail-name"></h2>
+      <span id="detail-badge" class="badge" hidden>作成</span>
+      <span id="detail-seen" class="seen"></span>
+    </div>
+    <div class="dashboard">
+      <aside class="side-card">
+        <div class="current-label" id="detail-label">現在値</div>
+        <div id="detail-values"></div>
+        <div class="reading-meta" id="detail-meta"></div>
+        <div class="control-stack">
+          <div class="view-toggle" role="group" aria-label="表示の切り替え">
+            <button id="detail-view-chart" class="view-btn is-active" type="button" aria-pressed="true">グラフ</button>
+            <button id="detail-view-table" class="view-btn" type="button" aria-pressed="false">表</button>
+          </div>
+        </div>
+      </aside>
+      <article class="chart-card">
+        <div class="chart-head">
+          <div class="chart-title-group"><h2 id="detail-title"></h2><p id="detail-desc"></p></div>
+          <div class="chart-head-right">
+            <!-- センサーが 2 つ以上のときだけ: 上下に並べる／1枚に重ねる（縦軸は単位ごとに 1 本。3 本までで、幅が足りない画面では出さない） -->
+            <div id="detail-layout" class="view-toggle view-toggle--mini" role="group" aria-label="グラフの出し方" hidden>
+              <button id="detail-stack" class="view-btn is-active" type="button" aria-pressed="true">並べる</button>
+              <button id="detail-overlay" class="view-btn" type="button" aria-pressed="false">重ねる</button>
+            </div>
+            <span id="detail-count" class="sample-count">データ 0件</span>
+          </div>
+        </div>
+        <div id="detail-plot" class="canvas-wrap">
+          <canvas id="detail-chart"></canvas>
+          <div class="empty-state" id="detail-empty"><div class="empty-bubble">まだ記録がありません。端末で「記録をはじめる」を押すと、ここにグラフが描かれます。</div></div>
+        </div>
+        <div id="detail-scroll"></div>
+        <div id="detail-table-wrap" class="table-wrap" hidden><table class="data-table"><thead></thead><tbody></tbody></table></div>
+        <div class="action-bar">
+          <button id="detail-csv" class="action-btn" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>ダウンロード</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 重ねて表示: 選んだ端末の、同じセンサーの線を 1 枚に重ねる -->
+  <section id="ov-overlay" hidden>
+    <div class="crumb">
+      <button id="ov-close" class="btn back-btn" type="button">← 一覧にもどる</button>
+      <h2>重ねて表示</h2>
+    </div>
+    <div class="dashboard">
+      <aside class="side-card">
+        <div class="current-label" id="ov-label">端末ごとの現在値</div>
+        <div id="ov-legend" class="compare-rows"></div>
+        <div class="hint" style="margin-top:10px">折れ線を左右にドラッグすると、その端末の時間がずれます。数値（秒）でも直せます。空白を左右にドラッグすると、範囲を選んで拡大できます。</div>
+      </aside>
+      <article class="chart-card">
+        <div class="chart-head">
+          <div class="chart-title-group"><h2 id="ov-title">重ねて表示</h2><p id="ov-desc"></p></div>
+          <div class="chart-head-right">
+            <label class="row">センサー <select id="ov-sensor"></select></label>
+            <button id="ov-align-time" class="btn" type="button" title="時計どおりに重ねる（ずらす秒数を 0 にする）">時刻でそろえる</button>
+            <button id="ov-align-start" class="btn" type="button" title="それぞれの記録のはじまりをそろえる">はじまりをそろえる</button>
+          </div>
+        </div>
+        <div id="ov-plot" class="canvas-wrap">
+          <canvas id="ov-chart"></canvas>
+          <div class="empty-state" id="ov-empty"><div class="empty-bubble">まだ記録がありません。</div></div>
+        </div>
+        <div id="ov-scroll"></div>
+      </article>
+    </div>
+  </section>
+</div>
+
+<div id="ov-invite" class="ov" hidden>
+  <div class="win">
+    <div class="win-head"><span>測定室 ID</span><span class="gap"></span><button id="invite-close" class="btn" type="button">とじる</button></div>
+    <div class="win-body">
+      <div class="hint">参加する人は、実行用ページの「測定室」→「参加する」で、この番号を入れます。</div>
+      <div class="code" id="invite-code">---</div>
+      <div class="field" id="invite-url-box" hidden>この測定室のページの URL（公開中。見るだけ）
+        <div class="url"><input type="text" id="invite-url" readonly><button id="invite-copy" class="btn" type="button">コピー</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="ov-download" class="ov" hidden>
+  <div class="win">
+    <div class="win-head"><span>ダウンロード</span><span class="gap"></span><button id="dl-close" class="btn" type="button">とじる</button></div>
+    <div class="win-body">
+      <div class="hint" id="dl-note"></div>
+      <div class="dl-list">
+        <button id="dl-sjis" class="btn" type="button">CSV(SJIS)</button>
+        <button id="dl-utf8" class="btn" type="button">CSV(UTF-8)</button>
+        <button id="dl-xlsx" class="btn" type="button">Excel(.xlsx)</button>
+      </div>
+      <div class="err" id="dl-err" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="ov-settings" class="ov" hidden>
+  <div class="win">
+    <div class="win-head"><span>設定</span><span class="gap"></span><button id="settings-close" class="btn" type="button">とじる</button></div>
+    <div class="win-body">
+      <label class="field">測定室の名前<input type="text" id="set-name" maxlength="40"></label>
+      <div class="row"><button id="set-save" class="btn primary" type="button">保存</button></div>
+      <div class="row"><span id="set-public-text">非公開</span><button id="set-public" class="btn" type="button">公開する</button></div>
+      <div class="hint" id="set-expire"></div>
+      <div class="row"><button id="set-delete" class="btn danger" type="button">測定室を終了する</button></div>
+      <div class="err" id="set-err" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  // s-link-logger の src/room.html の複製。違うのは API の決め方だけ（Multi Cloud Logger 専用の環境。*.699.jp だけで動くようにするため）。
+  // ?api= は開発用で、手元で開いたとき（file: か localhost）しか受け付けない。このページは保存してある資格を付けて API を呼ぶので、
+  // 公開している場所で受け付けると、細工したリンクを踏ませるだけで資格をよそのサーバーへ送らせることができてしまう
+  var DEV = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var API = (DEV && String(params.get('api') || '').replace(/\/+$/, '')) || 'https://logdb.699.jp';
+  var ROOM_ID = String(params.get('room') || params.get('id') || '').trim();
+  var POLL_MS = 5000, STALE_MS = 20000;
+  var OWNER_KEY = 'slink-room-owner:' + ROOM_ID;
+  var MEMBER_KEY = 'slink-room-member:' + ROOM_ID;
+  // 重ねて表示で端末ごとに付ける色
+  var COLORS = ['#0877c9', '#ef5b5b', '#18a06d', '#f6a900', '#7b61d1', '#ff7043', '#12b0a0', '#d8489a', '#7fae1b', '#5a6fd8', '#9b51e0', '#e07d10'];
+
+  // #owner=...（作成者）や #member=...（参加中の端末）で開かれたら、その資格をこのブラウザに保存する（URL からは消す）
+  // 非公開の測定室は、どちらかの資格がないと見られない
+  var hashTokens = {};
+  (function () {
+    [['owner', OWNER_KEY], ['member', MEMBER_KEY]].forEach(function (p) {
+      var m = new RegExp('[#&]' + p[0] + '=([^&]+)').exec(location.hash || '');
+      if (!m) return;
+      hashTokens[p[1]] = decodeURIComponent(m[1]);
+      try { localStorage.setItem(p[1], hashTokens[p[1]]); } catch (e) {}
+    });
+    if (/[#&](owner|member)=/.test(location.hash || '')) history.replaceState(null, '', location.pathname + location.search);
+  })();
+  function stored(key) { try { return localStorage.getItem(key) || hashTokens[key] || ''; } catch (e) { return hashTokens[key] || ''; } }
+  function ownerToken() { return stored(OWNER_KEY); }
+  function viewToken() { return ownerToken() || stored(MEMBER_KEY); }
+
+  var toastTimer = null;
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function fmtTime(ms) { return new Date(ms).toLocaleTimeString('ja-JP', {hour12: false}); }
+  // fine: 記録間隔が 1 秒より短いときは、0.1 秒の位まで出す
+  function timeText(ms, fine) { return fmtTime(ms) + (fine ? '.' + Math.floor(new Date(ms).getMilliseconds() / 100) : ''); }
+  function fmtDateTime(ms) { var d = new Date(ms); return d.toLocaleDateString('ja-JP') + ' ' + d.toLocaleTimeString('ja-JP', {hour12: false}); }
+  function fmtVal(v, s) { return v === null || v === undefined ? '—' : Number(v).toFixed(s.decimals || 0); }
+  function fmtCode(c) { c = String(c || '').replace(/\D/g, ''); return c.length === 6 ? c.slice(0, 3) + ' ' + c.slice(3) : c; }
+  function ago(ms) { var s = Math.max(0, Math.round((Date.now() - ms) / 1000)); return s < 60 ? s + '秒前' : s < 3600 ? Math.floor(s / 60) + '分前' : Math.floor(s / 3600) + '時間前'; }
+  function unitSuffix(s) { return s.unit ? '（' + s.unit + '）' : ''; }
+  function has(v) { return v !== null && v !== undefined; }
+
+  async function api(method, path, body, opts) {
+    opts = opts || {};
+    var headers = {};
+    if (body) headers['content-type'] = 'application/json';
+    var tok = opts.owner ? ownerToken() : viewToken();
+    if (tok) headers.authorization = 'Bearer ' + tok;
+    var res = await fetch(API + path, {method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store'});
+    var data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) { var err = new Error((data && data.message) || ('HTTP ' + res.status)); err.status = res.status; err.code = data && data.error; throw err; }
+    return data;
+  }
+
+  // ===== 状態 =====
+  var room = null, devices = [], picked = {}, serverOffset = 0;
+  var EMPTY_TEXT = $('empty-text').textContent;
+  var rowsCache = {};   // deviceId -> {rows, lastSeq, sensors, startedAt}
+  function byId(id) { for (var i = 0; i < devices.length; i++) if (devices[i].deviceId === id) return devices[i]; return null; }
+  function pickedIds() { return devices.filter(function (d) { return picked[d.deviceId]; }).map(function (d) { return d.deviceId; }); }
+  function isOwner() { return Boolean(room && room.isOwner); }
+
+  // 画面は 3 つ: 一覧（タイル）／1 台を大きく見る／重ねて表示。帯はいつも出したままにする
+  function showView(name) {
+    $('view-list').hidden = name !== 'list';
+    $('ov-detail').hidden = name !== 'detail';
+    $('ov-overlay').hidden = name !== 'overlay';
+    window.scrollTo(0, 0);
+  }
+  function setStatus(cls, text) { $('status').className = 'status-chip' + (cls ? ' ' + cls : ''); $('status-text').textContent = text; }
+  function showEmpty(text) { $('tiles').textContent = ''; $('empty').hidden = false; $('empty-text').textContent = text; }
+
+  // ===== 読み込み =====
+  var pollTimer = null, loading = false;
+  async function load() {
+    if (loading) return;
+    loading = true;
+    try {
+      var data = await api('GET', '/rooms/' + ROOM_ID);
+      serverOffset = data.now - Date.now();
+      room = data.room; devices = data.devices;
+      render();
+      if (!$('ov-detail').hidden) detailRefresh();
+      if (!$('ov-overlay').hidden) overlayRefresh();
+    } catch (e) {
+      if (e.status === 403) { room = null; setStatus('stopped', '公開されていません'); showView('list'); showEmpty('この測定室は公開されていません。参加している端末の「別タブで測定室を表示」から開いてください。'); $('owner-tools').hidden = true; $('btn-json').hidden = true; $('tools').hidden = true; }
+      else if (e.status === 404) { setStatus('stopped', '測定室が見つかりません'); showView('list'); showEmpty('この測定室はありません（終了したか、URL が違います）'); $('tools').hidden = true; clearInterval(pollTimer); }
+      else setStatus('', '読み込めません');
+    } finally { loading = false; }
+  }
+
+  // ===== タイル =====
+  function render() {
+    document.title = '測定室｜' + room.name + ' - S-LINK Logger';
+    $('room-name').textContent = room.name;
+    setStatus('connected', room.public ? '開室中（公開中）' : '開室中');
+    $('btn-json').hidden = !room.public;
+    $('tools').hidden = false;
+    $('meta').textContent = '最終更新 ' + fmtTime(room.lastUploadAt);
+    $('owner-tools').hidden = !isOwner();
+    $('owner-sel').hidden = !isOwner();
+    $('count').textContent = devices.length + ' 台';
+    var tiles = $('tiles');
+    var seen = {};
+    devices.forEach(function (d, i) {
+      seen[d.deviceId] = true;
+      var t = tiles.querySelector('[data-id="' + d.deviceId + '"]');
+      if (!t) { t = buildTile(d); tiles.appendChild(t); }
+      updateTile(t, d, i);
+    });
+    [].forEach.call(tiles.querySelectorAll('.tile'), function (t) { if (!seen[t.dataset.id]) { delete picked[t.dataset.id]; t.remove(); } });
+    $('empty-text').textContent = EMPTY_TEXT;
+    $('empty').hidden = devices.length > 0;
+    updateSelection();
+  }
+  function buildTile(d) {
+    var t = el('div', 'tile'); t.dataset.id = d.deviceId;
+    var head = el('div', 'tile-head');
+    var cb = el('input', 'pick'); cb.type = 'checkbox';
+    cb.addEventListener('click', function (e) { e.stopPropagation(); picked[d.deviceId] = cb.checked; updateSelection(); });
+    head.appendChild(cb);
+    head.appendChild(el('span', 'name'));
+    head.appendChild(el('span', 'badge', '作成'));
+    head.appendChild(el('span', 'seen'));
+    t.appendChild(head);
+    t.appendChild(el('div', 'compare-rows'));
+    t.appendChild(el('canvas', 'mini'));
+    t.appendChild(el('div', 'foot'));
+    t.addEventListener('click', function () { openDetail(d.deviceId); });
+    return t;
+  }
+  function isStale(d) { return !d.lastSeen || Date.now() + serverOffset - d.lastSeen > STALE_MS; }
+  // センサー 1 つぶんの行（左に色の帯、名前、いまの値）。手元の画面で「くらべる」にしたときの行と同じ形
+  function valueRow(name, color, valueText, unit) {
+    var row = el('div', 'compare-row'); row.style.setProperty('--row-color', color);
+    row.appendChild(el('span', 'name', name));
+    var val = el('span', 'val', valueText);
+    if (unit) val.appendChild(el('small', '', unit));
+    row.appendChild(val);
+    return row;
+  }
+  function updateTile(t, d) {
+    t.querySelector('.name').textContent = d.name;
+    t.querySelector('.badge').hidden = !d.isOwner;
+    t.classList.toggle('stale', isStale(d));
+    t.classList.toggle('picked', Boolean(picked[d.deviceId]));
+    t.querySelector('.pick').checked = Boolean(picked[d.deviceId]);
+    t.querySelector('.seen').textContent = d.lastSeen ? ago(d.lastSeen - serverOffset) : '未受信';
+    var vals = t.querySelector('.compare-rows'); vals.textContent = '';
+    d.sensors.forEach(function (s) { vals.appendChild(valueRow(s.name, s.color, fmtVal(d.lastValues[s.key], s), s.unit)); });
+    drawMini(t.querySelector('.mini'), d);
+    var foot = t.querySelector('.foot'); foot.textContent = '';
+    foot.appendChild(el('span', '', '記録 ' + (d.rowCount || 0).toLocaleString('ja-JP') + ' 件'));
+    foot.appendChild(el('span', '', d.startedAt ? '開始 ' + fmtTime(d.startedAt) : ''));
+  }
+  function updateSelection() {
+    var n = pickedIds().length;
+    $('btn-overlay').disabled = n === 0;
+    $('btn-reset').disabled = n === 0;
+    $('btn-kick').disabled = n === 0;
+    $('btn-overlay').textContent = n ? '重ねて表示（' + n + '）' : '重ねて表示';
+    $('sel-all').checked = devices.length > 0 && n === devices.length;
+    [].forEach.call($('tiles').querySelectorAll('.tile'), function (t) { t.classList.toggle('picked', Boolean(picked[t.dataset.id])); t.querySelector('.pick').checked = Boolean(picked[t.dataset.id]); });
+  }
+  $('sel-all').addEventListener('change', function () { devices.forEach(function (d) { picked[d.deviceId] = $('sel-all').checked; }); updateSelection(); });
+
+  // ===== 描画（手元の画面のグラフと同じ描き方。横軸だけは、端末どうしを重ねられるように時刻で取る） =====
+  function prep(canvas) {
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvas.clientWidth || 300, h = canvas.clientHeight || 100;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return {ctx: ctx, w: w, h: h};
+  }
+  function hexToRgba(hex, alpha) {
+    var n = parseInt(String(hex).replace('#', ''), 16);
+    if (!isFinite(n)) return 'rgba(8, 119, 201, ' + alpha + ')';
+    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + alpha + ')';
+  }
+  function roundRect(ctx, x, y, w, h, radius) {
+    var r = Math.min(radius, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  // 重ねるときの線の種類（センサーの順）。色の似たセンサーどうしでも見分けられるように、1 本目は実線、2 本目は破線、3 本目は点線…にする
+  var DASHES = [[], [10, 7], [0.5, 7], [14, 6, 0.5, 6], [5, 6], [20, 7]];
+  // グラフの余白（左は縦軸の目盛り、下は時刻の分）。rightAxes: 右に描く軸の本数（重ねて単位が違うとき 1〜2）
+  function rightAxisWidth(w) { return w < 470 ? 50 : 62; }
+  function chartMargin(w, rightAxes) { return {top: 24, right: rightAxes ? rightAxisWidth(w) * rightAxes : 22, bottom: 45, left: w < 470 ? 55 : 68}; }
+  function niceStep(range, ticks) {
+    if (!isFinite(range) || range <= 0) return 1;
+    var raw = range / Math.max(1, ticks), mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  }
+  function tickDecimals(step) { return step >= 1 ? 0 : Math.min(4, Math.max(1, Math.ceil(-Math.log10(step) - 1e-9))); }
+  // 値の範囲（lo〜hi）から、きりのいい目盛り（step）と軸の上下（yMin/yMax）を決める
+  function niceScale(lo, hi, decimals, ticks) {
+    if (lo === hi) { var pad = Math.max(Math.abs(lo) * 0.08, decimals ? 1 : 5); lo -= pad; hi += pad; }   // 整数で記録する項目は、値が同じでも軸が潰れないよう広めに取る
+    var range = hi - lo, step = niceStep(range * 1.18, ticks);
+    var yMin = Math.floor((lo - range * 0.09) / step) * step, yMax = Math.ceil((hi + range * 0.09) / step) * step;
+    return {yMin: yMin, yMax: yMax, step: step, count: Math.round((yMax - yMin) / step)};
+  }
+  // 重ねるときの縦軸。単位が同じ線は 1 本の軸にまとめる。戻り値は軸ごとの「series の添字」の組で、出てきた順に 左・右・いちばん右 に置く
+  var OVERLAY_SIDES = ['左', '右', 'いちばん右'];
+  function unitGroups(series) {
+    var axes = [];
+    series.forEach(function (s, n) {
+      var axis = null;
+      axes.forEach(function (members) { if (!axis && series[members[0]].unit === s.unit) axis = members; });
+      if (axis) axis.push(n); else axes.push([n]);
+    });
+    return axes;
+  }
+  function lowerBound(pts, t) { var lo = 0, hi = pts.length; while (lo < hi) { var mid = (lo + hi) >> 1; if (pts[mid][0] < t) lo = mid + 1; else hi = mid; } return lo; }
+  // 点が多いときは区間ごとに最小・最大だけ残す（線の形は変わらず、描画が軽くなる）
+  function thin(line, maxPoints) {
+    var n = line.length;
+    if (n <= maxPoints) return line;
+    var out = [line[0]], buckets = Math.max(1, Math.floor(maxPoints / 2)), size = n / buckets;
+    for (var b = 0; b < buckets; b++) {
+      var from = Math.floor(b * size), to = Math.min(n, Math.floor((b + 1) * size)), lo = -1, hi = -1;
+      for (var i = from; i < to; i++) { if (lo < 0 || line[i][1] < line[lo][1]) lo = i; if (hi < 0 || line[i][1] > line[hi][1]) hi = i; }
+      if (lo < 0) continue;
+      if (lo <= hi) { out.push(line[lo]); if (hi !== lo) out.push(line[hi]); } else { out.push(line[hi]); out.push(line[lo]); }
+    }
+    out.push(line[n - 1]);
+    return out;
+  }
+  // 見えている範囲（xMin〜xMax）の線。値のない記録はとばしてつなぐ。範囲のすぐ外の 1 点ずつも入れる（線を枠の端までつなぐため）
+  // lo/hi: 範囲の中の値の最小・最大、last: いちばん新しい記録（見えているときだけ）
+  function visible(pts, xMin, xMax, maxPoints) {
+    var a = lowerBound(pts, xMin), b = lowerBound(pts, xMax + 0.5), lo = Infinity, hi = -Infinity, i, v;
+    for (i = a; i < b; i++) { v = pts[i][1]; if (!has(v)) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+    var line = [];
+    for (i = a - 1; i >= 0; i--) if (has(pts[i][1])) { line.push(pts[i]); break; }
+    for (i = a; i < b; i++) if (has(pts[i][1])) line.push(pts[i]);
+    for (i = b; i < pts.length; i++) if (has(pts[i][1])) { line.push(pts[i]); break; }
+    var last = null;
+    for (i = pts.length - 1; i >= 0; i--) if (has(pts[i][1])) { last = pts[i]; break; }
+    if (last && (last[0] < xMin || last[0] > xMax)) last = null;
+    return {line: thin(line, maxPoints), lo: lo, hi: hi, any: hi >= lo, last: last};
+  }
+  function tracePath(ctx, line, X, yAt) {
+    ctx.beginPath();
+    for (var i = 0; i < line.length; i++) { var x = X(line[i][0]), y = yAt(line[i][1]); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  }
+  // 線の下を薄く塗り、線を描く（枠の外へ続く分は枠で切る）
+  function drawLine(ctx, s, vis, X, yAt, p, fillTop, fillBottom, width) {
+    var line = vis.line;
+    if (!line.length) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(p.left, p.top - 3, p.right - p.left, p.bottom - p.top + 6); ctx.clip();
+    if (fillTop > 0 && line.length > 1) {
+      var gradient = ctx.createLinearGradient(0, p.top, 0, p.bottom);
+      gradient.addColorStop(0, hexToRgba(s.color, fillTop));
+      gradient.addColorStop(1, hexToRgba(s.color, fillBottom));
+      tracePath(ctx, line, X, yAt);
+      ctx.lineTo(X(line[line.length - 1][0]), p.bottom);
+      ctx.lineTo(X(line[0][0]), p.bottom);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+    tracePath(ctx, line, X, yAt);
+    ctx.strokeStyle = s.color; ctx.lineWidth = width; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.setLineDash(s.dash || []);
+    ctx.stroke();
+    ctx.restore();
+    // いちばん新しい記録の点
+    if (vis.last) {
+      ctx.beginPath();
+      ctx.arc(X(vis.last[0]), yAt(vis.last[1]), 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = s.color; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
+    }
+  }
+  function seriesLabel(s) { return s.label || s.name + unitSuffix(s); }   // label: 重ねて表示で端末の名前に付ける（ずらした秒数など）
+  // 1 本の線を p の枠（top/bottom/left/right）に描く（上下に並べるときの 1 段）。戻り値は値 → y の関数（記録がなければ null）
+  function drawPanel(ctx, s, vis, p, X) {
+    var panelH = p.bottom - p.top;
+    ctx.strokeStyle = '#9cb5c5'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.bottom); ctx.lineTo(p.right, p.bottom); ctx.stroke();
+    if (p.titled) {
+      ctx.fillStyle = s.color; ctx.font = 'bold ' + (p.small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(seriesLabel(s), p.left + 7, p.top + 4);
+    }
+    if (!vis.any) {
+      ctx.fillStyle = '#8fa3b3'; ctx.font = 'bold ' + (p.small ? 11 : 13) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('この時間の記録はありません', (p.left + p.right) / 2, (p.top + p.bottom) / 2);
+      return null;
+    }
+    var sc = niceScale(vis.lo, vis.hi, s.decimals, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす
+    var yAt = function (v) { return p.top + ((sc.yMax - v) / (sc.yMax - sc.yMin)) * panelH; };
+    ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1'; ctx.fillStyle = '#667b8c';
+    ctx.font = (p.small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (var i = 0; i <= sc.count; i++) {
+      var tick = sc.yMin + i * sc.step, y = yAt(tick);
+      ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.right, y); ctx.stroke();
+      ctx.fillText(tick.toFixed(tickDecimals(sc.step)), p.left - 9, y);
+    }
+    drawLine(ctx, {color: s.color}, vis, X, yAt, p, 0.28, 0.015, 3.2);   // 並べるときは、どれも実線
+    return yAt;
+  }
+  // 何本かの線を 1 枚に重ねる。縦軸は単位ごとに 1 本（unitGroups）で、左・右・いちばん右（右の軸の外。p.axisWidth ずつ離す）の順に置く。
+  // 線が 1 本だけの軸はその線の色、同じ単位の 2 本以上で共有する軸は灰色で描き、目盛りの本数をそろえて横線を共有する。
+  // p.legend: 'auto' はセンサーの名前を枠の中に書く（線の見本つき）。'fit' は 1 行に入るときだけ書く（重ねて表示。端末の名前は左のカードにもある）
+  function drawOverlaid(ctx, series, vises, groups, p, X) {
+    var panelH = p.bottom - p.top;
+    var axes = groups.map(function (members, a) {
+      var lo = Infinity, hi = -Infinity;
+      members.forEach(function (n) { if (vises[n].any) { lo = Math.min(lo, vises[n].lo); hi = Math.max(hi, vises[n].hi); } });
+      var shared = members.length > 1, first = series[members[0]];
+      return {
+        members: members,
+        x: a === 0 ? p.left : p.right + (a - 1) * p.axisWidth,
+        side: a === 0 ? -1 : 1,   // 数字を書く側（-1: 軸の左 / 1: 軸の右）
+        color: shared ? '#9cb5c5' : first.color,
+        textColor: shared ? '#667b8c' : first.color,
+        scale: hi >= lo ? niceScale(lo, hi, first.decimals, 5) : null
+      };
+    });
+    var scaled = axes.filter(function (axis) { return axis.scale; });
+    var count = 0;
+    scaled.forEach(function (axis) { count = Math.max(count, axis.scale.count); });
+    scaled.forEach(function (axis) { var sc = axis.scale; if (sc.count < count) { sc.yMax += (count - sc.count) * sc.step; sc.count = count; } });   // 本数をそろえる（少ない軸は上を広げる）
+    var yAts = series.map(function (s, n) {
+      var sc = null;
+      axes.forEach(function (axis) { if (axis.members.indexOf(n) >= 0) sc = axis.scale; });
+      return sc ? function (v) { return p.top + ((sc.yMax - v) / (sc.yMax - sc.yMin)) * panelH; } : null;
+    });
+    // 横の目盛り線と、軸ごとの数字
+    ctx.font = (p.small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+    for (var i = 0; count && i <= count; i++) {
+      var y = p.top + panelH - (i / count) * panelH;
+      ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1';
+      ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.right, y); ctx.stroke();
+      scaled.forEach(function (axis) {
+        var sc = axis.scale;
+        ctx.fillStyle = axis.textColor; ctx.textAlign = axis.side < 0 ? 'right' : 'left';
+        ctx.fillText((sc.yMin + i * sc.step).toFixed(tickDecimals(sc.step)), axis.x + axis.side * 9, y);
+        if (axis.x > p.right) { ctx.strokeStyle = axis.color; ctx.beginPath(); ctx.moveTo(axis.x, y); ctx.lineTo(axis.x + 5, y); ctx.stroke(); }   // 横線の届かない外の軸には、短い目盛りを付ける
+      });
+    }
+    // 軸線（下は灰色。縦は軸ごとの色）
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#9cb5c5';
+    ctx.beginPath(); ctx.moveTo(p.left, p.bottom); ctx.lineTo(p.right, p.bottom); ctx.stroke();
+    axes.forEach(function (axis) { ctx.strokeStyle = axis.color; ctx.beginPath(); ctx.moveTo(axis.x, p.top); ctx.lineTo(axis.x, p.bottom); ctx.stroke(); });
+    // 名前（線と同じ色。前に線の見本を付ける）。軸が 1 本なら左上から右上へ等間隔に、
+    // 2 本以上なら左の軸の分を左上・右の軸の分を右上・いちばん右の軸の分をその軸の上に書く
+    var sampleW = 27, sampleGap = 5, nameGap = 10, lineH = p.small ? 13 : 15;
+    ctx.font = 'bold ' + (p.small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textBaseline = 'top';
+    var nameWidth = function (n) { return sampleW + sampleGap + ctx.measureText(seriesLabel(series[n])).width; };
+    var namesWidth = function (members) { var sum = nameGap * (members.length - 1); members.forEach(function (n) { sum += nameWidth(n); }); return sum; };
+    var drawName = function (n, x, y) {   // x は見本の左端
+      var sy = y + (p.small ? 5 : 6);
+      ctx.save();
+      ctx.strokeStyle = series[n].color; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.setLineDash(series[n].dash || []);
+      ctx.beginPath(); ctx.moveTo(x + 1.5, sy); ctx.lineTo(x + sampleW - 1.5, sy); ctx.stroke();
+      ctx.restore();
+      ctx.textAlign = 'left'; ctx.fillStyle = series[n].color;
+      ctx.fillText(seriesLabel(series[n]), x + sampleW + sampleGap, y);
+    };
+    var drawNames = function (members, x, y, align) {   // align が right のときは x が右端
+      if (align === 'right') x -= namesWidth(members);
+      members.forEach(function (n) { drawName(n, x, y); x += nameWidth(n) + nameGap; });
+    };
+    var room = p.right - p.left - 14, all = series.map(function (s, n) { return n; });
+    p.nameRows = 1;   // 枠の上の端に書いた名前の行数（マウスを乗せたときの時刻を、その下に出す）
+    if (axes.length === 1) {
+      if (namesWidth(all) > room) p.nameRows = p.legend === 'fit' ? 0 : all.length;
+      if (namesWidth(all) <= room) all.forEach(function (n) { drawName(n, p.left + 7 + (all.length > 1 ? n / (all.length - 1) : 0) * (room - nameWidth(n)), p.top + 4); });
+      else if (p.legend !== 'fit') all.forEach(function (n) { drawName(n, p.left + 7, p.top + 4 + n * lineH); });   // 横に入りきらないときは、左上に縦に並べる
+    } else {
+      // 左上と右上の名前が横に入りきらないときは、右上の分を 1 行下げる
+      var crowded = namesWidth(axes[0].members) + nameGap + namesWidth(axes[1].members) > room;
+      if (crowded) p.nameRows = 2;
+      drawNames(axes[0].members, p.left + 7, p.top + 4, 'left');
+      drawNames(axes[1].members, p.right - 7, p.top + 4 + (crowded ? lineH : 0), 'right');
+      if (axes[2]) drawNames(axes[2].members, axes[2].x + p.axisWidth - 4, p.top - 20, 'right');
+    }
+    // 線（塗りは重なると濁るので薄く）と最新の点
+    series.forEach(function (s, n) { if (yAts[n]) drawLine(ctx, s, vises[n], X, yAts[n], p, p.fill, 0.01, s.width || 3); });
+    return yAts;
+  }
+  // series: [{name, unit, color, decimals, dash, width, pts: [[時刻（ミリ秒）, 値], ...]}]。pts は時刻の順
+  // opts.mode: 'stack'（上下に並べる）／'overlay'（1 枚に重ねる）、range: {start, end}（見える範囲。なければ全部）、
+  //      sel: 選んだ範囲、hover: マウスを乗せた時刻、fine: 時刻を 0.1 秒まで出す、legend・fill: drawOverlaid を参照
+  // 戻り値は位置の情報（記録が 1 つもなければ null）
+  function drawChart(canvas, series, opts) {
+    opts = opts || {};
+    var g = prep(canvas), ctx = g.ctx, w = g.w, h = g.h, small = w < 470;
+    var ext = extentOf(series.map(function (s) { return s.pts; }));
+    if (!ext) return null;
+    var overlay = opts.mode === 'overlay';
+    var groups = overlay ? unitGroups(series) : series.map(function (s, n) { return [n]; });
+    var m = chartMargin(w, overlay ? groups.length - 1 : 0);
+    var rg = opts.range || null;
+    var xMin = rg ? rg.start : ext.min, xMax = rg ? rg.end : ext.max;
+    if (xMax - xMin < 1000) xMax = xMin + 1000;
+    var left = m.left, right = w - m.right, top = m.top, bottom = h - m.bottom, pw = right - left;
+    var X = function (t) { return left + (t - xMin) / (xMax - xMin) * pw; };
+
+    ctx.save();
+    // 縦の目盛り線と時刻は全パネル共通
+    ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1'; ctx.fillStyle = '#667b8c';
+    ctx.font = (small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    var xt = w < 500 ? 3 : 5;
+    for (var i = 0; i <= xt; i++) {
+      var t = xMin + (xMax - xMin) * i / xt, x = X(t), label = fmtTime(t), half = ctx.measureText(label).width / 2;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+      ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 10);   // 右端の時刻が切れないように、枠の中へ寄せる
+    }
+    var maxPoints = Math.max(200, Math.floor(pw) * 2);
+    var vises = series.map(function (s) { return visible(s.pts, xMin, xMax, maxPoints); });
+    var panels = [], nameRows = 0;
+    if (overlay) {
+      var p = {top: top, bottom: bottom, left: left, right: right, small: small, axisWidth: rightAxisWidth(w), legend: opts.legend || 'auto', fill: opts.fill === undefined ? 0.12 : opts.fill};
+      var yAts = drawOverlaid(ctx, series, vises, groups, p, X);
+      nameRows = p.nameRows;
+      series.forEach(function (s, n) { panels.push({si: n, yAt: yAts[n], top: top, bottom: bottom, titled: true}); });
+    } else {
+      var gap = series.length > 1 ? 18 : 0, panelH = (bottom - top - gap * (series.length - 1)) / series.length;
+      series.forEach(function (s, n) {
+        var q = {top: top + n * (panelH + gap), left: left, right: right, small: small, titled: series.length > 1};
+        q.bottom = q.top + panelH;
+        panels.push({si: n, yAt: drawPanel(ctx, s, vises[n], q, X), top: q.top, bottom: q.bottom, titled: q.titled});
+      });
+    }
+    ctx.restore();
+
+    var geo = {left: left, top: top, width: pw, height: bottom - top, xMin: xMin, xMax: xMax, msPerPx: (xMax - xMin) / pw, X: X, panels: panels, small: small, timeY: top + 2 + nameRows * (small ? 13 : 15) + (nameRows ? 4 : 0)};
+    if (opts.sel) {
+      // 選んだ範囲（灰色）
+      var s1 = Math.max(left, Math.min(right, X(opts.sel.a))), s2 = Math.max(left, Math.min(right, X(opts.sel.b)));
+      if (s2 > s1) {
+        ctx.fillStyle = 'rgba(80, 96, 110, .22)'; ctx.fillRect(s1, top, s2 - s1, bottom - top);
+        ctx.strokeStyle = 'rgba(80, 96, 110, .6)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(s1, top); ctx.lineTo(s1, bottom); ctx.moveTo(s2, top); ctx.lineTo(s2, bottom); ctx.stroke();
+      }
+    }
+    if (has(opts.hover) && !opts.sel) drawHover(ctx, geo, series, opts.hover, opts.fine);
+    return geo;
+  }
+  // 時刻 t にいちばん近い、値のある記録（見えている範囲の中だけ）
+  function nearest(pts, t, xMin, xMax) {
+    var i = lowerBound(pts, t), best = null, bestD = Infinity;
+    for (var a = i - 1, n = 0; a >= 0 && n < 200; a--, n++) { if (has(pts[a][1])) { if (pts[a][0] >= xMin) { best = pts[a]; bestD = t - pts[a][0]; } break; } }
+    for (var b = i, k = 0; b < pts.length && k < 200; b++, k++) { if (has(pts[b][1])) { if (pts[b][0] <= xMax && pts[b][0] - t < bestD) best = pts[b]; break; } }
+    return best;
+  }
+  // マウスを乗せたところの記録: 縦の線と、線ごとに点と値、上に時刻を描く
+  function drawHover(ctx, g, series, t, fine) {
+    var found = series.map(function (s) { return nearest(s.pts, t, g.xMin, g.xMax); });
+    var ref = null;
+    found.forEach(function (p) { if (p && (!ref || Math.abs(p[0] - t) < Math.abs(ref[0] - t))) ref = p; });
+    if (!ref) return;
+    var x = g.X(ref[0]), bottom = g.top + g.height, rightEdge = g.left + g.width;
+    ctx.save();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(58, 69, 80, .55)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x, g.top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    var font = 'bold ' + (g.small ? 11 : 12) + 'px system-ui, sans-serif', boxH = 24, pad = 8;
+    var drawBox = function (text, bx, by, fill, color) {
+      ctx.font = font;
+      var bw = ctx.measureText(text).width + pad * 2;
+      var bl = Math.min(rightEdge - bw, Math.max(g.left, bx));
+      roundRect(ctx, bl, by, bw, boxH, 7);
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, bl + pad, by + boxH / 2 + .5);
+    };
+    // 時刻（線の上端。重ねたときは、上の端に書いた名前の下。右端に近いときは線の左へ）
+    var timeLabel = timeText(ref[0], fine);
+    ctx.font = font;
+    var timeW = ctx.measureText(timeLabel).width + pad * 2;
+    drawBox(timeLabel, x + 8 + timeW > rightEdge ? x - 8 - timeW : x + 8, g.timeY, 'rgba(58, 69, 80, .9)', 'white');
+    var placed = [];   // 出した枠（重ねるときに枠どうしが重ならないように）
+    g.panels.forEach(function (panel) {
+      var s = series[panel.si], item = found[panel.si];
+      if (!panel.yAt || !item) return;
+      var px = g.X(item[0]), y = panel.yAt(item[1]);
+      ctx.beginPath(); ctx.arc(px, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'white'; ctx.fill();
+      ctx.strokeStyle = s.color; ctx.lineWidth = 3; ctx.stroke();
+      var text = (panel.titled ? s.name + ' ' : '') + fmtVal(item[1], s) + (s.unit ? ' ' + s.unit : '');
+      ctx.font = font;
+      var bw = ctx.measureText(text).width + pad * 2;
+      var bx = px + 12 + bw > rightEdge ? px - 12 - bw : px + 12;
+      var by = Math.min(panel.bottom - boxH - 2, Math.max(panel.top + 2, y - boxH / 2));
+      // 先に出した枠と重なったら、どれとも重ならない位置を下（下に無ければ上）にさがす
+      var free = function (top) { return !placed.some(function (b) { return top < b.y + b.h + 4 && b.y < top + boxH + 4; }); };
+      if (!free(by)) {
+        var below = placed.map(function (b) { return b.y + b.h + 4; }).filter(function (top) { return top >= by && top + boxH <= panel.bottom && free(top); });
+        var above = placed.map(function (b) { return b.y - boxH - 4; }).filter(function (top) { return top <= by && top >= panel.top && free(top); });
+        if (below.length) by = Math.min.apply(null, below);
+        else if (above.length) by = Math.max.apply(null, above);
+      }
+      drawBox(text, bx, by, s.color, 'white');
+      placed.push({y: by, h: boxH});
+    });
+    ctx.restore();
+  }
+  // タイルの小さなグラフ。目盛りは出さず、線だけ（センサーが 1 つなら下を塗る。2 つ以上は、それぞれの範囲いっぱいに重ねる）
+  function drawMini(canvas, d) {
+    if (!canvas.clientWidth) return;   // 一覧を出していないとき（もどったときに描き直す）
+    var g = prep(canvas), ctx = g.ctx;
+    var rows = d.summary.points;
+    if (rows.length < 2) {
+      ctx.fillStyle = '#8fa3b3'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(d.rowCount ? '…' : '記録を待っています', g.w / 2, g.h / 2);
+      return;
+    }
+    var x0 = rows[0][1], xr = Math.max(1, rows[rows.length - 1][1] - x0);
+    var p = {left: 8, right: g.w - 10, top: 9, bottom: g.h - 6};
+    var X = function (t) { return p.left + (t - x0) / xr * (p.right - p.left); };
+    d.sensors.forEach(function (s, si) {
+      var pts = rows.map(function (r) { return [r[1], r[2 + si]]; });
+      var vis = visible(pts, x0, x0 + xr, 400);
+      if (!vis.any) return;
+      var lo = vis.lo, hi = vis.hi;
+      if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+      var pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+      var yAt = function (v) { return p.top + (hi - v) / (hi - lo) * (p.bottom - p.top); };
+      var line = {color: s.color, dash: d.sensors.length > 1 ? DASHES[si % DASHES.length].map(function (n) { return n * 0.6; }) : []};
+      var last = vis.last; vis.last = null;
+      drawLine(ctx, line, vis, X, yAt, p, d.sensors.length > 1 ? 0.08 : 0.26, 0.015, 2.2);
+      if (last) {
+        ctx.beginPath(); ctx.arc(X(last[0]), yAt(last[1]), 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.strokeStyle = s.color; ctx.lineWidth = 2.2; ctx.stroke();
+      }
+    });
+  }
+
+  // ===== グラフの下のスクロールバー =====
+  // 見える範囲は時刻で持つ。span: 長さ（null は全部）、end: 右端（null は最新に追いかける）
+  var MIN_SPAN = 5000;
+  function spanText(ms) {
+    var sec = Math.round(ms / 1000), h = Math.floor(sec / 3600), mi = Math.floor((sec % 3600) / 60), x = sec % 60, parts = [];
+    if (h) parts.push(h + '時間');
+    if (mi) parts.push(mi + '分');
+    if (x || !parts.length) parts.push(x + '秒');
+    return parts.join(' ');
+  }
+  function makeScroll(onChange) {
+    var sc = {view: {span: null, end: null}, bars: [], extent: null};
+    var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+    sc.reset = function () { sc.view = {span: null, end: null}; };
+    sc.range = function () {
+      var ex = sc.extent;
+      if (!ex) return null;
+      var total = Math.max(1000, ex.max - ex.min), max = ex.min + total;
+      var span = sc.view.span === null ? total : clamp(sc.view.span, Math.min(MIN_SPAN, total), total);
+      var end = sc.view.end === null ? max : clamp(sc.view.end, ex.min + span, max);
+      return {start: end - span, end: end, span: span, min: ex.min, max: max, total: total};
+    };
+    sc.set = function (start, end, r) {
+      sc.view.span = end - start >= r.total ? null : end - start;
+      sc.view.end = end >= r.max ? null : end;
+      onChange();
+    };
+    sc.addBar = function () {
+      var bar = el('div', 'chart-scroll'), thumb = el('div', 'thumb'), label = el('span', 'span-label');
+      var gl = el('i', 'grip l'), gr = el('i', 'grip r');
+      thumb.appendChild(gl); thumb.appendChild(label); thumb.appendChild(gr);
+      bar.appendChild(thumb);
+      thumb.tabIndex = 0; thumb.setAttribute('role', 'slider'); thumb.setAttribute('aria-label', 'グラフの見える範囲');
+      var drag = null;
+      function down(mode) {
+        return function (e) {
+          if (e.button) return;
+          var r = sc.range(); if (!r) return;
+          e.preventDefault(); e.stopPropagation();
+          drag = {mode: mode, x: e.clientX, r: r, trackW: bar.clientWidth, thumbW: thumb.offsetWidth};
+          try { thumb.setPointerCapture(e.pointerId); } catch (err) {}
+          thumb.classList.add('dragging');
+        };
+      }
+      gl.addEventListener('pointerdown', down('l'));
+      gr.addEventListener('pointerdown', down('r'));
+      thumb.addEventListener('pointerdown', down('move'));
+      thumb.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+        var r = drag.r, dx = e.clientX - drag.x, start = r.start, end = r.end, min = Math.min(MIN_SPAN, r.total);
+        if (drag.mode === 'move') {
+          var px = drag.trackW - drag.thumbW;
+          start = clamp(r.start + (px > 0 ? dx / px * (r.total - r.span) : 0), r.min, r.max - r.span);
+          end = start + r.span;
+        } else {
+          var dn = dx / drag.trackW * r.total;
+          if (drag.mode === 'l') start = clamp(r.start + dn, r.min, r.end - min);
+          else end = clamp(r.end + dn, r.start + min, r.max);
+        }
+        sc.set(start, end, r);
+      });
+      var up = function () { drag = null; thumb.classList.remove('dragging'); };
+      thumb.addEventListener('pointerup', up);
+      thumb.addEventListener('pointercancel', up);
+      // 灰色の部分の外を押したら、そこが真ん中になるように動かす
+      bar.addEventListener('pointerdown', function (e) {
+        if (e.target !== bar || e.button) return;
+        var r = sc.range(); if (!r) return;
+        var rect = bar.getBoundingClientRect();
+        var start = clamp(r.min + (e.clientX - rect.left) / rect.width * r.total - r.span / 2, r.min, r.max - r.span);
+        sc.set(start, start + r.span, r);
+      });
+      // キーボード: 左右で動かす。Shift を押しながらだと範囲の長さを変える
+      thumb.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        var r = sc.range(); if (!r) return;
+        e.preventDefault();
+        var dir = e.key === 'ArrowLeft' ? -1 : 1, start = r.start, end = r.end;
+        if (e.shiftKey) start = clamp(r.start - dir * r.span * 0.2, r.min, r.end - Math.min(MIN_SPAN, r.total));
+        else { start = clamp(r.start + dir * r.span * 0.1, r.min, r.max - r.span); end = start + r.span; }
+        sc.set(start, end, r);
+      });
+      sc.bars.push({bar: bar, thumb: thumb, label: label});
+      return bar;
+    };
+    // extent: {min, max}（データのある時刻の範囲）か null。見える範囲を返す
+    sc.update = function (extent) {
+      sc.extent = extent && extent.max > extent.min ? extent : null;
+      var r = sc.range();
+      sc.bars.forEach(function (b) {
+        b.thumb.hidden = !r;
+        if (!r) return;
+        var trackW = b.bar.clientWidth;
+        var w = Math.min(trackW, Math.max(44, trackW * r.span / r.total));
+        var room = r.total - r.span;
+        b.thumb.style.width = w + 'px';
+        b.thumb.style.left = (room > 0 ? (trackW - w) * (r.start - r.min) / room : 0) + 'px';
+        b.label.textContent = w >= 90 ? spanText(r.span) : '';
+        b.thumb.setAttribute('aria-valuetext', spanText(r.span));
+      });
+      return r;
+    };
+    return sc;
+  }
+  // ===== グラフで範囲を選んで拡大する =====
+  // グラフの空白を左右にドラッグして範囲を選ぶ（時刻で持つ）。指を離すと「この範囲を拡大」「キャンセル」を出す
+  // sel: {a, b: 選んだ時刻の両端, from: 押しはじめの時刻, x0: 押しはじめの位置, canvas: ドラッグしたグラフ, done: 指を離したか}
+  function makeSelect(scroll, redraw) {
+    var se = {sel: null};
+    se.clear = function () { se.sel = null; redraw(); };
+    se.zoom = function () {
+      // 選んだ範囲をグラフいっぱいに出す。スクロールバーの灰色の部分も同じ長さになる
+      var r = scroll.range(), c = se.sel;
+      se.sel = null;
+      if (!r || !c) { redraw(); return; }
+      var a = Math.max(r.min, c.a), b = Math.min(r.max, c.b);
+      if (b - a < MIN_SPAN) { var mid = (a + b) / 2; a = Math.max(r.min, mid - MIN_SPAN / 2); b = Math.min(r.max, a + MIN_SPAN); a = Math.max(r.min, b - MIN_SPAN); }
+      scroll.set(a, b, r);
+    };
+    // grab(e): 先に試すこと（折れ線をつかんだら true を返す）。なければ空白として扱う
+    se.attach = function (canvas, plot, grab) {
+      var box = el('div', 'sel-box');
+      var zoom = el('button', 'btn primary', 'この範囲を拡大'), cancel = el('button', 'btn', 'キャンセル');
+      zoom.type = 'button'; cancel.type = 'button';
+      zoom.addEventListener('click', se.zoom); cancel.addEventListener('click', se.clear);
+      box.appendChild(zoom); box.appendChild(cancel);
+      box.hidden = true;
+      plot.appendChild(box);
+      canvas._selBox = box;
+      var timeAt = function (e) {
+        var g = canvas._geo, rect = canvas.getBoundingClientRect();
+        return g.xMin + Math.max(0, Math.min(1, (e.clientX - rect.left - g.left) / g.width)) * (g.xMax - g.xMin);
+      };
+      canvas.addEventListener('pointerdown', function (e) {
+        if (e.button || !canvas._geo) return;
+        if (grab && grab(e)) return;
+        var t = timeAt(e);
+        se.sel = {a: t, b: t, from: t, x0: e.clientX, canvas: canvas, done: false};
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+        redraw();
+      });
+      canvas.addEventListener('pointermove', function (e) {
+        var c = se.sel;
+        if (!c || c.done || c.canvas !== canvas || !canvas._geo) return;
+        var t = timeAt(e);
+        c.a = Math.min(c.from, t); c.b = Math.max(c.from, t);
+        redraw();
+      });
+      var up = function (e) {
+        var c = se.sel;
+        if (!c || c.done || c.canvas !== canvas) return;
+        // ほとんど動かしていないときは、選ぶのをやめる（押しただけで選んだ範囲を消せる）
+        if (e.type === 'pointercancel' || Math.abs(e.clientX - c.x0) < 6) { se.clear(); return; }
+        c.done = true;
+        redraw();
+      };
+      canvas.addEventListener('pointerup', up);
+      canvas.addEventListener('pointercancel', up);
+    };
+    // 描いたあとに呼ぶ。位置の情報を覚え、ドラッグしたグラフにボタンを出す
+    se.place = function (canvas, g) {
+      canvas._geo = g;
+      var box = canvas._selBox, c = se.sel;
+      if (!box) return;
+      box.hidden = !(g && c && c.done && c.canvas === canvas);
+      if (box.hidden) return;
+      var x1 = Math.max(g.left, Math.min(g.left + g.width, g.X(c.a))), x2 = Math.max(g.left, Math.min(g.left + g.width, g.X(c.b)));
+      var half = box.offsetWidth / 2, w = canvas.clientWidth;
+      box.style.left = Math.max(half + 4, Math.min(w - half - 4, (x1 + x2) / 2)) + 'px';
+      box.style.top = (g.top + g.height / 2) + 'px';
+    };
+    return se;
+  }
+  function distToSegment(px, py, x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1, len = dx * dx + dy * dy;
+    var t = len ? Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len)) : 0;
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+  }
+  // 位置 (px, py) から折れ線までの近さ（画素）。th より遠ければ Infinity。pts は時刻の順に並んでいる。yAt は値 → y
+  function distToSeries(pts, g, yAt, px, py, th) {
+    var tLo = g.xMin + (px - th - g.left) * g.msPerPx, tHi = g.xMin + (px + th - g.left) * g.msPerPx;
+    var lo = 0, hi = pts.length, best = Infinity;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (pts[mid][0] < tLo) lo = mid + 1; else hi = mid; }
+    for (var i = Math.max(0, lo - 1); i < pts.length; i++) {
+      var p = pts[i], q = pts[i + 1];
+      if (p[0] > tHi) break;
+      if (p[1] === null || p[1] === undefined) continue;
+      var d = q && q[1] !== null && q[1] !== undefined
+        ? distToSegment(px, py, g.X(p[0]), yAt(p[1]), g.X(q[0]), yAt(q[1]))
+        : Math.hypot(px - g.X(p[0]), py - yAt(p[1]));
+      if (d < best) best = d;
+    }
+    return best <= th ? best : Infinity;
+  }
+  function extentOf(list) {
+    // list: [[xMs, y], ...] の配列をいくつか。値のある点の時刻の範囲
+    var min = Infinity, max = -Infinity;
+    list.forEach(function (pts) { pts.forEach(function (p) { if (p[1] !== null && p[1] !== undefined) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; } }); });
+    return isFinite(min) ? {min: min, max: max} : null;
+  }
+
+  // ===== データ取得（端末ごと・差分） =====
+  async function fetchRows(deviceId) {
+    var d = byId(deviceId);
+    var c = rowsCache[deviceId];
+    if (c && d && (c.session !== d.session || c.resetSeq !== d.resetSeq)) c = null;   // 端末側で消してやり直した／リセットされた
+    var from = c ? c.lastSeq : 0;
+    var data = await api('GET', '/rooms/' + ROOM_ID + '/devices/' + deviceId + '/rows?from=' + from);
+    if (!c) c = rowsCache[deviceId] = {rows: [], lastSeq: 0, session: data.device.session, resetSeq: data.device.resetSeq};
+    data.rows.forEach(function (r) { if (r[0] > c.lastSeq) { c.rows.push(r); c.lastSeq = r[0]; } });
+    c.sensors = data.device.sensors; c.startedAt = data.device.startedAt; c.name = data.device.name;
+    return c;
+  }
+  function absTime(c, r) { return (c.startedAt || 0) + r[1]; }
+
+  // スクロールバーの左右を、グラフの線を描く幅にそろえる
+  function placeScroll(sc, canvas, rightAxes) {
+    var m = chartMargin(canvas.clientWidth || 300, rightAxes);
+    sc.bars.forEach(function (b) { b.bar.style.marginLeft = m.left + 'px'; b.bar.style.marginRight = m.right + 'px'; });
+  }
+  function setPressed(btn, on) { btn.classList.toggle('is-active', on); btn.setAttribute('aria-pressed', String(on)); }
+  // マウスの位置 → 時刻（枠の外なら null）
+  function hoverTime(canvas, e) {
+    var g = canvas._geo;
+    if (!g) return null;
+    var x = e.clientX - canvas.getBoundingClientRect().left;
+    if (x < g.left - 8 || x > g.left + g.width + 8) return null;
+    return g.xMin + Math.max(0, Math.min(1, (x - g.left) / g.width)) * (g.xMax - g.xMin);
+  }
+  // 記録間隔が 1 秒より短い端末は、時刻を 0.1 秒の位まで出す
+  function isFine(c) { var n = c.rows.length; return n > 1 && (c.rows[n - 1][1] - c.rows[0][1]) / (n - 1) < 950; }
+
+  // ===== 1 台を大きく見る（手元の画面と同じ並び） =====
+  // view: 'chart'（グラフ）／'table'（表）、overlay: センサーが 2 つ以上のとき 1 枚に重ねるか、hover: マウスを乗せた時刻
+  var detail = {id: null, view: 'chart', overlay: false, hover: null};
+  var detailScroll = makeScroll(function () { detailDraw(); });
+  var detailSel = makeSelect(detailScroll, function () { detailDraw(); });
+  $('detail-scroll').appendChild(detailScroll.addBar());
+  detailSel.attach($('detail-chart'), $('detail-plot'));
+  // センサーごとの線（時刻と値）。記録が増えたときだけ作り直す
+  function seriesOf(c) {
+    if (c._series && c._seriesLen === c.rows.length && c._seriesAt === c.startedAt) return c._series;
+    c._series = c.sensors.map(function (s, si) {
+      return {key: s.key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals, dash: DASHES[si % DASHES.length],
+        pts: c.rows.map(function (r) { return [absTime(c, r), r[2 + si]]; })};
+    });
+    c._seriesLen = c.rows.length; c._seriesAt = c.startedAt;
+    return c._series;
+  }
+  function statsOf(c) {
+    if (c._stats && c._statsLen === c.rows.length) return c._stats;
+    c._stats = c.sensors.map(function (s, si) {
+      var lo = Infinity, hi = -Infinity, sum = 0, n = 0;
+      c.rows.forEach(function (r) { var v = r[2 + si]; if (!has(v)) return; if (v < lo) lo = v; if (v > hi) hi = v; sum += v; n += 1; });
+      return n ? {min: lo, max: hi, avg: sum / n} : null;
+    });
+    c._statsLen = c.rows.length;
+    return c._stats;
+  }
+  // 重ねられるのは、縦軸が 3 本までの組。3 本になる組は右の余白が 2 本ぶん要るので、線を描く幅が OVERLAY_MIN_PLOT に足りない画面では重ねない
+  var OVERLAY_MIN_PLOT = 240;
+  function detailCanOverlay(series) {
+    if (series.length < 2) return false;
+    var axes = unitGroups(series).length;
+    if (axes > 3) return false;
+    if (axes < 3) return true;
+    var w = Math.max(320, $('detail-plot').clientWidth || $('detail-table-wrap').clientWidth);
+    var m = chartMargin(w, 2);
+    return w - m.left - m.right >= OVERLAY_MIN_PLOT;
+  }
+  function detailHeadings(c, series, overlay) {
+    $('detail-title').textContent = c.sensors.map(function (s) { return s.name; }).join('・') + 'の変化';
+    var desc;
+    if (series.length < 2) desc = '横軸：時刻　縦軸：' + (series[0] ? seriesLabel(series[0]) : '');
+    else if (!overlay) desc = '横軸：時刻（共通）　縦軸：上から ' + series.map(seriesLabel).join('・');
+    else {
+      var groups = unitGroups(series);
+      desc = groups.length === 1 ? '横軸：時刻　縦軸：' + series.map(seriesLabel).join('・') + '（共通の軸）'
+        : '横軸：時刻　縦軸：' + groups.map(function (members, a) { return OVERLAY_SIDES[a] + ' ' + members.map(function (n) { return seriesLabel(series[n]); }).join('と'); }).join('・');
+    }
+    $('detail-desc').textContent = desc;
+  }
+  // 左のカード: センサーが 1 つなら大きな数字と「最小・平均・最大」、2 つ以上ならセンサーごとの行
+  function detailValues(c, d) {
+    var box = $('detail-values'); box.textContent = '';
+    var stats = statsOf(c), last = d ? d.lastValues : {};
+    $('detail-label').textContent = c.sensors.map(function (s) { return s.name; }).join('・') + '　の現在値';
+    var seen = d && d.lastSeen ? fmtTime(d.lastSeen - serverOffset) + ' に受信' : '';
+    $('detail-meta').textContent = c.sensors.length === 1 ? '' : seen;
+    $('detail-meta').hidden = c.sensors.length === 1;
+    if (c.sensors.length === 1) {
+      var s = c.sensors[0], st = stats[0], text = fmtVal(last[s.key], s);
+      var vb = el('div', 'value-box');
+      vb.appendChild(el('span', 'value' + (text.length > 6 ? ' value--narrow' : text.length > 5 ? ' value--compact' : ''), text));
+      if (s.unit) vb.appendChild(el('span', 'unit', s.unit));
+      vb.appendChild(el('div', 'reading-meta', seen));
+      box.appendChild(vb);
+      var ms = el('div', 'mini-stats');
+      [['最小', 'min'], ['平均', 'avg'], ['最大', 'max']].forEach(function (p) {
+        var cell = el('div', 'mini-stat');
+        cell.appendChild(el('span', '', p[0]));
+        cell.appendChild(el('strong', '', st ? fmtVal(st[p[1]], s) + s.unit : '—'));
+        ms.appendChild(cell);
+      });
+      box.appendChild(ms);
+      return;
+    }
+    var rows = el('div', 'compare-rows');
+    c.sensors.forEach(function (s, si) {
+      var row = valueRow(s.name, s.color, fmtVal(last[s.key], s), s.unit), st = stats[si];
+      row.appendChild(el('div', 'stats', st ? '最小 ' + fmtVal(st.min, s) + s.unit + '　平均 ' + fmtVal(st.avg, s) + s.unit + '　最大 ' + fmtVal(st.max, s) + s.unit : '記録なし'));
+      rows.appendChild(row);
+    });
+    box.appendChild(rows);
+  }
+  function detailDraw() {
+    var c = detail.id && rowsCache[detail.id];
+    if (!c) return;
+    var series = seriesOf(c);
+    var can = detailCanOverlay(series), overlay = can && detail.overlay;
+    $('detail-layout').hidden = !(can && detail.view === 'chart');
+    setPressed($('detail-stack'), !overlay); setPressed($('detail-overlay'), overlay);
+    detailHeadings(c, series, overlay);
+    if (detail.view !== 'chart') return;
+    var cv = $('detail-chart');
+    $('detail-plot').dataset.panels = String(overlay ? 1 : Math.max(1, series.length));   // パネルの数で箱の高さが変わる（CSS）
+    placeScroll(detailScroll, cv, overlay ? unitGroups(series).length - 1 : 0);
+    var range = detailScroll.update(extentOf(series.map(function (s) { return s.pts; })));
+    var geo = drawChart(cv, series, {mode: overlay ? 'overlay' : 'stack', range: range, sel: detailSel.sel, hover: detail.hover, fine: isFine(c)});
+    $('detail-empty').hidden = Boolean(geo);
+    detailSel.place(cv, geo);
+  }
+  // 表は古い順。増えた分だけ下に足す（いちばん下を見ているときは、新しい行についていく）
+  var tableState = {sig: '', rendered: 0};
+  function detailTable(c) {
+    var wrap = $('detail-table-wrap'), thead = wrap.querySelector('thead'), tbody = wrap.querySelector('tbody');
+    var fine = isFine(c);
+    var sig = [detail.id, c.session, c.resetSeq, fine, c.sensors.map(function (s) { return s.key; }).join('+')].join('|');
+    if (tableState.sig !== sig || c.rows.length < tableState.rendered) {
+      tableState.sig = sig; tableState.rendered = 0;
+      thead.textContent = ''; tbody.textContent = '';
+      var trh = el('tr');
+      ['番号', '時刻'].concat(c.sensors.map(seriesLabel)).forEach(function (h) { var th = el('th', '', h); th.scope = 'col'; trh.appendChild(th); });
+      thead.appendChild(trh);
+    }
+    if (c.rows.length === tableState.rendered) return;
+    var atBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 28;
+    var frag = document.createDocumentFragment();
+    for (var i = tableState.rendered; i < c.rows.length; i++) {
+      var r = c.rows[i], tr = el('tr');
+      tr.appendChild(el('td', '', String(r[0])));
+      tr.appendChild(el('td', '', timeText(absTime(c, r), fine)));
+      c.sensors.forEach(function (s, si) { var td = el('td', 'value-cell', has(r[2 + si]) ? fmtVal(r[2 + si], s) : ''); td.style.color = s.color; tr.appendChild(td); });
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+    tableState.rendered = c.rows.length;
+    if (atBottom) wrap.scrollTop = wrap.scrollHeight;
+  }
+  function setDetailView(view) {
+    detail.view = view;
+    setPressed($('detail-view-chart'), view === 'chart'); setPressed($('detail-view-table'), view === 'table');
+    $('detail-plot').hidden = view !== 'chart';
+    $('detail-scroll').hidden = view !== 'chart';
+    $('detail-table-wrap').hidden = view !== 'table';
+    var c = detail.id && rowsCache[detail.id];
+    if (view === 'table' && c) detailTable(c);
+    detailDraw();
+  }
+  async function openDetail(id) {
+    detail.id = id; detail.hover = null;
+    detailScroll.reset();
+    detailSel.sel = null;
+    tableState.sig = '';
+    var d = byId(id);
+    $('detail-name').textContent = d ? d.name : '';
+    $('detail-badge').hidden = !(d && d.isOwner);
+    showView('detail');
+    if (!rowsCache[id]) { $('detail-values').textContent = ''; $('detail-title').textContent = ''; $('detail-desc').textContent = ''; $('detail-layout').hidden = true; $('detail-empty').hidden = true; prep($('detail-chart')); }
+    setDetailView('chart');
+    await detailRefresh();
+  }
+  async function detailRefresh() {
+    if (!detail.id) return;
+    var id = detail.id, c;
+    try { c = await fetchRows(id); } catch (e) { if (e.status === 404) closeDetail(); return; }
+    if (detail.id !== id) return;
+    var d = byId(id);
+    $('detail-name').textContent = d ? d.name : c.name;
+    $('detail-badge').hidden = !(d && d.isOwner);
+    $('detail-seen').textContent = d && d.lastSeen ? ago(d.lastSeen - serverOffset) : '未受信';
+    $('detail-seen').parentNode.classList.toggle('stale', !d || isStale(d));
+    $('detail-count').textContent = 'データ ' + c.rows.length.toLocaleString('ja-JP') + '件';
+    var main = c.sensors[c.sensors.length - 1];
+    $('ov-detail').style.setProperty('--active-color', main ? main.color : '');   // 手元の画面と同じく、さいごのセンサーの色で「グラフ／表」を塗る
+    detailValues(c, d);
+    detailDraw();
+    if (detail.view === 'table') detailTable(c);
+  }
+  function closeDetail() { detail.id = null; showView('list'); if (room) render(); }
+  $('detail-close').addEventListener('click', closeDetail);
+  $('detail-view-chart').addEventListener('click', function () { setDetailView('chart'); });
+  $('detail-view-table').addEventListener('click', function () { setDetailView('table'); });
+  $('detail-stack').addEventListener('click', function () { detail.overlay = false; detailDraw(); });
+  $('detail-overlay').addEventListener('click', function () { detail.overlay = true; detailDraw(); });
+  $('detail-csv').addEventListener('click', function () { if (detail.id && rowsCache[detail.id]) openDownload([detail.id], (byId(detail.id) || {}).name || 'device'); });
+  (function () {
+    var cv = $('detail-chart');
+    cv.addEventListener('pointermove', function (e) {
+      if (detailSel.sel && !detailSel.sel.done) return;   // 範囲を選んでいるとちゅう
+      var t = hoverTime(cv, e);
+      if (t === detail.hover) return;
+      detail.hover = t; detailDraw();
+    });
+    cv.addEventListener('pointerleave', function () { if (detail.hover !== null) { detail.hover = null; detailDraw(); } });
+  })();
+
+  // ===== 重ねて表示（選んだ端末の、同じセンサーの線を 1 枚に重ねる） =====
+  // offsets: 端末ごとにずらす秒数、moving: 「動かす」を選んである端末、rows: 左のカードの行（端末ごと）
+  var ov = {ids: [], offsets: {}, moving: null, sensorKey: '', drag: null, msPerPx: 0, hover: null, caches: null, rows: null};
+  var ovScroll = makeScroll(function () { overlayDraw(); });
+  var ovSel = makeSelect(ovScroll, function () { overlayDraw(); });
+  $('ov-scroll').appendChild(ovScroll.addBar());
+  async function openOverlay() {
+    ov.ids = pickedIds();
+    if (!ov.ids.length) return;
+    ovScroll.reset();
+    ovSel.sel = null;
+    ov.hover = null; ov.caches = null; ov.rows = null;
+    ov.ids.forEach(function (id) { if (ov.offsets[id] === undefined) ov.offsets[id] = 0; });
+    if (!ov.moving || ov.ids.indexOf(ov.moving) < 0) ov.moving = ov.ids[0];
+    $('ov-legend').textContent = ''; $('ov-empty').hidden = true;
+    showView('overlay');
+    prep($('ov-chart'));
+    await overlayRefresh(true);
+  }
+  // 左のカードの行。端末の線の色、名前、いまの値、「動かす」「ずらす」。値は overlayDraw が入れる
+  function buildLegend() {
+    var legend = $('ov-legend'); legend.textContent = '';
+    ov.rows = {};
+    ov.ids.forEach(function (id, i) {
+      var row = el('div', 'compare-row dev-row'); row.style.setProperty('--row-color', COLORS[i % COLORS.length]);
+      var name = el('span', 'name'), val = el('span', 'val');
+      row.appendChild(name); row.appendChild(val);
+      var ctl = el('div', 'ctl');
+      var lab = el('label'), rb = el('input'); rb.type = 'radio'; rb.name = 'moving';
+      rb.addEventListener('change', function () { ov.moving = id; overlayDraw(); });
+      lab.appendChild(rb); lab.appendChild(document.createTextNode('動かす')); ctl.appendChild(lab);
+      var lab2 = el('label'); lab2.appendChild(document.createTextNode('ずらす'));
+      var num = el('input'); num.type = 'number'; num.step = '1';
+      num.addEventListener('change', function () { ov.offsets[id] = Number(num.value) || 0; overlayDraw(); });
+      lab2.appendChild(num); lab2.appendChild(document.createTextNode('秒')); ctl.appendChild(lab2);
+      row.appendChild(ctl);
+      legend.appendChild(row);
+      ov.rows[id] = {row: row, name: name, val: val, rb: rb, num: num};
+    });
+  }
+  async function overlayRefresh(rebuild) {
+    var ids = ov.ids.slice(), caches = [];
+    for (var i = 0; i < ids.length; i++) { try { caches.push(await fetchRows(ids[i])); } catch (e) { caches.push(null); } }
+    if ($('ov-overlay').hidden || ids.join() !== ov.ids.join()) return;   // 待っている間に閉じた・選び直した
+    var union = [];
+    caches.forEach(function (c) { if (c) c.sensors.forEach(function (s) { if (!union.some(function (u) { return u.key === s.key; })) union.push(s); }); });
+    var sel = $('ov-sensor');
+    if (rebuild || sel.options.length !== union.length) {
+      sel.textContent = '';
+      union.forEach(function (s) { var o = el('option', '', s.name + unitSuffix(s)); o.value = s.key; sel.appendChild(o); });
+      if (!union.some(function (u) { return u.key === ov.sensorKey; })) ov.sensorKey = union.length ? union[0].key : '';
+      sel.value = ov.sensorKey;
+    }
+    if (rebuild || !ov.rows) buildLegend();
+    ov.caches = caches;
+    overlayDraw();
+  }
+  // ずらした時刻の線。記録が増えたとき・ずらす秒数が変わったときだけ作り直す
+  function ovPts(c, si, off) {
+    var key = [si, off, c.rows.length, c.startedAt].join('|');
+    if (!c._ov || c._ov.key !== key) c._ov = {key: key, pts: c.rows.map(function (r) { return [absTime(c, r) + off * 1000, r[2 + si]]; })};
+    return c._ov.pts;
+  }
+  function overlayDraw() {
+    if (!ov.caches) return;
+    var series = [], sensor = null, fine = false;
+    ov.ids.forEach(function (id, i) {
+      var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0, si = -1;
+      if (c) c.sensors.forEach(function (s, n) { if (s.key === ov.sensorKey) si = n; });
+      var s = si >= 0 ? c.sensors[si] : null;
+      if (s && !sensor) sensor = s;
+      if (r) {
+        r.name.textContent = (c ? c.name : d ? d.name : '') + (c && !s ? '（このセンサーはありません）' : '');
+        r.val.textContent = s && d ? fmtVal(d.lastValues[s.key], s) : '—';
+        if (s && s.unit) r.val.appendChild(el('small', '', s.unit));
+        r.rb.checked = ov.moving === id;
+        r.row.classList.toggle('moving', ov.moving === id);
+        if (document.activeElement !== r.num) r.num.value = String(Math.round(off * 10) / 10);
+      }
+      if (!s) return;
+      if (isFine(c)) fine = true;
+      series.push({id: id, color: COLORS[i % COLORS.length], name: c.name, label: c.name + (off ? '（' + (off > 0 ? '+' : '') + Math.round(off) + '秒）' : ''),
+        unit: s.unit, decimals: s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, si, off)});
+    });
+    $('ov-title').textContent = sensor ? sensor.name + 'を重ねて表示' : '重ねて表示';
+    $('ov-desc').textContent = sensor ? '横軸：時刻　縦軸：' + sensor.name + unitSuffix(sensor) + '　線の色：端末' : '';
+    var cv = $('ov-chart');
+    placeScroll(ovScroll, cv, Math.max(0, unitGroups(series).length - 1));
+    var range = ovScroll.update(extentOf(series.map(function (s) { return s.pts; })));
+    var geo = drawChart(cv, series, {mode: 'overlay', range: range, sel: ovSel.sel, hover: ov.drag ? null : ov.hover, fine: fine, legend: 'fit', fill: series.length > 4 ? 0 : 0.1});
+    $('ov-empty').hidden = Boolean(geo);
+    ov.msPerPx = geo ? geo.msPerPx : 0;
+    ov.drawn = series;
+    ovSel.place(cv, geo);
+  }
+  $('ov-sensor').addEventListener('change', function () { ov.sensorKey = $('ov-sensor').value; overlayDraw(); });
+  $('ov-align-time').addEventListener('click', function () { ov.ids.forEach(function (id) { ov.offsets[id] = 0; }); overlayDraw(); });
+  $('ov-align-start').addEventListener('click', function () {
+    // それぞれの記録のはじまりを、いちばん早い端末に合わせる
+    if (!ov.caches) return;
+    var starts = ov.ids.map(function (id, i) { var c = ov.caches[i]; return c && c.rows.length ? absTime(c, c.rows[0]) : null; });
+    var base = Math.min.apply(null, starts.filter(function (s) { return s !== null; }));
+    if (!isFinite(base)) return;
+    ov.ids.forEach(function (id, i) { if (starts[i] !== null) ov.offsets[id] = (base - starts[i]) / 1000; });
+    overlayDraw();
+  });
+  (function () {
+    var cv = $('ov-chart');
+    // 押した位置にある折れ線の端末。近い折れ線がいくつもあるときは、「動かす」を選んである端末を優先する
+    function lineAt(e) {
+      var g = cv._geo;
+      if (!g || !ov.drawn) return null;
+      var rect = cv.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;
+      var th = e.pointerType === 'touch' ? 22 : 10, best = null, bestD = Infinity;
+      ov.drawn.forEach(function (s, n) {
+        var yAt = g.panels[n] && g.panels[n].yAt;
+        if (!yAt) return;
+        var d = distToSeries(s.pts, g, yAt, px, py, th);
+        if (d === Infinity) return;
+        if (s.id === ov.moving) d -= 3;
+        if (d < bestD) { bestD = d; best = s.id; }
+      });
+      return best;
+    }
+    // 折れ線をつかんだら、その端末の時間をずらす。空白なら範囲を選ぶ
+    ovSel.attach(cv, $('ov-plot'), function (e) {
+      var id = lineAt(e);
+      if (!id) return false;
+      ovSel.sel = null;
+      ov.moving = id;
+      ov.drag = {x: e.clientX, start: ov.offsets[id] || 0};
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      cv.classList.add('dragging');
+      e.preventDefault();
+      overlayDraw();
+      return true;
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (ov.drag) { ov.offsets[ov.moving] = ov.drag.start + (e.clientX - ov.drag.x) * ov.msPerPx / 1000; overlayDraw(); return; }
+      if (ovSel.sel && !ovSel.sel.done) return;   // 範囲を選んでいるとちゅう
+      cv.classList.toggle('on-line', Boolean(lineAt(e)));
+      var t = hoverTime(cv, e);
+      if (t === ov.hover) return;
+      ov.hover = t; overlayDraw();
+    });
+    cv.addEventListener('pointerleave', function () { if (ov.hover !== null && !ov.drag) { ov.hover = null; overlayDraw(); } });
+    var end = function () { if (!ov.drag) return; ov.drag = null; cv.classList.remove('dragging'); ov.offsets[ov.moving] = Math.round(ov.offsets[ov.moving] * 10) / 10; overlayDraw(); };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  })();
+  function closeOverlay() { showView('list'); if (room) render(); }
+  $('btn-overlay').addEventListener('click', openOverlay);
+  $('ov-close').addEventListener('click', closeOverlay);
+  window.addEventListener('resize', function () {
+    if (!$('ov-overlay').hidden) overlayDraw();
+    else if (!$('ov-detail').hidden) detailDraw();
+    else if (room) render();
+  });
+
+  // ===== ダウンロード（CSV・Excel） =====
+  // 端末が 2 台以上のとき: CSV は端末ごとのファイルを ZIP にまとめる。Excel は端末ごとのシートにする
+  // 端末が 1 台のとき（拡大表示から）: CSV は 1 つのファイルをそのまま保存する
+  function saveFile(parts, type, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(parts, {type: type}));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
+  // 名前をファイル名やシート名に使える形にし、同じ名前には (2) (3) を付ける
+  function uniqueNames(names, clean, max) {
+    var used = {};
+    return names.map(function (n) {
+      var base = clean(String(n || '')).trim().slice(0, max) || '端末', name = base, k = 1;
+      while (used[name.toLowerCase()]) { k += 1; var tail = ' (' + k + ')'; name = base.slice(0, max - tail.length) + tail; }
+      used[name.toLowerCase()] = true;
+      return name;
+    });
+  }
+  function fileSafe(n) { return n.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^\.+/, '_'); }
+  function sheetSafe(n) { return n.replace(/[\\/:*?\[\]\u0000-\u001f]/g, '_').replace(/^'+|'+$/g, ''); }
+  function csvOf(c) {
+    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.unit ? '(' + s.unit + ')' : ''); }));
+    var lines = [head].concat(c.rows.map(function (r) {
+      return [r[0], fmtDateTime(absTime(c, r)), (r[1] / 1000).toFixed(1)].concat(c.sensors.map(function (s, si) { var v = r[2 + si]; return v === null || v === undefined ? '' : v; }));
+    }));
+    var esc = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+    return lines.map(function (l) { return l.map(esc).join(','); }).join('\r\n');
+  }
+  // Shift_JIS への変換。ブラウザには書き出し用の変換がないので、読み込み用（TextDecoder）で 2 バイト文字を全部読んで逆引きの表を作る
+  var sjisTable = null;
+  function sjisMap() {
+    if (sjisTable) return sjisTable;
+    var dec = new TextDecoder('shift_jis', {fatal: true}), map = {}, pair = new Uint8Array(2);
+    for (var hi = 0x81; hi <= 0xFC; hi++) {
+      if (hi >= 0xA0 && hi <= 0xDF) continue;
+      for (var lo = 0x40; lo <= 0xFC; lo++) {
+        if (lo === 0x7F) continue;
+        pair[0] = hi; pair[1] = lo;
+        try { var ch = dec.decode(pair); if (ch.length === 1 && ch !== '�' && map[ch] === undefined) map[ch] = (hi << 8) | lo; } catch (e) {}
+      }
+    }
+    // Shift_JIS にない似た文字は、ある方の文字に置き換える（〜 − — ‖ など）
+    [['〜', '～'], ['−', '－'], ['—', '―'], ['‖', '∥'], ['¢', '￠'], ['£', '￡'], ['¬', '￢']]
+      .forEach(function (p) { if (map[p[0]] === undefined && map[p[1]] !== undefined) map[p[0]] = map[p[1]]; });
+    sjisTable = map;
+    return map;
+  }
+  function sjisBytes(text) {
+    var map = sjisMap(), out = [];
+    Array.from(text).forEach(function (ch) {
+      var code = ch.codePointAt(0);
+      if (code < 0x80) out.push(code);
+      else if (code >= 0xFF61 && code <= 0xFF9F) out.push(code - 0xFF61 + 0xA1);   // 半角カナ
+      else if (map[ch] !== undefined) out.push(map[ch] >> 8, map[ch] & 0xFF);
+      else out.push(0x3F);   // 変換できない文字は ?
+    });
+    return new Uint8Array(out);
+  }
+  var crcTable = null;
+  function crc32(bytes) {
+    if (!crcTable) {
+      crcTable = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); crcTable[n] = c >>> 0; }
+    }
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  async function deflateRaw(bytes) {
+    // 圧縮できるブラウザでは圧縮する。できなければ無圧縮で入れる
+    if (typeof CompressionStream !== 'function') return null;
+    try { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()); }
+    catch (e) { return null; }
+  }
+  // files: [{name, bytes（Uint8Array）か text}]。ファイル名は UTF-8 で入れる
+  async function zipBytes(files) {
+    var enc = new TextEncoder(), chunks = [], central = [], offset = 0;
+    var now = new Date();
+    var time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    var date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    for (var i = 0; i < files.length; i++) {
+      var name = enc.encode(files[i].name), raw = files[i].bytes || enc.encode(files[i].text);
+      var packed = await deflateRaw(raw);
+      var method = packed && packed.length < raw.length ? 8 : 0, body = method ? packed : raw, crc = crc32(raw);
+      var local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true); local.setUint16(8, method, true);
+      local.setUint16(10, time, true); local.setUint16(12, date, true); local.setUint32(14, crc, true);
+      local.setUint32(18, body.length, true); local.setUint32(22, raw.length, true); local.setUint16(26, name.length, true);
+      var cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true); cd.setUint16(10, method, true);
+      cd.setUint16(12, time, true); cd.setUint16(14, date, true); cd.setUint32(16, crc, true);
+      cd.setUint32(20, body.length, true); cd.setUint32(24, raw.length, true); cd.setUint16(28, name.length, true); cd.setUint32(42, offset, true);
+      chunks.push(new Uint8Array(local.buffer), name, body);
+      central.push(new Uint8Array(cd.buffer), name);
+      offset += 30 + name.length + body.length;
+    }
+    var cdSize = central.reduce(function (n, c) { return n + c.length; }, 0);
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return chunks.concat(central, [new Uint8Array(end.buffer)]);
+  }
+  // Excel（.xlsx）。端末ごとに 1 シート。日時は Excel の日付と時刻、測定値は数値で入れる
+  function xmlEsc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function colName(i) { var n = ''; i += 1; while (i > 0) { n = String.fromCharCode(65 + (i - 1) % 26) + n; i = Math.floor((i - 1) / 26); } return n; }
+  function sheetXml(c) {
+    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.unit ? '(' + s.unit + ')' : ''); }));
+    var out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>',
+      '<cols><col min="1" max="1" width="8" customWidth="1"/><col min="2" max="2" width="20" customWidth="1"/><col min="3" max="' + head.length + '" width="14" customWidth="1"/></cols>',
+      '<sheetData>'];
+    out.push('<row r="1">' + head.map(function (h, i) { return '<c r="' + colName(i) + '1" t="inlineStr" s="2"><is><t>' + xmlEsc(h) + '</t></is></c>'; }).join('') + '</row>');
+    c.rows.forEach(function (r, n) {
+      var row = n + 2, d = new Date(absTime(c, r));
+      // Excel の日時は 1899-12-30 からの日数（小数が時刻）。この端末の時計の地域で入れる
+      var when = (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 86400000) + 25569;
+      var cells = '<c r="A' + row + '"><v>' + r[0] + '</v></c><c r="B' + row + '" s="1"><v>' + when + '</v></c><c r="C' + row + '"><v>' + (r[1] / 1000).toFixed(1) + '</v></c>';
+      c.sensors.forEach(function (s, si) {
+        var v = r[2 + si];
+        if (typeof v === 'number' && isFinite(v)) cells += '<c r="' + colName(si + 3) + row + '"><v>' + v + '</v></c>';
+      });
+      out.push('<row r="' + row + '">' + cells + '</row>');
+    });
+    out.push('</sheetData></worksheet>');
+    return out.join('');
+  }
+  function xlsxFiles(caches) {
+    var X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    var MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main', REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    var PKG = 'http://schemas.openxmlformats.org/package/2006/relationships', CT = 'application/vnd.openxmlformats-officedocument.spreadsheetml.';
+    var names = uniqueNames(caches.map(function (c) { return c.name; }), sheetSafe, 31);   // シート名は 31 文字まで
+    var xf = function (fmt, font) { return '<xf numFmtId="' + fmt + '" fontId="' + font + '" fillId="0" borderId="0" xfId="0"' + (fmt ? ' applyNumberFormat="1"' : '') + (font ? ' applyFont="1"' : '') + '/>'; };
+    var files = [
+      {name: '[Content_Types].xml', text: X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="' + CT + 'sheet.main+xml"/>' +
+        caches.map(function (c, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="' + CT + 'worksheet+xml"/>'; }).join('') +
+        '<Override PartName="/xl/styles.xml" ContentType="' + CT + 'styles+xml"/></Types>'},
+      {name: '_rels/.rels', text: X + '<Relationships xmlns="' + PKG + '"><Relationship Id="rId1" Type="' + REL + '/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+      {name: 'xl/workbook.xml', text: X + '<workbook xmlns="' + MAIN + '" xmlns:r="' + REL + '"><bookViews><workbookView/></bookViews><sheets>' +
+        names.map(function (n, i) { return '<sheet name="' + xmlEsc(n) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') + '</sheets></workbook>'},
+      {name: 'xl/_rels/workbook.xml.rels', text: X + '<Relationships xmlns="' + PKG + '">' +
+        caches.map(function (c, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="' + REL + '/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') +
+        '<Relationship Id="rId' + (caches.length + 1) + '" Type="' + REL + '/styles" Target="styles.xml"/></Relationships>'},
+      // 書式: 0 ふつう / 1 日時 / 2 見出し（太字）
+      {name: 'xl/styles.xml', text: X + '<styleSheet xmlns="' + MAIN + '"><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy/m/d h:mm:ss"/></numFmts>' +
+        '<fonts count="2"><font><sz val="11"/><name val="Yu Gothic"/></font><font><b/><sz val="11"/><name val="Yu Gothic"/></font></fonts>' +
+        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="3">' + xf(0, 0) + xf(164, 0) + xf(0, 1) + '</cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'}
+    ];
+    caches.forEach(function (c, i) { files.push({name: 'xl/worksheets/sheet' + (i + 1) + '.xml', text: sheetXml(c)}); });
+    return files;
+  }
+  async function downloadAs(format, ids, label) {
+    var caches = [];
+    for (var i = 0; i < ids.length; i++) { try { caches.push(await fetchRows(ids[i])); } catch (e) {} }
+    if (!caches.length) throw new Error('no data');
+    var stem = 'S-LINK_' + fileSafe(label || room.name) + '_' + stamp();
+    if (format === 'xlsx') {
+      saveFile(await zipBytes(xlsxFiles(caches)), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', stem + '.xlsx');
+      toast('Excel で保存しました');
+      return;
+    }
+    var sjis = format === 'sjis', tail = sjis ? '_sjis' : '_utf8';
+    var bytesOf = function (c) { return sjis ? sjisBytes(csvOf(c)) : new TextEncoder().encode('﻿' + csvOf(c)); };   // UTF-8 は先頭の BOM で Excel が読める
+    if (caches.length === 1) {
+      saveFile([bytesOf(caches[0])], 'text/csv', stem + tail + '.csv');
+      toast('CSV で保存しました');
+      return;
+    }
+    var names = uniqueNames(caches.map(function (c) { return c.name; }), fileSafe, 60);
+    saveFile(await zipBytes(caches.map(function (c, i) { return {name: names[i] + '.csv', bytes: bytesOf(c)}; })), 'application/zip', stem + tail + '.zip');
+    toast('CSV を ZIP で保存しました');
+  }
+  var dlTarget = null;
+  function openDownload(ids, label) {
+    if (!ids.length) return;
+    dlTarget = {ids: ids, label: label};
+    $('dl-note').textContent = ids.length > 1 ? 'CSV は端末ごとのファイルを ZIP にまとめます。Excel は端末ごとのシートになります。' : '';
+    $('dl-note').hidden = ids.length < 2;
+    $('dl-err').hidden = true;
+    $('ov-download').hidden = false;
+  }
+  [['dl-sjis', 'sjis'], ['dl-utf8', 'utf8'], ['dl-xlsx', 'xlsx']].forEach(function (p) {
+    $(p[0]).addEventListener('click', async function () {
+      if (!dlTarget) return;
+      try { await downloadAs(p[1], dlTarget.ids, dlTarget.label); $('ov-download').hidden = true; }
+      catch (e) { console.error(e); $('dl-err').textContent = 'この形式では保存できませんでした'; $('dl-err').hidden = false; }
+    });
+  });
+  $('dl-close').addEventListener('click', function () { $('ov-download').hidden = true; });
+  $('btn-download').addEventListener('click', function () { openDownload(devices.map(function (d) { return d.deviceId; }), room.name); });
+  $('btn-json').addEventListener('click', function () { window.open(API + '/r/' + ROOM_ID + '?format=json', '_blank', 'noopener'); });
+
+  // ===== 作成者の操作 =====
+  function arm(btn, label, fn) {
+    // 確認ダイアログを使わず 2 回押しで確定する
+    if (btn.dataset.armed) { clearTimeout(btn._t); delete btn.dataset.armed; btn.classList.remove('danger-armed'); btn.textContent = btn.dataset.label; fn(); return; }
+    btn.dataset.label = btn.textContent; btn.dataset.armed = '1'; btn.classList.add('danger-armed'); btn.textContent = label;
+    btn._t = setTimeout(function () { delete btn.dataset.armed; btn.classList.remove('danger-armed'); btn.textContent = btn.dataset.label; }, 3000);
+  }
+  async function ownerCall(fn, done) {
+    try { await fn(); await load(); if (done) toast(done); } catch (e) { toast(e.message); }
+  }
+  $('btn-invite').addEventListener('click', function () { $('invite-code').textContent = fmtCode(room.code); $('invite-url').value = room.url; $('invite-url-box').hidden = !room.public; $('ov-invite').hidden = false; });
+  $('invite-close').addEventListener('click', function () { $('ov-invite').hidden = true; });
+  $('invite-copy').addEventListener('click', async function () { try { await navigator.clipboard.writeText($('invite-url').value); toast('URL をコピーしました'); } catch (e) { $('invite-url').select(); } });
+  function renderPublicSetting() { $('set-public-text').textContent = room.public ? '公開中' : '非公開'; $('set-public').textContent = room.public ? '公開を停止する' : '公開する'; }
+  $('set-public').addEventListener('click', function () {
+    var on = !room.public;
+    ownerCall(async function () { var r = await api('PATCH', '/rooms/' + ROOM_ID, {public: on}, {owner: true}); room.public = Boolean(r.room.public); renderPublicSetting(); if (room.public !== on) throw new Error('切り替えられませんでした'); }, on ? '公開しました' : '公開を停止しました');
+  });
+  $('btn-settings').addEventListener('click', function () {
+    $('set-name').value = room.name; $('set-err').hidden = true;
+    renderPublicSetting();
+    $('set-expire').textContent = '最後のアップロードから 1 週間たつと、測定室は自動で終了します（' + fmtDateTime(room.expiresAt) + ' ごろ）。';
+    $('ov-settings').hidden = false;
+  });
+  $('settings-close').addEventListener('click', function () { $('ov-settings').hidden = true; });
+  $('set-save').addEventListener('click', function () {
+    var body = {name: $('set-name').value.trim()};
+    ownerCall(async function () { await api('PATCH', '/rooms/' + ROOM_ID, body, {owner: true}); $('ov-settings').hidden = true; }, '保存しました');
+  });
+  $('set-delete').addEventListener('click', function () {
+    arm($('set-delete'), 'もう一度押すと終了', function () {
+      ownerCall(async function () { await api('DELETE', '/rooms/' + ROOM_ID, null, {owner: true}); $('ov-settings').hidden = true; clearInterval(pollTimer); }, '測定室を終了しました');
+    });
+  });
+  $('btn-reset').addEventListener('click', function () {
+    var ids = pickedIds(); if (!ids.length) return;
+    arm($('btn-reset'), 'もう一度押すとリセット', function () {
+      ownerCall(async function () { await api('POST', '/rooms/' + ROOM_ID + '/reset', {deviceIds: ids}, {owner: true}); ids.forEach(function (id) { delete rowsCache[id]; }); }, 'リセットしました');
+    });
+  });
+  $('btn-kick').addEventListener('click', function () {
+    var ids = pickedIds().filter(function (id) { var d = byId(id); return d && !d.isOwner; });
+    if (!ids.length) { toast('作成した端末は退出させられません'); return; }
+    arm($('btn-kick'), 'もう一度押すと退出', function () {
+      ownerCall(async function () { for (var i = 0; i < ids.length; i++) { await api('DELETE', '/rooms/' + ROOM_ID + '/devices/' + ids[i], null, {owner: true}); delete rowsCache[ids[i]]; delete picked[ids[i]]; } }, '退出させました');
+    });
+  });
+  // Esc: 小さな窓が開いていればそれを閉じる。なければ一覧にもどる
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var wins = ['ov-download', 'ov-invite', 'ov-settings'].filter(function (id) { return !$(id).hidden; });
+    if (wins.length) { wins.forEach(function (id) { $(id).hidden = true; }); return; }
+    if (!$('ov-detail').hidden) closeDetail();
+    else if (!$('ov-overlay').hidden) closeOverlay();
+  });
+
+  // ===== 開始 =====
+  if (!ROOM_ID) { setStatus('stopped', '測定室が指定されていません'); $('tools').hidden = true; showEmpty('URL に ?room=測定室の内部 ID をつけて開いてください。'); }
+  else { load(); pollTimer = setInterval(load, POLL_MS); }
+})();
+</script>
+</body>
+</html>

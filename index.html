@@ -4,13 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0877c9" />
-  <title>S-LiNK Multi Cloud Logger(β)</title>
-  <!-- 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap">
-  <script src="https://s-link.education/js/s-link.js"></script>
+  <title>AkaDako Multi Cloud Logger(β)</title>
+  <!-- 学校のフィルタリングで *.699.jp しか通らない環境でも動くように、動作に要るファイルはすべてこのページと同じ場所から読む
+       （s-link.js は https://s-link.education/js/s-link.js の複製、書体は Google Fonts の Inter の複製） -->
+  <script src="s-link.js"></script>
   <style>
+    /* 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる */
+    @font-face {
+      font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap;
+      src: url(fonts/inter-600-greek.woff2) format("woff2");
+      unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+    }
+    @font-face {
+      font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap;
+      src: url(fonts/inter-600-latin.woff2) format("woff2");
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
     :root {
       --blue: #0877c9;
       --blue-dark: #07599a;
@@ -320,8 +329,6 @@
     }
 
     .ai-panel { display: grid; gap: 8px; }
-
-    .motion-preview { margin-bottom: 13px; }
 
     .ai-video {
       width: 100%;
@@ -1039,10 +1046,146 @@
       box-shadow: 0 6px 20px rgba(0,0,0,.22);
     }
     .memo-box[hidden] { display: none; }
+    .memo-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     .memo-title { font-size: .78rem; font-weight: 900; color: var(--muted); }
+    .memo-close {
+      flex: 0 0 auto;
+      width: 26px;
+      height: 26px;
+      margin: -3px -3px 0 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: var(--muted);
+      background: #eaf2f7;
+      font-size: .8rem;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .memo-close:hover { color: var(--ink); background: #dbe8f0; }
     .memo-box .memo-input { border: 2px solid var(--line); background: white; resize: vertical; }
     .memo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     .memo-actions .sel-btn { min-height: 30px; padding: 3px 10px; font-size: .78rem; }
+
+    /* ===== カメラの映像と写真 ===== */
+    /* 左のカード: カメラの映像（いつも出す）と、その下の「写真の記録」 */
+    .cam-panel { display: grid; gap: 7px; margin: 0 0 10px; }
+    .cam-view {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      max-height: 190px;
+      border: 2px solid #dceef6;
+      border-radius: 14px;
+      background: #0d1b26;
+      overflow: hidden;
+    }
+    .cam-video { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .cam-note {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 6px;
+      padding: 8px;
+      color: #dbe7ef;
+      background: rgba(13, 27, 38, .9);
+      font-size: .72rem;
+      font-weight: 800;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .cam-note[hidden] { display: none; }
+    .cam-note button {
+      min-height: 28px;
+      padding: 3px 10px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--ink);
+      background: white;
+      font-size: .72rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .cam-count {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(13, 27, 38, .72);
+      font-size: .7rem;
+      font-weight: 800;
+    }
+    .cam-count[hidden] { display: none; }
+    /* せまいカードでも見出しが折り返さないように、えらぶ欄のほうをちぢめる */
+    .cam-panel .interval-row { white-space: nowrap; }
+    .cam-panel .interval-row select { flex: 1 1 0; min-width: 0; max-width: 168px; text-overflow: ellipsis; }
+    /* 写真をとった合図（白く光る） */
+    .cam-view.is-shot::after { content: ""; position: absolute; inset: 0; background: white; animation: camFlash .45s ease-out forwards; pointer-events: none; }
+    @keyframes camFlash { from { opacity: .85; } to { opacity: 0; } }
+
+    /* 写真の小さな見本。右下の虫めがねで大きく見る */
+    .thumb { position: relative; flex: 0 0 auto; display: inline-block; border-radius: 7px; background: #0d1b26; line-height: 0; overflow: hidden; }
+    .thumb[hidden] { display: none; }
+    .thumb img { display: block; width: 76px; height: 57px; object-fit: cover; }
+    .thumb-zoom {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: white;
+      background: rgba(13, 27, 38, .74);
+      cursor: pointer;
+    }
+    .thumb-zoom svg { width: 14px; height: 14px; }
+    .memo-photo { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .memo-photo .sel-btn { min-height: 30px; padding: 3px 10px; font-size: .78rem; display: inline-flex; align-items: center; gap: 5px; }
+    .memo-photo .sel-btn svg { width: 15px; height: 15px; }
+    .memo-photo .sel-btn[hidden] { display: none; }
+    /* 表のメモ欄: 写真のある行にはカメラの印を出す。マウスを乗せると写真が浮かび、押すと大きく見られる */
+    .memo-wrap { display: flex; align-items: center; gap: 6px; }
+    .memo-wrap .memo-input { flex: 1 1 auto; min-width: 90px; }
+    .row-photo {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--active-color, var(--blue));
+      background: white;
+      cursor: pointer;
+    }
+    .row-photo svg { width: 17px; height: 17px; }
+    .row-photo:hover, .row-photo:focus-visible { border-color: var(--active-color, var(--blue)); background: #f3f8fb; }
+    .photo-pop {
+      position: fixed;
+      z-index: 60;
+      padding: 4px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 8px 26px rgba(0,0,0,.3);
+      pointer-events: none;
+    }
+    .photo-pop[hidden] { display: none; }
+    .photo-pop img { display: block; width: 256px; height: 192px; border-radius: 8px; background: #0d1b26; object-fit: contain; }
+    /* 写真を大きく見る */
+    dialog.photo-dialog { width: min(760px, calc(100% - 24px)); }
+    .photo-dialog-body { display: grid; gap: 10px; padding: 14px; }
+    .photo-dialog img { display: block; width: 100%; max-height: 72vh; border-radius: 12px; background: #0d1b26; object-fit: contain; }
+    .photo-dialog p { margin: 0; color: var(--muted); font-size: .85rem; font-weight: 800; white-space: pre-wrap; overflow-wrap: anywhere; }
 
     /* ===== 測定室ボタンの印（緑: 送っている / 橙: 送れていない） ===== */
     .action-btn.ind { position: relative; }
@@ -1212,6 +1355,8 @@
       .sensor-icon { width: 29px; height: 29px; margin-bottom: 3px; border-radius: 9px; }
       .sensor-name { font-size: .72rem; }
       .side-card { padding: 12px; }
+      .cam-view { max-height: 126px; }
+      .cam-panel { gap: 5px; margin-bottom: 8px; }
       .chart-card { padding: 11px 12px 10px; }
       .current-label { margin-bottom: 6px; }
       .value-box { padding: 9px 8px 8px; }
@@ -1224,7 +1369,6 @@
       .compare-toggle { min-height: 36px; padding: 5px 8px 5px 11px; }
       .compare-row { padding: 4px 8px; }
       .compare-row .val { font-size: 1.1rem; }
-      .motion-preview { margin-bottom: 8px; }
       .ai-panel { gap: 5px; }
       .ai-video { aspect-ratio: auto; height: clamp(96px, 17vh, 150px); }
       .ai-prompt-input { height: 58px; padding: 6px 9px; font-size: .8rem; }
@@ -1279,14 +1423,14 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
-        <h1>S-LiNK Multi Cloud Logger(β)</h1>
+        <h1>AkaDako Multi Cloud Logger(β)</h1>
       </div>
       <div class="connection-panel">
         <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「追加」になる（上限3つ。古いほうから外れる）。チェックの付いたタブを押すと外れる -->
         <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
         <!-- S-LiNK の接続のようす。USB でつなぐと自動で接続するので、スイッチではなく表示。印の色: 灰=未接続 / 橙=接続しています… / 緑=接続。
              つながっていないときに押すと、もう一度さがす（自動でつながらなかったときの保険）。デモのときはチップだけ出す -->
-        <button id="connectBtn" class="compare-toggle connect-toggle" type="button" aria-live="polite" aria-label="S-LiNK 未接続" title="未接続（押すと、もう一度さがします）"><span class="status-dot"></span>S-LiNK<span id="connectState" class="state">未接続</span></button>
+        <button id="connectBtn" class="compare-toggle connect-toggle" type="button" aria-live="polite" aria-label="AkaDako 未接続" title="未接続（押すと、もう一度さがします）"><span class="status-dot"></span>AkaDako<span id="connectState" class="state">未接続</span></button>
         <div id="statusChip" class="status-chip" aria-live="polite" hidden>
           <span class="status-dot"></span>
           <span id="statusText">未接続</span>
@@ -1422,7 +1566,6 @@
             <div id="readingMeta" class="reading-meta">S-LiNKデバイスを接続すると測定できます</div>
           </div>
           <div id="aiPanel" class="ai-panel" hidden>
-            <video id="aiVideo" class="ai-video" playsinline muted></video>
             <p id="aiStatus" class="ai-status"></p>
             <div class="ai-prompt">
               <label class="ai-prompt-label" for="aiPrompt">プロンプト</label>
@@ -1435,9 +1578,26 @@
             <div class="mini-stat"><span>平均</span><strong id="avgValue">--</strong></div>
             <div class="mini-stat"><span>最大</span><strong id="maxValue">--</strong></div>
           </div>
-          <div id="motionPreview" class="motion-preview" hidden>
-            <video id="motionPreviewVideo" class="ai-video" playsinline muted></video>
+        </div>
+        <!-- カメラの映像（いつも出す）と、写真の記録のしかた。写真は記録のメモとして残る -->
+        <div id="camPanel" class="cam-panel">
+          <div id="camView" class="cam-view">
+            <video id="camVideo" class="cam-video" playsinline muted aria-label="カメラの映像"></video>
+            <span id="camCount" class="cam-count" hidden></span>
+            <div id="camNote" class="cam-note" hidden><span id="camNoteText"></span><button id="camRetry" type="button">もう一度ためす</button></div>
           </div>
+          <label class="interval-row">写真の記録
+            <select id="photoMode" title="記録しているあいだ、カメラの写真を記録のメモとして残します。「自動」は、値が大きく変わったときに撮ります">
+              <option value="off" selected>OFF</option>
+              <option value="10000">10秒ごと</option>
+              <option value="30000">30秒ごと</option>
+              <option value="60000">1分ごと</option>
+              <option value="300000">5分ごと</option>
+              <option value="1800000">30分ごと</option>
+              <option value="3600000">1時間ごと</option>
+              <option value="auto">自動（大きな変化）</option>
+            </select>
+          </label>
         </div>
         <div class="control-stack">
           <div class="view-toggle" role="group" aria-label="表示のしかた">
@@ -1493,12 +1653,20 @@
           </div>
           <!-- 記録をクリック（タップ）するとメモを書ける。メモのある記録には吹き出しの印 -->
           <div id="memoBox" class="memo-box" hidden>
-            <div id="memoTitle" class="memo-title"></div>
+            <!-- 右上の ✕ は、保存せずに閉じる（前に書いたメモを見るだけのときも、これで閉じる） -->
+            <div class="memo-top">
+              <div id="memoTitle" class="memo-title"></div>
+              <button id="memoCancel" class="memo-close" type="button" aria-label="とじる" title="とじる">✕</button>
+            </div>
             <textarea id="memoInput" class="memo-input" rows="2" placeholder="メモ（例: 窓を開けた）"></textarea>
+            <div class="memo-photo">
+              <span id="memoThumb" class="thumb" hidden><img id="memoThumbImg" alt="写真"><button id="memoZoom" class="thumb-zoom" type="button" aria-label="写真を大きく見る" title="大きく見る"></button></span>
+              <button id="memoCam" class="sel-btn" type="button"><span id="memoCamIcon"></span><span id="memoCamLabel">写真をとる</span></button>
+              <button id="memoPhotoDel" class="sel-btn" type="button" hidden>写真を消す</button>
+            </div>
             <div class="memo-actions">
               <button id="memoSave" class="sel-btn sel-btn--primary" type="button">保存</button>
               <button id="memoDelete" class="sel-btn sel-btn--danger" type="button">消す</button>
-              <button id="memoCancel" class="sel-btn" type="button">キャンセル</button>
             </div>
           </div>
         </div>
@@ -1552,6 +1720,18 @@
     <p id="notice" class="notice"></p>
   </main>
 
+  <div id="photoPop" class="photo-pop" hidden><img id="photoPopImg" alt=""></div>
+
+  <dialog id="photoDialog" class="photo-dialog" aria-label="写真">
+    <div class="photo-dialog-body">
+      <img id="photoDialogImg" alt="写真">
+      <p id="photoDialogCaption"></p>
+      <div class="dialog-actions">
+        <button id="photoDialogClose" class="dialog-close" type="button">とじる</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="sensorDialog" aria-labelledby="sensorDialogTitle">
     <div class="dialog-body">
       <div class="dialog-icon" aria-hidden="true">?</div>
@@ -1566,7 +1746,7 @@
 
   <!-- つながっていないときにデモモードを勧める。「はい」で mode=demo を付けて開き直す。出すのは次の2つのとき（自動接続では出さない）:
        - センサーのタブ（「動き」「音量」以外）を押したとき。ページを開いてから1回だけ
-       - 上の「S-LiNK 未接続」を押してさがしても MIDI ポートが1つも見つからなかったとき -->
+       - 上の「AkaDako 未接続」を押してさがしても MIDI ポートが1つも見つからなかったとき -->
   <dialog id="demoDialog" aria-labelledby="demoDialogTitle">
     <div class="dialog-body">
       <div class="dialog-icon" aria-hidden="true">?</div>
@@ -1917,12 +2097,277 @@
         cam.updatedAt = 0;
       }
 
-      // 使っていないマイク・カメラは止める（録音・録画したままにしない）
+      // 使っていないマイクは止める（録音したままにしない）。カメラは左のカードにいつも映像を出すので止めない
       function syncMediaUsage() {
         const keys = activeKeys();
         if (!keys.includes("volume")) releaseMic();
         if (!keys.includes("motion")) stopMotionSampling();
-        if (!keys.includes("motion") && !aiMode) releaseCam();
+      }
+
+      // ===== カメラの映像と写真 ======================================================
+      // 左のカードにカメラの映像をいつも出す（ページを開いたときにカメラを始める。「動き」と AI も同じ映像を使う）。
+      // 写真は記録 1 件に 1 枚まで付けられ、メモと同じ扱いにする（表の「メモ」列・グラフの印）。
+      // 画像そのもの（JPEG）は IndexedDB の photos に入れ、記録には写真の番号（item.photo）と小さな見本（item.thumb。data URL）だけを持たせる。
+      // 写真は測定室には送らない（メモと同じ）
+      const PHOTO_WIDTH = 640, THUMB_WIDTH = 120;
+      const PHOTO_MAX = 2000;   // 写真の上限（1 枚 50〜80KB として 150MB ほど）。こえたら自動の記録を OFF にする
+      const ICON_ZOOM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>';
+      const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>';
+      let camPanelError = "";   // カメラを使えない理由（使えているときは空）
+
+      // カメラを始めて、左のカードに映像を出す。使えないときは理由を枠に出して投げる
+      async function ensureCamPanel() {
+        try {
+          await ensureCam();
+          if (els.camVideo.srcObject !== cam.stream) {
+            els.camVideo.srcObject = cam.stream;
+            els.camVideo.muted = true;
+            const track = cam.stream.getVideoTracks()[0];
+            // カメラを抜いた・ほかのアプリに取られた
+            if (track) track.addEventListener("ended", () => { releaseCam(); renderCamPanel("カメラが止まりました"); }, { once: true });
+          }
+          await els.camVideo.play().catch(error => console.warn(error));
+          renderCamPanel("");
+        } catch (error) {
+          if (!(error instanceof SensorNoticeError)) console.error(error);
+          renderCamPanel(error instanceof SensorNoticeError ? error.message : "カメラを使えませんでした");
+          throw error;
+        }
+      }
+      function startCamPanel() { return ensureCamPanel().catch(() => {}); }
+      function renderCamPanel(message) {
+        camPanelError = message;
+        els.camNoteText.textContent = message;
+        els.camNote.hidden = !message;
+        els.memoCam.disabled = Boolean(message);
+      }
+      // いまの映像を 1 枚とる。{ blob: 保存する画像, thumb: 小さな見本 }。映像がまだ無ければ null
+      async function capturePhoto() {
+        const video = els.camVideo;
+        if (!cam.stream || video.readyState < 2 || !video.videoWidth) return null;
+        const scale = Math.min(1, PHOTO_WIDTH / video.videoWidth);
+        const width = Math.round(video.videoWidth * scale), height = Math.round(video.videoHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(video, 0, 0, width, height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.8));
+        if (!blob) return null;
+        const small = document.createElement("canvas");
+        small.width = THUMB_WIDTH;
+        small.height = Math.round(height * THUMB_WIDTH / width);
+        small.getContext("2d").drawImage(canvas, 0, 0, small.width, small.height);
+        return { blob, thumb: small.toDataURL("image/jpeg", 0.6) };
+      }
+      function flashCam() {
+        els.camView.classList.remove("is-shot");
+        void els.camView.offsetWidth;   // アニメーションをはじめからやり直す
+        els.camView.classList.add("is-shot");
+      }
+      function countPhotos() {
+        let count = 0;
+        Object.keys(dataStore).forEach(key => dataStore[key].forEach(item => { if (item.photo) count += 1; }));
+        return count;
+      }
+      function renderPhotoCount() {
+        const count = countPhotos();
+        els.camCount.textContent = `写真 ${count.toLocaleString("ja-JP")}枚`;
+        els.camCount.hidden = !count;
+      }
+      // 記録に写真を付ける（前の写真があれば入れかえる）
+      function attachPhoto(key, item, shot) {
+        if (item.photo) store.photoDel(item.photo);
+        item.photo = `${key}-${item.seq}-${Date.now().toString(36)}`;
+        item.thumb = shot.thumb;
+        store.photoPut(item.photo, shot.blob);
+        store.put(key, item);
+        afterPhotoChange(key, item);
+      }
+      function detachPhoto(key, item) {
+        if (!item.photo) return;
+        store.photoDel(item.photo);
+        delete item.photo;
+        delete item.thumb;
+        store.put(key, item);
+        afterPhotoChange(key, item);
+      }
+      function afterPhotoChange(key, item) {
+        renderPhotoCount();
+        // 表の行は足していくだけなので、変わった行のメモ欄はここで作り直す（表を出していないときも）
+        const row = key === selectedSensor ? els.tableBody.querySelector(`tr[data-seq="${item.seq}"]`) : null;
+        if (row) fillMemoCell(row.querySelector(".memo-cell"), item, item.time.getTime());
+        else if (key !== selectedSensor && activeKeys().includes(key)) resetTable();   // 相手のセンサーに付いた写真は、行を作り直して出す
+        refreshView();
+      }
+      // その行に出す写真（主センサーの記録に無ければ、くらべている相手の同じ時刻の記録から）
+      function photoAt(item, ms) {
+        if (item.photo) return { key: selectedSensor, item };
+        for (const key of activeKeys()) {
+          if (key === selectedSensor) continue;
+          const found = itemAtTime(key, ms);
+          if (found && found.photo) return { key, item: found };
+        }
+        return null;
+      }
+      // 表のメモ欄: メモと、写真のある行だけカメラの印（マウスを乗せると写真が浮かび、押すと大きく見られる）
+      function fillMemoCell(cell, item, ms) {
+        const wrap = document.createElement("div");
+        wrap.className = "memo-wrap";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "memo-input";
+        input.placeholder = "クリックして書く";
+        input.setAttribute("aria-label", `番号 ${item.seq} のメモ`);
+        input.value = memoAt(item, ms);
+        wrap.append(input);
+        if (photoAt(item, ms)) {
+          const icon = document.createElement("button");
+          icon.type = "button";
+          icon.className = "row-photo";
+          icon.title = "写真を見る";
+          icon.setAttribute("aria-label", `番号 ${item.seq} の写真を見る`);
+          icon.innerHTML = ICON_CAM;
+          wrap.append(icon);
+        }
+        cell.replaceChildren(wrap);
+      }
+      // カメラの印に乗せている間、そばに写真を浮かべる。はじめは小さな見本を出し、もとの画像が読めたら入れかえる
+      let popUrl = null, popFor = null;
+      function rowPhotoOwner(icon) {
+        const row = icon.closest("tr");
+        const item = row && findBySeq(selectedSensor, Number(row.dataset.seq));
+        return item ? photoAt(item, item.time.getTime()) : null;
+      }
+      async function showPhotoPop(icon) {
+        const owner = rowPhotoOwner(icon);
+        if (!owner || popFor === icon) return;
+        hidePhotoPop();
+        popFor = icon;
+        els.photoPopImg.src = owner.item.thumb || "";
+        els.photoPop.hidden = false;
+        const rect = icon.getBoundingClientRect(), w = els.photoPop.offsetWidth, h = els.photoPop.offsetHeight;
+        // メモ欄は右はしなので、印の左に出す（入らなければ右）。たては印の高さに合わせて、画面からはみ出さないようにする
+        els.photoPop.style.left = `${rect.left - w - 8 >= 8 ? rect.left - w - 8 : Math.min(window.innerWidth - w - 8, rect.right + 8)}px`;
+        els.photoPop.style.top = `${Math.max(8, Math.min(window.innerHeight - h - 8, rect.top + rect.height / 2 - h / 2))}px`;
+        const blob = owner.item.photo ? await store.photoGet(owner.item.photo) : null;
+        if (!blob || popFor !== icon) return;
+        popUrl = URL.createObjectURL(blob);
+        els.photoPopImg.src = popUrl;
+      }
+      function hidePhotoPop() {
+        popFor = null;
+        els.photoPop.hidden = true;
+        els.photoPopImg.removeAttribute("src");
+        if (popUrl) URL.revokeObjectURL(popUrl);
+        popUrl = null;
+      }
+      // 写真を大きく見る。blob を渡したとき（保存する前の写真）はそれを、無ければ保存してある画像を出す
+      let photoUrl = null;
+      async function openPhoto(key, item, blob = null) {
+        const sensor = sensors[key];
+        const lines = [`${item.time.toLocaleDateString("ja-JP")} ${timeText(item.time, fineTime[key])}　${sensor.name} ${formatValue(item.value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""}`];
+        if (item.memo) lines.push(item.memo);
+        const data = blob || (item.photo ? await store.photoGet(item.photo) : null);
+        if (!data) lines.push("（もとの写真が見つからないので、小さな見本を出しています）");
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoUrl = data ? URL.createObjectURL(data) : null;
+        els.photoDialogImg.src = photoUrl || item.thumb || "";
+        els.photoDialogCaption.textContent = lines.join("\n");
+        if (els.photoDialog.open) return;
+        if (typeof els.photoDialog.showModal === "function") els.photoDialog.showModal();
+        else els.photoDialog.setAttribute("open", "");
+      }
+      function closePhoto() {
+        if (typeof els.photoDialog.close === "function") els.photoDialog.close();
+        else els.photoDialog.removeAttribute("open");
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoUrl = null;
+        els.photoDialogImg.removeAttribute("src");
+      }
+      // グラフに出す見本（マウスを乗せたとき）。読みこめたら描き直す
+      const thumbCache = new Map();
+      function thumbImage(item) {
+        if (!item.photo || !item.thumb) return null;
+        let img = thumbCache.get(item.photo);
+        if (!img) {
+          img = new Image();
+          img.onload = () => { if (viewMode === "chart") drawChart(); };
+          img.src = item.thumb;
+          thumbCache.set(item.photo, img);
+          if (thumbCache.size > 300) thumbCache.delete(thumbCache.keys().next().value);
+        }
+        return img.complete && img.naturalWidth ? img : null;
+      }
+
+      // 写真の記録（記録しているあいだだけ）。写真は、その周期の主センサーの記録に付ける。
+      //   周期: 前の写真からその時間がたった最初の記録で 1 枚（記録をはじめた 1 件目にも 1 枚）
+      //   自動: 記録をはじめた 1 件目に 1 枚。そのあとは、選んでいるセンサーのどれかが「前の写真のときの値」から PHOTO_STEP 以上変わったら 1 枚
+      //         （ゆれの大きいセンサーで撮りつづけないように、前の写真から AUTO_PHOTO_GAP はあける）
+      const PHOTO_STEP = {
+        temperature: 2, waterTemperature: 2, humidity: 5, pressure: 2, brightness: 200, distance: 10, gravity: 2, tilt: 15,
+        motion: 20, volume: 20, oxygen: 1, current: 0.2, voltage: 1, power: 1, ai: 1
+      };
+      const AUTO_PHOTO_GAP = 10000;
+      // 「写真の記録」の選択肢。写真は記録と同じ時刻にしか撮らないので、記録間隔より短い周期は出さない
+      // （周期は「何回かに 1 回」に間引くためのもの）。記録間隔と同じ周期には「（記録のたび）」と付ける。
+      // 記録間隔が 10 秒以上で一覧に無いとき（10分）は、その間隔を足す
+      const PHOTO_PERIODS = [["10000", "10秒ごと"], ["30000", "30秒ごと"], ["60000", "1分ごと"], ["300000", "5分ごと"], ["1800000", "30分ごと"], ["3600000", "1時間ごと"]];
+      function syncPhotoModes() {
+        const interval = Number(els.intervalSelect.value);
+        const current = els.photoMode.value;
+        let periods = PHOTO_PERIODS.filter(([value]) => Number(value) >= interval);
+        if (interval >= 10000 && !periods.some(([value]) => Number(value) === interval)) {
+          const picked = els.intervalSelect.selectedOptions[0];
+          periods = [[String(interval), `${picked ? picked.textContent : ""}ごと`], ...periods];
+        }
+        const list = [
+          ["off", "OFF"],
+          ...periods.map(([value, label]) => [value, Number(value) === interval ? `${label}（記録のたび）` : label]),
+          ["auto", "自動（大きな変化）"]
+        ];
+        els.photoMode.replaceChildren(...list.map(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          return option;
+        }));
+        // えらんでいた周期が記録間隔より短くなったら、いちばん短い周期（＝記録のたび）に直す
+        els.photoMode.value = list.some(([value]) => value === current) ? current : periods[0][0];
+      }
+      let lastPhotoAt = 0;
+      let photoRef = {};   // 前の写真のときの値（センサーごと）
+      async function autoPhoto(time) {
+        const mode = els.photoMode.value;
+        if (mode === "off" || !isRecording) return;
+        const key = selectedSensor, list = dataStore[key], item = list[list.length - 1];
+        if (!item || item.time !== time || item.photo) return;   // この周期に主センサーの記録ができたときだけ
+        const now = time.getTime();
+        const values = {};
+        activeKeys().forEach(k => {
+          const last = dataStore[k][dataStore[k].length - 1];
+          if (last && last.time === time) values[k] = last.value;
+        });
+        let due = now - lastPhotoAt >= (mode === "auto" ? AUTO_PHOTO_GAP : Number(mode) - 250);
+        if (due && mode === "auto" && lastPhotoAt) {
+          due = Object.keys(values).some(k => photoRef[k] !== undefined && Math.abs(values[k] - photoRef[k]) >= (PHOTO_STEP[k] || Infinity));
+        }
+        if (!due) return;
+        try {
+          if (countPhotos() >= PHOTO_MAX) {
+            els.photoMode.value = "off";
+            store.touchUi();
+            showToast(`写真が${PHOTO_MAX.toLocaleString("ja-JP")}枚になったので、写真の記録を OFF にしました`);
+            return;
+          }
+          const shot = await capturePhoto();
+          if (!shot || !isRecording) return;
+          attachPhoto(key, item, shot);
+          flashCam();
+          lastPhotoAt = now;
+          photoRef = values;
+        } catch (error) {
+          console.warn("[写真] とれませんでした", error);
+        }
       }
 
       // ===== AI計測（AkaDako 生成AI） ==============================================
@@ -1955,7 +2400,7 @@
       let aiBoardInfo = null;   // { board, info, at }
 
       function captureAiImage() {
-        const video = els.aiVideo;
+        const video = els.camVideo;   // 左のカードのカメラの映像
         if (!cam.stream || video.readyState < 2 || !video.videoWidth) {
           throw new SensorNoticeError("カメラの映像がまだ届いていません");
         }
@@ -2348,11 +2793,8 @@
         currentLabelSuffix: document.getElementById("currentLabelSuffix"),
         valueBox: document.getElementById("valueBox"),
         aiPanel: document.getElementById("aiPanel"),
-        aiVideo: document.getElementById("aiVideo"),
         aiStatus: document.getElementById("aiStatus"),
         aiPrompt: document.getElementById("aiPrompt"),
-        motionPreview: document.getElementById("motionPreview"),
-        motionPreviewVideo: document.getElementById("motionPreviewVideo"),
         currentValue: document.getElementById("currentValue"),
         currentUnit: document.getElementById("currentUnit"),
         readingMeta: document.getElementById("readingMeta"),
@@ -2413,6 +2855,26 @@
         memoBox: document.getElementById("memoBox"),
         memoTitle: document.getElementById("memoTitle"),
         memoInput: document.getElementById("memoInput"),
+        memoThumb: document.getElementById("memoThumb"),
+        memoThumbImg: document.getElementById("memoThumbImg"),
+        memoZoom: document.getElementById("memoZoom"),
+        memoCam: document.getElementById("memoCam"),
+        memoCamIcon: document.getElementById("memoCamIcon"),
+        memoCamLabel: document.getElementById("memoCamLabel"),
+        memoPhotoDel: document.getElementById("memoPhotoDel"),
+        camView: document.getElementById("camView"),
+        camVideo: document.getElementById("camVideo"),
+        camCount: document.getElementById("camCount"),
+        camNote: document.getElementById("camNote"),
+        camNoteText: document.getElementById("camNoteText"),
+        camRetry: document.getElementById("camRetry"),
+        photoMode: document.getElementById("photoMode"),
+        photoPop: document.getElementById("photoPop"),
+        photoPopImg: document.getElementById("photoPopImg"),
+        photoDialog: document.getElementById("photoDialog"),
+        photoDialogImg: document.getElementById("photoDialogImg"),
+        photoDialogCaption: document.getElementById("photoDialogCaption"),
+        photoDialogClose: document.getElementById("photoDialogClose"),
         memoSave: document.getElementById("memoSave"),
         memoDelete: document.getElementById("memoDelete"),
         memoCancel: document.getElementById("memoCancel"),
@@ -2454,12 +2916,13 @@
       const compareErrors = {};   // 相手のセンサーが読めなかった理由（行に出す）
       function activeKeys() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }   // 古い → 新しい（主）
       // くらべているグラフの出し方。false: 上下に並べる / true: 1枚に重ねる。
-      // ページを開いたときはいつも「並べる」から（前回の選択は覚えない）
+      // 前に開いていたときの出し方は、ほかの画面のようすと一緒に IndexedDB から戻す（restoreSession）
       let overlay = false;
       try { localStorage.removeItem("akadako-multi:layout"); } catch (error) { /* 以前の版が覚えた選択を消す */ }
       function isOverlay() { return isCompare() && overlay && overlayFits(); }
       function setOverlay(on) {
         overlay = Boolean(on);
+        store.touchUi();
         renderLayoutToggle();
         updateHeadings();
         if (viewMode === "chart") drawChart();
@@ -2582,9 +3045,9 @@
         els.statusChip.classList.toggle("connected", connected);
         els.connectBtn.classList.remove("connecting");
         els.connectBtn.classList.toggle("connected", connected);
-        els.connectBtn.setAttribute("aria-label", `S-LiNK ${text}`);
+        els.connectBtn.setAttribute("aria-label", `AkaDako ${text}`);
         els.connectBtn.title = connected ? text : `${text}（押すと、もう一度さがします）`;
-        els.connectState.textContent = connected ? "接続" : "未接続";
+        els.connectState.textContent = connected ? "接続中" : "未接続";
         els.recordBtn.disabled = !canReadAny();
         if (!connected) {
           if (!canReadAny()) stopRecording();
@@ -2707,7 +3170,7 @@
 
       // 接続する。auto=true は自動接続（USB を挿した／ページを開いた）からの呼び出しで、
       // 失敗しても画面には何も出さずに false を返す（やり直すかどうかは呼び出し側が決める）。
-      // auto=false は「S-LiNK 未接続」の表示を押したとき。失敗の理由と、必要ならデモモードの案内を出す
+      // auto=false は「AkaDako 未接続」の表示を押したとき。失敗の理由と、必要ならデモモードの案内を出す
       let connecting = false;
       let lastConnectError = null;
       async function connectBoard(auto = false) {
@@ -2721,7 +3184,7 @@
         connecting = true;
         els.connectBtn.disabled = true;
         els.connectBtn.classList.add("connecting");   // 印を橙にして点滅
-        els.connectBtn.setAttribute("aria-label", "S-LiNK 接続しています…");
+        els.connectBtn.setAttribute("aria-label", "AkaDako 接続しています…");
         els.connectBtn.title = "接続しています…";
         els.connectState.textContent = "…";
         els.statusText.textContent = "接続しています…";
@@ -2730,7 +3193,7 @@
           board.onDisconnected(() => {
             board = null;
             setConnectionUI(false, "切断されました");
-            showToast("S-LiNKとの接続が切れました");
+            showToast("AkaDakoとの接続が切れました");
             // ケーブルは挿さったまま通信だけ切れることがある（スリープ明けなど）。
             // ポートが残っていれば「新しく現れた」ものとして、少し待ってからつなぎ直す
             console.info("[接続] 切断されました。ポートが残っていれば自動でつなぎ直します");
@@ -2739,7 +3202,7 @@
           });
           setConnectionUI(true);
           hideMidiDiag();
-          showToast("S-LiNKに接続しました");
+          showToast(performance.now() - restoredAt < 4000 ? "AkaDakoに接続しました（前の記録のつづきから表示しています）" : "AkaDakoに接続しました");
           ensureReadingLoop();
           if (!midiAccess) startAutoConnect();   // 開いたときに許可が無く、手で押してつながった場合はここから見張りを始める
           return true;
@@ -2808,7 +3271,7 @@
         } else if (!quiet) {
           // ポートはあるのにつながらない。理由を下の「接続できないときの情報」に出しておく
           const ports = currentPorts();
-          showToast("S-LiNKに自動で接続できませんでした。上の「S-LiNK 未接続」を押すと、もう一度ためせます");
+          showToast("AkaDakoに自動で接続できませんでした。上の「AkaDako 未接続」を押すと、もう一度ためせます");
           showMidiDiag(lastConnectError || "自動接続に失敗しました", ports);
         }
       }
@@ -2879,32 +3342,7 @@
           return option;
         }));
         els.intervalSelect.value = RECORD_INTERVALS[kind].some(([value]) => value === current) ? current : RECORD_INTERVALS[kind][0][0];
-      }
-
-      // 「動き」タブ: 最小・平均・最大の下にカメラの映像を出す
-      function syncMotionPreview() {
-        if (!aiMode && activeKeys().includes("motion")) showMotionPreview();
-        else hideMotionPreview();
-      }
-
-      async function showMotionPreview() {
-        els.motionPreview.hidden = false;
-        try {
-          await ensureCam();
-          if (aiMode || !activeKeys().includes("motion")) return;   // 待っている間に移っていたら何もしない
-          els.motionPreviewVideo.srcObject = cam.stream;
-          els.motionPreviewVideo.muted = true;
-          await els.motionPreviewVideo.play().catch(error => console.warn(error));
-        } catch (error) {
-          // 使えない理由は現在値の下（readingMeta）に出るので、ここでは枠を消すだけ
-          if (!(error instanceof SensorNoticeError)) console.error(error);
-          hideMotionPreview();
-        }
-      }
-
-      function hideMotionPreview() {
-        els.motionPreviewVideo.srcObject = null;
-        els.motionPreview.hidden = true;
+        syncPhotoModes();
       }
 
       // 「AI」タブ: 左の現在値のかわりにカメラの映像を出す（最小・平均・最大は隠す）。
@@ -2931,18 +3369,18 @@
         els.aiPanel.hidden = false;
         renderCompareUI();
         els.currentSensorName.textContent = "AI";
-        els.currentLabelSuffix.textContent = " カメラの映像";
+        els.currentLabelSuffix.textContent = " の計測";
         els.aiStatus.textContent = "カメラを準備しています…";
         els.chartTitle.textContent = "AIの計測";
         els.chartDescription.textContent = "記録間隔ごとにカメラの画像とプロンプトをAIに送り、答えの数字を記録します";
         els.recordBtn.disabled = !canReadAny();
-        syncMotionPreview();
 
         // 記録間隔は長めの選択肢に入れ替える。表示はグラフから始める（表には切り替えられる）
         savedInterval = els.intervalSelect.value;
         setIntervalOptions("ai");
         setViewMode("chart");
         els.intervalSelect.value = "5000";
+        syncPhotoModes();
         updateSummary();
         refreshView();
         ensureReadingLoop();
@@ -2953,11 +3391,8 @@
           return;
         }
         try {
-          await ensureCam();
+          await ensureCamPanel();   // 映像は左のカードのカメラの枠に出ている
           if (!aiMode) return;   // 準備中に他のタブへ移っていたら何もしない
-          els.aiVideo.srcObject = cam.stream;
-          els.aiVideo.muted = true;
-          await els.aiVideo.play().catch(error => console.warn(error));
           if (!isRecording) setReadingMeta(waitingMessage());
         } catch (error) {
           if (!(error instanceof SensorNoticeError)) console.error(error);
@@ -2970,11 +3405,11 @@
         if (!aiMode) return;
         stopRecording();
         aiMode = false;
+        store.touchUi();
         selectedSensor = savedSensor && sensors[savedSensor] ? savedSensor : "temperature";
         savedSensor = null;
         resetChartView();
         const sensor = sensors[selectedSensor];
-        els.aiVideo.srcObject = null;
         els.aiPanel.hidden = true;
         els.aiStatus.textContent = "";
         clearAiError();
@@ -2991,6 +3426,7 @@
         els.recordBtn.disabled = !canReadAny();
         setIntervalOptions(intervalKind());
         if (savedInterval !== null) els.intervalSelect.value = savedInterval;
+        syncPhotoModes();
         savedInterval = null;
         syncTabs();
         applyValueLayout(selectedSensor);
@@ -2999,7 +3435,6 @@
         updateSummary();
         refreshView();
         syncMediaUsage();
-        syncMotionPreview();
         ensureReadingLoop();
       }
 
@@ -3092,8 +3527,8 @@
         renderCompareUI();
         updateSummary();
         refreshView();
-        syncMotionPreview();
         ensureReadingLoop();
+        store.touchUi();
       }
 
       // タブの選択状態。くらべているセンサーは全部「選択中」にしてチェック印を付ける
@@ -3154,6 +3589,7 @@
         }
         els.compareToggle.setAttribute("aria-pressed", String(compareOn));
         els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
+        store.touchUi();
       }
 
       // 左のカード: くらべているときは現在値の箱のかわりに、センサーごとの行（色・名前・現在値・最小/平均/最大）
@@ -3223,6 +3659,8 @@
         isRecording = true;
         aiSucceededSinceStart = false;
         nextSaveAt = -Infinity;   // 次の周期ですぐ1件目を記録する（2 件目は、そこから 1 回ぶんあと）
+        lastPhotoAt = 0;          // 写真の記録も 1 件目から
+        photoRef = {};
         els.recordBtn.classList.add("running");
         els.recordBtn.textContent = "■ 記録をとめる";
         els.canvasWrap.classList.remove("can-select");   // 記録中はグラフの範囲選択をしない
@@ -3284,6 +3722,7 @@
         } finally {
           readingInProgress = false;
         }
+        if (save) await autoPhoto(time);
         if (updated) {
           updateSummary(false);
           refreshView();
@@ -3311,8 +3750,9 @@
             const previous = dataStore[key][dataStore[key].length - 1];
             if (previous && item.time - previous.time < 750) fineTime[key] = true;   // 1秒間隔のぶれでは付かないように 0.75秒
             dataStore[key].push(item);
+            store.put(key, item);
             if (dataStore[key].length > 10000) {
-              dataStore[key].shift();
+              store.remove(key, dataStore[key].shift());   // 写真が付いていれば写真も消える
             }
           }
 
@@ -3398,6 +3838,7 @@
         els.tableWrap.hidden = !showTable;
         renderLayoutToggle();
         refreshView();
+        store.touchUi();
       }
 
       function refreshView() {
@@ -3512,13 +3953,7 @@
           }
           const memoCell = document.createElement("td");
           memoCell.className = "memo-cell";
-          const memoInput = document.createElement("input");
-          memoInput.type = "text";
-          memoInput.className = "memo-input";
-          memoInput.placeholder = "クリックして書く";
-          memoInput.setAttribute("aria-label", `番号 ${item.seq} のメモ`);
-          memoInput.value = memoAt(item, ms);
-          memoCell.append(memoInput);
+          fillMemoCell(memoCell, item, ms);
           row.append(memoCell);
           fragment.append(row);
         }
@@ -3959,7 +4394,7 @@
         }
         return Math.abs(items[hi].time.getTime() - ms) < Math.abs(items[lo].time.getTime() - ms) ? items[hi] : items[lo];
       }
-      // メモのある記録に小さな吹き出しの印を描く（点の少し上）
+      // メモ（文字）のある記録に小さな吹き出しの印を描く（点の少し上）。写真のある記録は、線の上に小さな丸
       function drawMemoIcons() {
         const g = chartGeo;
         if (!g) return;
@@ -3968,7 +4403,18 @@
           if (!panel.yAt) return;
           const data = panel.data;
           data.forEach((item, i) => {
-            if (!item.memo) return;
+            if (!item.memo && !item.photo) return;
+            if (item.photo) {
+              // 写真のある記録は、線の上に小さな丸。ふきだしにすると、自動でたくさん撮ったときにふきだしだらけになる
+              ctx.beginPath();
+              ctx.arc(panel.xs(i), panel.yAt(item.value), 4, 0, Math.PI * 2);
+              ctx.fillStyle = "#3a4550";
+              ctx.fill();
+              ctx.strokeStyle = "white";
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }
+            if (!item.memo) return;   // ふきだしは、文字で書いたメモだけ
             // 山（前後より高い）なら点の上に、谷なら点の下に出す。端の記録は隣の 1 件とくらべる
             const around = [data[i - 1], data[i + 1]].filter(Boolean).map(it => it.value);
             const up = !around.length || item.value >= around.reduce((sum, v) => sum + v, 0) / around.length;
@@ -4054,9 +4500,12 @@
           const text = `${panel.titled ? `${sensor.name} ` : ""}${formatValue(item.value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""}`;
           const memo = item.memo ? (item.memo.length > 28 ? `${item.memo.slice(0, 28)}…` : item.memo) : "";
           ctx.font = font;
-          const w = Math.max(ctx.measureText(text).width, memo ? ctx.measureText(memo).width : 0) + pad * 2;
+          const pic = memoEdit ? null : thumbImage(item);   // 写真の見本（読みこめていれば、値とメモの下に出す。メモの枠を出している間は枠の中に見本があるので出さない）
+          const picW = pic ? 104 : 0, picH = pic ? Math.round(104 * pic.naturalHeight / pic.naturalWidth) : 0;
+          const w = Math.max(Math.max(ctx.measureText(text).width, memo ? ctx.measureText(memo).width : 0) + pad * 2, picW);
           const bx = px + 12 + w > g.left + g.width ? px - 12 - w : px + 12;
-          const h = boxH * (memo ? 2 : 1);
+          const textH = boxH * (memo ? 2 : 1);
+          const h = textH + (pic ? picH + 3 : 0);
           let by = Math.min(panel.bottom - h - 2, Math.max(panel.top + 2, y - boxH / 2));
           // 先に出した枠と重なったら、どれとも重ならない位置を下（下に無ければ上）にさがす
           const free = top => !placed.some(b => top < b.y + b.h + 4 && b.y < top + h + 4);
@@ -4068,6 +4517,13 @@
           }
           drawBox(text, bx, by, sensor.color, "white");
           if (memo) drawBox(memo, bx, by + boxH, "#fff3bf", "#3a4550");   // メモは値の下に黄色で
+          if (pic) {
+            const left = Math.min(g.left + g.width - picW, Math.max(g.left, bx));
+            ctx.drawImage(pic, left, by + textH + 3, picW, picH);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(left, by + textH + 3, picW, picH);
+          }
           placed.push({ y: by, h });
         });
         ctx.restore();
@@ -4099,12 +4555,13 @@
       function openMemoEditor(index) {
         const item = dataStore[selectedSensor][index];
         if (!item) return;
-        memoEdit = { key: selectedSensor, seq: item.seq };
+        memoEdit = { key: selectedSensor, seq: item.seq, shot: undefined };   // shot: とったばかりの写真（保存を押すまでは仮）。null は「写真を消す」
         hover = index;
         const sensor = sensors[selectedSensor];
         els.memoTitle.textContent = `${timeText(item.time, fineTime[selectedSensor])}　${sensor.name} ${formatValue(item.value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""} のメモ`;
         els.memoInput.value = item.memo || "";
-        els.memoDelete.hidden = !item.memo;
+        els.memoDelete.hidden = !item.memo && !item.photo;
+        renderMemoPhoto();
         els.memoBox.hidden = false;
         drawChart();
         els.memoInput.focus();
@@ -4123,6 +4580,17 @@
         els.memoBox.style.left = `${Math.max(4, Math.min(wrapW - w - 4, x + 14 + w > wrapW - 4 ? x - 14 - w : x + 14))}px`;
         els.memoBox.style.top = `${Math.max(4, Math.min(wrapH - h - 4, y + 12 + h > wrapH - 4 ? y - 12 - h : y + 12))}px`;
       }
+      // メモの枠の写真: 見本があれば出し、ボタンの名前を変える
+      function renderMemoPhoto() {
+        if (!memoEdit) return;
+        const item = findBySeq(memoEdit.key, memoEdit.seq);
+        const thumb = memoEdit.shot ? memoEdit.shot.thumb : memoEdit.shot === null ? "" : (item && item.thumb) || "";
+        els.memoThumb.hidden = !thumb;
+        if (thumb) els.memoThumbImg.src = thumb;
+        else els.memoThumbImg.removeAttribute("src");
+        els.memoPhotoDel.hidden = !thumb;
+        els.memoCamLabel.textContent = thumb ? "とり直す" : "写真をとる";
+      }
       function closeMemoEditor() {
         if (!memoEdit) return;
         memoEdit = null;
@@ -4134,6 +4602,7 @@
         if (!item) return;
         const memo = String(text || "").trim();
         if (memo) item.memo = memo; else delete item.memo;
+        store.put(key, item);
         const input = els.tableBody.querySelector(`tr[data-seq="${seq}"] .memo-input`);
         if (input && key === selectedSensor && input.value !== memo) input.value = memo;
       }
@@ -4159,26 +4628,30 @@
       }
 
       // CSV・TSVで共通の表データ（1行目は見出し）
-      function buildRows() {
+      // photos（行の番号 → { name }）を渡すと、いちばん右に「写真」の列（ZIP の中のファイル名）を足す
+      function buildRows(photos = null) {
+        const photoHead = photos ? ["写真"] : [];
+        const photoCell = item => photos ? [photos.has(item.seq) ? `photos/${photos.get(item.seq).name}` : ""] : [];
         const cols = tableColumns();
         const data = dataStore[selectedSensor];
         if (!isCompare()) {
           const sensor = sensors[selectedSensor];
           return [
-            ["日時", "時刻", sensor.name, "単位", ...(cols.noteLabel ? [cols.noteLabel] : []), "メモ"],
+            ["日時", "時刻", sensor.name, "単位", ...(cols.noteLabel ? [cols.noteLabel] : []), "メモ", ...photoHead],
             ...data.map(item => [
               item.time.toLocaleDateString("ja-JP"),
               timeText(item.time, cols.fine),
               item.value,
               sensor.csvUnit,
               ...(cols.noteLabel ? [item.note || ""] : []),
-              item.memo || ""
+              item.memo || "",
+              ...photoCell(item)
             ])
           ];
         }
         // くらべているときは、時刻ごとに 1 行、センサーごとに 1 列（単位は見出しに）
         return [
-          ["日時", "時刻", ...cols.keys.map(key => `${sensors[key].name}${sensors[key].csvUnit ? `（${sensors[key].csvUnit}）` : ""}`), "メモ"],
+          ["日時", "時刻", ...cols.keys.map(key => `${sensors[key].name}${sensors[key].csvUnit ? `（${sensors[key].csvUnit}）` : ""}`), "メモ", ...photoHead],
           ...data.map(item => {
             const ms = item.time.getTime();
             return [
@@ -4188,30 +4661,132 @@
                 const found = key === selectedSensor ? item : itemAtTime(key, ms);
                 return found ? found.value : "";
               }),
-              memoAt(item, ms)
+              memoAt(item, ms),
+              ...photoCell(item)
             ];
           })
         ];
       }
 
-      function downloadCsv() {
+      // 写真のある行（主センサーの記録の順。くらべている相手の同じ時刻の写真もふくむ）と、ZIP の中での名前（日時_番号.jpg）
+      function photoFiles() {
+        const pad = (n, width = 2) => String(n).padStart(width, "0");
+        const out = new Map();   // 行の番号（seq）→ { id, name, time }
+        dataStore[selectedSensor].forEach(item => {
+          const owner = photoAt(item, item.time.getTime());
+          if (!owner || !owner.item.photo) return;
+          const t = item.time;
+          const name = `${t.getFullYear()}${pad(t.getMonth() + 1)}${pad(t.getDate())}_${pad(t.getHours())}${pad(t.getMinutes())}${pad(t.getSeconds())}_${pad(item.seq, 5)}.jpg`;
+          out.set(item.seq, { id: owner.item.photo, name, time: t });
+        });
+        return out;
+      }
+      // ZIP（圧縮なし。写真は JPEG ですでに圧縮されている）。files: [{ name, data: Blob, time: Date }]
+      // 中身は Blob のまま並べるので、写真が多くてもメモリーに全部は載せない（CRC を計算する間だけ 1 枚ずつ読む）
+      const CRC_TABLE = (() => {
+        const table = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+          table[n] = c >>> 0;
+        }
+        return table;
+      })();
+      function crc32(bytes) {
+        let c = 0xFFFFFFFF;
+        for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+        return (c ^ 0xFFFFFFFF) >>> 0;
+      }
+      async function zipBlob(files) {
+        const encoder = new TextEncoder();
+        const parts = [], central = [];
+        let offset = 0;
+        for (const file of files) {
+          const name = encoder.encode(file.name);
+          const size = file.data.size;
+          const crc = crc32(new Uint8Array(await file.data.arrayBuffer()));
+          const t = file.time || new Date();
+          const dosTime = (t.getHours() << 11) | (t.getMinutes() << 5) | (t.getSeconds() >> 1);
+          const dosDate = (Math.max(0, t.getFullYear() - 1980) << 9) | ((t.getMonth() + 1) << 5) | t.getDate();
+          const local = new DataView(new ArrayBuffer(30));
+          local.setUint32(0, 0x04034b50, true);
+          local.setUint16(4, 20, true);
+          local.setUint16(6, 0x0800, true);   // ファイル名は UTF-8
+          local.setUint16(10, dosTime, true);
+          local.setUint16(12, dosDate, true);
+          local.setUint32(14, crc, true);
+          local.setUint32(18, size, true);
+          local.setUint32(22, size, true);
+          local.setUint16(26, name.length, true);
+          parts.push(local.buffer, name, file.data);
+          const entry = new DataView(new ArrayBuffer(46));
+          entry.setUint32(0, 0x02014b50, true);
+          entry.setUint16(4, 20, true);
+          entry.setUint16(6, 20, true);
+          entry.setUint16(8, 0x0800, true);
+          entry.setUint16(12, dosTime, true);
+          entry.setUint16(14, dosDate, true);
+          entry.setUint32(16, crc, true);
+          entry.setUint32(20, size, true);
+          entry.setUint32(24, size, true);
+          entry.setUint16(28, name.length, true);
+          entry.setUint32(42, offset, true);
+          central.push(entry.buffer, name);
+          offset += 30 + name.length + size;
+        }
+        const centralSize = central.reduce((sum, part) => sum + part.byteLength, 0);
+        const end = new DataView(new ArrayBuffer(22));
+        end.setUint32(0, 0x06054b50, true);
+        end.setUint16(8, files.length, true);
+        end.setUint16(10, files.length, true);
+        end.setUint32(12, centralSize, true);
+        end.setUint32(16, offset, true);
+        return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+      }
+      function saveBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);   // 大きな ZIP でも保存が始まるまで待つ
+      }
+      // 「ダウンロード」: 写真が無ければ CSV。写真があれば、CSV（「写真」の列つき）と写真を ZIP にまとめる
+      async function downloadCsv() {
         const name = activeName();
         const data = dataStore[selectedSensor];
         if (!data.length) return;
 
+        const photos = photoFiles();
         const escapeCsv = value => `"${String(value).replaceAll('"', '""')}"`;
-        const csv = "\uFEFF" + buildRows().map(row => row.map(escapeCsv).join(",")).join("\r\n");
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const csv = "\uFEFF" + buildRows(photos.size ? photos : null).map(row => row.map(escapeCsv).join(",")).join("\r\n");
         const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        link.href = url;
-        link.download = `AkaDako_${name}_${stamp}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        showToast(`${name}のデータをCSVで保存しました`);
+        const base = `AkaDako_${name}_${stamp}`;
+        if (!photos.size) {
+          saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${base}.csv`);
+          showToast(`${name}のデータをCSVで保存しました`);
+          return;
+        }
+        els.downloadBtn.disabled = true;
+        try {
+          // ZIP の中の名前は半角の英数字だけにする（日本語の名前は、解凍ソフトによっては文字化けして取り出せない）
+          const files = [{ name: `AkaDako_${stamp}.csv`, data: new Blob([csv]), time: new Date() }];
+          let missing = 0;
+          for (const photo of photos.values()) {
+            const blob = await store.photoGet(photo.id);
+            if (blob) files.push({ name: `photos/${photo.name}`, data: blob, time: photo.time });
+            else missing += 1;
+          }
+          saveBlob(await zipBlob(files), `${base}.zip`);
+          showToast(`${name}のデータと写真 ${files.length - 1}枚を ZIP で保存しました${missing ? `（${missing}枚は見つかりませんでした）` : ""}`);
+        } catch (error) {
+          console.error(error);
+          showToast("ZIP を作れませんでした");
+        } finally {
+          els.downloadBtn.disabled = false;
+        }
       }
 
       // ExcelやGoogleスプレッドシートにそのまま貼れるよう、タブ区切りでコピーする
@@ -4261,7 +4836,9 @@
         const names = keys.map(key => sensors[key].name).join("・");
         if (!window.confirm(`${names}の記録データをすべて削除しますか？`)) return;
         keys.forEach(key => {
+          dataStore[key].forEach(item => { if (item.photo) store.photoDel(item.photo); });
           dataStore[key].length = 0;
+          store.clear(key);
           seqCounters[key] = 0;
           fineTime[key] = false;
           shareOnCleared(key);   // 測定室側もこの端末の分を空にする
@@ -4270,6 +4847,7 @@
         resetTable();
         els.currentValue.textContent = "--";
         setReadingMeta(canRead() ? "記録データを削除しました" : waitingMessage());
+        renderPhotoCount();
         updateSummary();
         refreshView();
         showToast(`${names}のグラフを削除しました`);
@@ -4529,14 +5107,65 @@
       els.memoSave.addEventListener("click", () => {
         if (!memoEdit) return;
         setMemo(memoEdit.key, memoEdit.seq, els.memoInput.value);
+        const item = findBySeq(memoEdit.key, memoEdit.seq);
+        if (item && memoEdit.shot) attachPhoto(memoEdit.key, item, memoEdit.shot);
+        else if (item && memoEdit.shot === null) detachPhoto(memoEdit.key, item);
         closeMemoEditor();
       });
       els.memoDelete.addEventListener("click", () => {
         if (!memoEdit) return;
         setMemo(memoEdit.key, memoEdit.seq, "");
+        const item = findBySeq(memoEdit.key, memoEdit.seq);
+        if (item) detachPhoto(memoEdit.key, item);   // 「消す」はメモも写真も消す
         closeMemoEditor();
       });
       els.memoCancel.addEventListener("click", closeMemoEditor);
+      els.memoZoom.innerHTML = ICON_ZOOM;
+      els.memoCamIcon.innerHTML = ICON_CAM;
+      els.memoCam.addEventListener("click", async () => {
+        if (!memoEdit) return;
+        const edit = memoEdit;
+        const shot = await capturePhoto();
+        if (!shot) { showToast(camPanelError || "カメラの映像がまだ届いていません"); return; }
+        if (memoEdit !== edit) return;   // とっている間に枠が閉じられた
+        edit.shot = shot;
+        flashCam();
+        renderMemoPhoto();
+        placeMemoBox();
+      });
+      els.memoPhotoDel.addEventListener("click", () => {
+        if (!memoEdit) return;
+        memoEdit.shot = null;
+        renderMemoPhoto();
+        placeMemoBox();
+      });
+      els.memoZoom.addEventListener("click", () => {
+        if (!memoEdit) return;
+        const item = findBySeq(memoEdit.key, memoEdit.seq);
+        if (item) openPhoto(memoEdit.key, item, memoEdit.shot ? memoEdit.shot.blob : null);
+      });
+      els.photoDialogClose.addEventListener("click", closePhoto);
+      els.photoDialog.addEventListener("click", event => { if (event.target === els.photoDialog) closePhoto(); });
+      els.photoDialog.addEventListener("cancel", event => { event.preventDefault(); closePhoto(); });   // Esc
+      // 表のメモ欄のカメラの印: 乗せると写真が浮かび、押すと大きく見られる
+      els.tableBody.addEventListener("click", event => {
+        const icon = event.target.closest(".row-photo");
+        const owner = icon && rowPhotoOwner(icon);
+        if (!owner) return;
+        hidePhotoPop();
+        openPhoto(owner.key, owner.item);
+      });
+      els.tableBody.addEventListener("mouseover", event => {
+        const icon = event.target.closest(".row-photo");
+        if (icon) showPhotoPop(icon);
+      });
+      els.tableBody.addEventListener("mouseout", event => {
+        const icon = event.target.closest(".row-photo");
+        if (icon && !icon.contains(event.relatedTarget)) hidePhotoPop();
+      });
+      els.tableBody.addEventListener("focusin", event => { if (event.target.classList.contains("row-photo")) showPhotoPop(event.target); });
+      els.tableBody.addEventListener("focusout", event => { if (event.target.classList.contains("row-photo")) hidePhotoPop(); });
+      els.tableWrap.addEventListener("scroll", hidePhotoPop, { passive: true });
       els.memoInput.addEventListener("keydown", event => {
         if (event.key === "Escape") { event.preventDefault(); closeMemoEditor(); }
         else if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); els.memoSave.click(); }
@@ -4570,9 +5199,13 @@
         if (!removed) { selClear(); return; }
         if (!window.confirm(`選んだ範囲の外にある記録 ${removed.toLocaleString("ja-JP")} 件を消去しますか？（${activeName()}）`)) return;
         keys.forEach(key => {
+          const keep = new Set(kept[key]);
+          dataStore[key].forEach(item => { if (item.photo && !keep.has(item)) store.photoDel(item.photo); });
           dataStore[key].splice(0, dataStore[key].length, ...kept[key]);
+          store.replace(key);
           shareOnCleared(key);   // 測定室側もこの端末の分を送り直す
         });
+        renderPhotoCount();
         sel = null;
         resetChartView();
         resetTable();
@@ -4630,18 +5263,203 @@
         return out;
       }
 
+      // ===== 記録をブラウザに残す（IndexedDB） ========================================
+      // ページを閉じたり端末を再起動したりしても、次に開いたときに前の画面（選んでいたセンサー・記録・メモ・写真）から続けられるようにする。
+      //   records: 記録 1 件ごと（キーは [センサー, 番号]） / photos: 写真の画像（キーは写真の番号） / meta の "ui": 画面のようす（uiState）
+      // 書きこみは少しためてから 1 回のトランザクションで行う。記録中かどうかは残さない（開き直したら記録は止まっている）。
+      // デモモードと ?store=off では保存も復元もしない（写真はメモリーに置くだけ）。
+      // 同じページを 2 つのタブで開くと記録がまざるので、保存するのは先に開いたタブだけにする（Web Locks）
+      const STORE_ON = !DEMO && PAGE_PARAMS.get("store") !== "off" && Boolean(window.indexedDB);
+      function uiState() {
+        return {
+          sensor: aiMode ? (savedSensor || "temperature") : selectedSensor, ai: aiMode,
+          compareOn, compareKeys: [...compareKeys], overlay, view: viewMode,
+          interval: els.intervalSelect.value, photoMode: els.photoMode.value, aiPrompt: els.aiPrompt.value,
+          seq: { ...seqCounters }, fine: { ...fineTime }
+        };
+      }
+      const store = (() => {
+        let db = null, timer = null, uiDirty = false;
+        let ops = [];
+        const pending = new Map();     // まだ書きこんでいない写真（すぐ「大きく見る」を押されたとき用）
+        const memPhotos = new Map();   // IndexedDB を使わないときの写真の置き場（ページを閉じると消える）
+        const done = req => new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+        const toRec = (key, item) => {
+          const rec = { k: key, seq: item.seq, t: item.time.getTime(), v: item.value };
+          ["note", "memo", "photo", "thumb"].forEach(name => { if (item[name] !== undefined) rec[name] = item[name]; });
+          return rec;
+        };
+        function schedule() { if (db && timer === null) timer = setTimeout(flush, 400); }
+        function flush() {
+          clearTimeout(timer);
+          timer = null;
+          if (!db || (!ops.length && !uiDirty)) return;
+          const batch = ops, ui = uiDirty;
+          ops = [];
+          uiDirty = false;
+          try {
+            const tx = db.transaction(["records", "photos", "meta"], "readwrite");
+            const records = tx.objectStore("records"), photos = tx.objectStore("photos");
+            const written = [];
+            batch.forEach(op => {
+              if (op.type === "put") records.put(toRec(op.key, op.item));
+              else if (op.type === "del") records.delete([op.key, op.seq]);
+              else if (op.type === "clear") records.delete(IDBKeyRange.bound([op.key, 0], [op.key, Number.MAX_SAFE_INTEGER]));
+              else if (op.type === "photo") { photos.put({ id: op.id, blob: op.blob }); written.push(op.id); }
+              else if (op.type === "photoDel") photos.delete(op.id);
+            });
+            if (ui) tx.objectStore("meta").put(uiState(), "ui");
+            tx.oncomplete = () => written.forEach(id => pending.delete(id));
+            tx.onerror = tx.onabort = () => console.warn("[保存] 書きこめませんでした", tx.error);
+          } catch (error) {
+            console.warn("[保存] 書きこめませんでした", error);
+          }
+        }
+        function push(op) { if (db) { ops.push(op); uiDirty = true; schedule(); } }   // 番号（seq）も一緒に残すので、画面のようすも書く
+        return {
+          flush,
+          open() {
+            return new Promise((resolve, reject) => {
+              const req = indexedDB.open("akadako-multi", 1);
+              req.onupgradeneeded = () => {
+                req.result.createObjectStore("records", { keyPath: ["k", "seq"] });
+                req.result.createObjectStore("photos", { keyPath: "id" });
+                req.result.createObjectStore("meta");
+              };
+              req.onsuccess = () => {
+                db = req.result;
+                db.onversionchange = () => { db.close(); db = null; };
+                resolve();
+              };
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => reject(new Error("blocked"));
+            });
+          },
+          async load() {
+            const tx = db.transaction(["records", "photos", "meta"], "readonly");
+            const [records, photoIds, ui] = await Promise.all([
+              done(tx.objectStore("records").getAll()), done(tx.objectStore("photos").getAllKeys()), done(tx.objectStore("meta").get("ui"))
+            ]);
+            return { records, photoIds, ui };
+          },
+          put(key, item) { push({ type: "put", key, item }); },
+          remove(key, item) {
+            if (!item) return;
+            if (item.photo) this.photoDel(item.photo);
+            push({ type: "del", key, seq: item.seq });
+          },
+          clear(key) { push({ type: "clear", key }); },
+          // 範囲の外を消したあとなど: そのセンサーの分を入れかえる
+          replace(key) {
+            push({ type: "clear", key });
+            dataStore[key].forEach(item => push({ type: "put", key, item }));
+          },
+          touchUi() { if (db) { uiDirty = true; schedule(); } },
+          photoPut(id, blob) {
+            if (!db) { memPhotos.set(id, blob); return; }
+            pending.set(id, blob);
+            push({ type: "photo", id, blob });
+          },
+          photoDel(id) {
+            memPhotos.delete(id);
+            pending.delete(id);
+            push({ type: "photoDel", id });
+          },
+          async photoGet(id) {
+            if (pending.has(id)) return pending.get(id);
+            if (memPhotos.has(id)) return memPhotos.get(id);
+            if (!db) return null;
+            try {
+              const found = await done(db.transaction("photos", "readonly").objectStore("photos").get(id));
+              return found ? found.blob : null;
+            } catch (error) {
+              console.warn("[保存] 写真を読めませんでした", error);
+              return null;
+            }
+          }
+        };
+      })();
+      function acquireStoreLock() {
+        if (!navigator.locks || !navigator.locks.request) return Promise.resolve(true);
+        return new Promise(resolve => {
+          navigator.locks.request("akadako-multi:store", { ifAvailable: true }, lock => {
+            resolve(Boolean(lock));
+            return lock ? new Promise(() => {}) : undefined;   // このタブを閉じるまで持ちつづける
+          }).catch(() => resolve(true));
+        });
+      }
+      // 前に開いていたときの記録と画面にもどす
+      let restoredAt = -Infinity;   // 戻した時刻（そのすぐあとにつながったとき、お知らせを 1 つにまとめる）
+      async function restoreSession() {
+        if (!STORE_ON) return;
+        if (!(await acquireStoreLock())) {
+          showToast("ほかのタブでも開いているので、このタブの記録は保存されません");
+          return;
+        }
+        let saved;
+        try {
+          await store.open();
+          saved = await store.load();
+        } catch (error) {
+          console.warn("[保存] 前の記録を読めませんでした", error);
+          return;
+        }
+        const used = new Set();
+        saved.records.forEach(rec => {
+          const list = dataStore[rec.k];
+          if (!list || !Number.isFinite(rec.t) || !Number.isFinite(rec.v) || !Number.isInteger(rec.seq)) return;
+          const item = { time: new Date(rec.t), value: rec.v, seq: rec.seq };
+          ["note", "memo", "photo", "thumb"].forEach(name => { if (typeof rec[name] === "string") item[name] = rec[name]; });
+          if (item.photo) used.add(item.photo);
+          list.push(item);
+        });
+        saved.photoIds.forEach(id => { if (!used.has(id)) store.photoDel(id); });   // どの記録にも付いていない写真を片づける
+        const ui = saved.ui || {};
+        Object.keys(dataStore).forEach(key => {
+          const last = dataStore[key][dataStore[key].length - 1];
+          seqCounters[key] = Math.max(seqCounters[key], Number(ui.seq && ui.seq[key]) || 0, last ? last.seq : 0);
+          fineTime[key] = Boolean(ui.fine && ui.fine[key]);
+        });
+        if (saved.ui) applyUiState(ui);
+        else { updateSummary(); refreshView(); }
+        renderPhotoCount();
+        if (saved.records.length) {
+          restoredAt = performance.now();
+          showToast(isConnected() ? "AkaDakoに接続しました（前の記録のつづきから表示しています）" : "前の記録のつづきから表示しています");
+        }
+      }
+      function applyUiState(ui) {
+        const ok = key => Boolean(sensors[key]) && key !== "ai";
+        if (ok(ui.sensor)) selectedSensor = ui.sensor;
+        const others = (Array.isArray(ui.compareKeys) ? ui.compareKeys : []).filter(key => ok(key) && key !== selectedSensor);
+        compareKeys = [...new Set(others)].slice(-(COMPARE_MAX - 1));
+        compareOn = Boolean(ui.compareOn) || compareKeys.length > 0;
+        els.compareToggle.setAttribute("aria-pressed", String(compareOn));
+        els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
+        overlay = Boolean(ui.overlay);
+        if (typeof ui.aiPrompt === "string") els.aiPrompt.value = ui.aiPrompt;
+        applySensorUI();
+        renderLayoutToggle();
+        if (ui.ai) enterAiMode();   // 画面の切り替えは同期で終わる（カメラの準備だけがあとから）
+        if ([...els.intervalSelect.options].some(option => option.value === ui.interval)) els.intervalSelect.value = ui.interval;
+        syncPhotoModes();   // 記録間隔を戻してから、写真の記録を戻す（選べる周期は記録間隔で決まる）
+        if ([...els.photoMode.options].some(option => option.value === ui.photoMode)) els.photoMode.value = ui.photoMode;
+        setViewMode(ui.view);
+      }
+
       // ===== 測定室（s-link-logger から移植） =========================================
-      // 複数の端末の測定データを集めて1つのページで見る。API も測定室のページも s-link-logger と同じもの
-      // （API: https://logdb.s-link.education、測定室のページの URL は API が返す）。
+      // 複数の端末の測定データを集めて1つのページで見る。API のコードも測定室のページも s-link-logger と同じものだが、
+      // 学校のフィルタリングで *.699.jp しか通らない環境でも使えるように、このアプリ専用の環境を 699.jp に置いている
+      // （API: https://logdb.699.jp、測定室のページ: このページと同じ場所の room.html。URL は API が返す）。
       // この端末の「いま選んでいるセンサーの記録」（くらべているときはその組）を1本のストリームとして 5 秒ごとに送る。
       // センサーを切り替えたり記録を削除したりしたら、新しいセッションにしてサーバー側のこの端末の分を入れ替える。
       // サーバーが「どの連番まで受け取ったか」を返すので、Wi-Fi が切れていた間の記録もあとからまとめて送られる。
-      const SHARE_API = String(PAGE_PARAMS.get("api") || "").replace(/\/+$/, "") || "https://logdb.s-link.education";
+      const SHARE_API = String(PAGE_PARAMS.get("api") || "").replace(/\/+$/, "") || "https://logdb.699.jp";
       const SHARE_KEY = "akadako-multi:stream";
       const SHARE_INTERVAL = 5000, SHARE_BATCH = 500;
       const latestValues = {};   // センサーごとの直近の測定値（測定室の「現在値」用）
       let clockOffset = 0;       // サーバー時刻 − この端末の時刻（ミリ秒）。送るデータの時刻をサーバー時刻にそろえる
-      // st: {streamId, token, name, sensorKey, room: {roomId, name, isOwner, code, ownerToken, roomPage, url, public, share} | null,
+      // st: {api, streamId, token, name, sensorKey, room: {roomId, name, isOwner, code, ownerToken, roomPage, url, public, share} | null,
       //      session, startedAt, lastAck, clockOffset, sentAt}
       let st = null;
       let shareBusy = false, shareTimer = null, shareErr = "";
@@ -4673,7 +5491,8 @@
       function stLoad() {
         try {
           const raw = localStorage.getItem(SHARE_KEY);
-          if (raw) { const v = JSON.parse(raw); if (v && v.streamId && v.token) return v; }
+          // 登録は API ごと。前の API（api の無い記録は https://logdb.s-link.education）での登録は使えないので捨てる
+          if (raw) { const v = JSON.parse(raw); if (v && v.streamId && v.token && v.api === SHARE_API) return v; }
         } catch (error) { /* localStorage が使えない */ }
         return null;
       }
@@ -4712,11 +5531,21 @@
         }
         const t0 = Date.now();
         const res = await shareApi("POST", "/streams", { name: name || "端末", sensors: shareSensors() });
-        st = { streamId: res.streamId, token: res.token, name: name || "", sensorKey: shareKey(), room: null,
+        st = { api: SHARE_API, streamId: res.streamId, token: res.token, name: name || "", sensorKey: shareKey(), room: null,
           session: newSession(), startedAt: null, lastAck: 0, clockOffset: 0, sentAt: 0 };
         measureClock(res.now, t0, Date.now());
         stSave();
         return st;
+      }
+      // 端末の登録は、最後の送信から 1 週間で API 側から消える。消えていたら登録し直して、もう一度だけ試す
+      async function withStream(name, call) {
+        try { await ensureStream(name); return await call(); }
+        catch (error) {
+          if (error.code !== "stream_not_found") throw error;
+          st = null;
+          await ensureStream(name);
+          return await call();
+        }
       }
       // 作成者が「自身のデータ共有」を外したとき（share: false）は、測定室を管理するだけでデータは送らない
       function isSending() { return Boolean(st && st.room && st.room.share !== false); }
@@ -4797,6 +5626,7 @@
         } catch (error) {
           if (error.status === 404 && error.code === "stream_not_found") { st = null; stSave(); shareLoop(); renderRoom(); showToast("登録が消えていました。もう一度やり直してください"); }
           else if (error.status === 403) { st = null; stSave(); shareLoop(); renderRoom(); }
+          else if (error.status === 429) { /* 送信の回数の上限。たまっていた分をまとめて送っている途中で届く。次の周期でつづきを送る */ }
           else { console.warn("[測定室] 送れていません", error); shareErr = "送れていません（また送ります）"; renderRoom(); }
         } finally {
           shareBusy = false;
@@ -4941,8 +5771,7 @@
           roomUi.openGo.disabled = true;
           roomError("");
           try {
-            await ensureStream(dev);
-            const res = await shareApi("POST", `/streams/${st.streamId}/rooms`, { name, share }, st.token);
+            const res = await withStream(dev, () => shareApi("POST", `/streams/${st.streamId}/rooms`, { name, share }, st.token));
             // 古い API は作成した端末をかならず参加させるので、共有しないときはこちらから外す
             if (!share && res.share !== false) await shareApi("POST", `/streams/${st.streamId}/leave`, {}, st.token);
             st.room = { roomId: res.roomId, name: res.name, isOwner: true, code: res.code, ownerToken: res.ownerToken, roomPage: res.roomPage, url: res.url, public: Boolean(res.public), share };
@@ -4978,8 +5807,7 @@
           roomUi.joinGo.disabled = true;
           roomError("");
           try {
-            await ensureStream(dev);
-            const res = await shareApi("POST", `/streams/${st.streamId}/join`, { code }, st.token);
+            const res = await withStream(dev, () => shareApi("POST", `/streams/${st.streamId}/join`, { code }, st.token));
             st.room = { roomId: res.roomId, name: res.name, isOwner: false, code: "", ownerToken: "", roomPage: res.roomPage, url: res.url, public: Boolean(res.public) };
             stSave();
             renderRoom();
@@ -5145,6 +5973,17 @@
       els.compareToggle.addEventListener("click", () => setCompareOn(!compareOn));
       els.layoutStack.addEventListener("click", () => setOverlay(false));
       els.layoutOverlay.addEventListener("click", () => setOverlay(true));
+      els.intervalSelect.addEventListener("change", () => { syncPhotoModes(); store.touchUi(); });
+      els.aiPrompt.addEventListener("change", () => store.touchUi());
+      els.photoMode.addEventListener("change", () => {
+        lastPhotoAt = 0;   // えらび直したら、次の記録から数え直す
+        store.touchUi();
+        if (els.photoMode.value !== "off" && camPanelError) showToast(`カメラを使えないので、写真は記録されません（${camPanelError}）`);
+      });
+      els.camRetry.addEventListener("click", startCamPanel);
+      // ページを閉じる・裏に回るときは、ためている分をすぐ書く
+      window.addEventListener("pagehide", () => store.flush());
+      document.addEventListener("visibilitychange", () => { if (document.hidden) store.flush(); });
       els.downloadBtn.addEventListener("click", downloadCsv);
       els.copyBtn.addEventListener("click", copyTsv);
       els.deleteBtn.addEventListener("click", deleteCurrentData);
@@ -5166,7 +6005,9 @@
         showScrubGuide();
         startAutoConnect();
       }
-      initRoom();
+      startCamPanel();
+      // 前の記録を戻してから測定室を始める（先に始めると、選んでいるセンサーが違うと見なして送り直してしまう）
+      restoreSession().catch(error => console.warn("[保存] 前の記録を戻せませんでした", error)).finally(initRoom);
     })();
   </script>
 </body>
