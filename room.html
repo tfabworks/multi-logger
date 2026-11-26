@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S-LINK Logger 測定室</title>
+<title>測定室 - AkaDako Multi Cloud Logger</title>
 <style>
   /* 見た目とグラフの描き方は、手元で測定する画面（Multi Cloud Logger。../akadako-multi/index.html）にそろえている。
      カード・現在値・グラフ・表・ボタンの形は同じで、帯と背景とボタンの色だけをオレンジ系にして、
@@ -298,7 +298,7 @@
       <button id="btn-download" class="btn" type="button">全データをダウンロード</button>
     </div>
     <main id="tiles"></main>
-    <div id="empty" hidden><div class="empty-bubble" id="empty-text">まだ端末がありません。実行用ページの「測定室」→「参加する」で入れます。</div></div>
+    <div id="empty" hidden><div class="empty-bubble" id="empty-text">まだ端末がありません。Multi Cloud Logger の「測定室」→「参加する」で入れます。</div></div>
   </section>
 
   <!-- 1 台を大きく見る（手元の画面と同じ並び: 左に現在値、右にグラフ・表） -->
@@ -393,7 +393,7 @@
   <div class="win">
     <div class="win-head"><span>測定室 ID</span><span class="gap"></span><button id="invite-close" class="btn" type="button">とじる</button></div>
     <div class="win-body">
-      <div class="hint">参加する人は、実行用ページの「測定室」→「参加する」で、この番号を入れます。</div>
+      <div class="hint">参加する人は、Multi Cloud Logger の「測定室」→「参加する」で、この番号を入れます。</div>
       <div class="code" id="invite-code">---</div>
       <div class="field" id="invite-url-box" hidden>この測定室のページの URL（公開中。見るだけ）
         <div class="url"><input type="text" id="invite-url" readonly><button id="invite-copy" class="btn" type="button">コピー</button></div>
@@ -542,7 +542,7 @@
 
   // ===== タイル =====
   function render() {
-    document.title = '測定室｜' + room.name + ' - S-LINK Logger';
+    document.title = '測定室｜' + room.name + ' - AkaDako Multi Cloud Logger';
     $('room-name').textContent = room.name;
     setStatus('connected', room.public ? '開室中（公開中）' : '開室中');
     $('btn-json').hidden = !room.public;
@@ -1949,7 +1949,7 @@
     var caches = [];
     for (var i = 0; i < ids.length; i++) { try { caches.push(await fetchRows(ids[i])); } catch (e) {} }
     if (!caches.length) throw new Error('no data');
-    var stem = 'S-LINK_' + fileSafe(label || room.name) + '_' + stamp();
+    var stem = 'AkaDako_' + fileSafe(label || room.name) + '_' + stamp();
     if (format === 'xlsx') {
       saveFile(await zipBytes(xlsxFiles(caches)), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', stem + '.xlsx');
       toast('Excel で保存しました');
