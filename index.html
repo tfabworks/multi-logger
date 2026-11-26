@@ -1789,7 +1789,7 @@
     <div class="dialog-body ext-body">
       <h3 id="extDialogTitle">外部のデータをえらぶ</h3>
       <p class="ext-lead">自分ではかっていないデータを 1 つえらんで、グラフや表にならべます</p>
-      <label class="ext-choice"><input type="radio" name="extType" value="sun" checked><span><b>太陽の高さ</b><small>場所と時刻から計算します（地平線より上が 0°より大きい）</small></span></label>
+      <label class="ext-choice"><input type="radio" name="extType" value="sun" checked><span><b>太陽の高さ</b><small>場所と時刻から計算します（夜は 0°）</small></span></label>
       <div id="extSunBox" class="ext-detail">
         <label>場所<select id="extPref"></select></label>
       </div>
@@ -1858,6 +1858,7 @@
     <div class="room-body">
       <div class="room-state" id="roomState"><span class="ind-dot"></span><span id="roomStateText">なし</span></div>
       <div class="room-sub" id="roomSub"></div>
+      <div class="room-sub" id="roomMemoNote" hidden>記録のほか、メモと写真も測定室に送られます</div>
       <div class="room-actions" id="roomNone">
         <button id="roomJoinBtn" class="room-btn room-btn--primary" type="button">参加する</button>
         <button id="roomOpenBtn" class="room-btn" type="button">作成する</button>
@@ -2201,7 +2202,7 @@
       // 左のカードにカメラの映像をいつも出す（ページを開いたときにカメラを始める。「動き」と AI も同じ映像を使う）。
       // 写真は記録 1 件に 1 枚まで付けられ、メモと同じ扱いにする（表の「メモ」列・グラフの印）。
       // 画像そのもの（JPEG）は IndexedDB の photos に入れ、記録には写真の番号（item.photo）と小さな見本（item.thumb。data URL）だけを持たせる。
-      // 写真は測定室には送らない（メモと同じ）
+      // 測定室に参加している間は、メモの文と写真も測定室に送る（下の「メモ（文と写真）を測定室に送る」）
       const PHOTO_WIDTH = 640, THUMB_WIDTH = 120;
       const PHOTO_MAX = 2000;   // 写真の上限（1 枚 50〜80KB として 150MB ほど）。こえたら自動の記録を OFF にする
       const ICON_ZOOM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>';
@@ -5428,7 +5429,7 @@
       function extReady() {
         return ext.type === "sun" || (ext.type === "file" && Boolean(ext.file && ext.file.series[ext.col]));
       }
-      // 太陽の高さ（度）。地平線が 0、真上が 90、しずんでいる間はマイナス。天文年鑑の略算式（誤差は 0.1 度より小さい）
+      // 太陽の高さ（度）。地平線が 0、真上が 90、しずんでいる間はマイナス（画面に出すときは 0 にする → extValueAt）。天文年鑑の略算式（誤差は 0.1 度より小さい）
       function sunElevation(ms, lat, lon) {
         const rad = Math.PI / 180;
         const d = ms / 86400000 - 10957.5;   // 2000 年 1 月 1 日 12 時（世界時）からの日数
@@ -5456,7 +5457,7 @@
       function extValueAt(ms, baseT0) {
         if (ext.type === "sun") {
           const place = PREFS.find(pref => pref[0] === ext.pref) || PREFS[12];
-          return sunElevation(ms, place[1], place[2]);
+          return Math.max(0, sunElevation(ms, place[1], place[2]));   // しずんでいる間（マイナス）は 0° にする（「太陽が出ていない＝0」。昼の山も大きく見える）
         }
         const points = ext.file.series[ext.col].points;
         const dayStart = t => { const day = new Date(t); day.setHours(0, 0, 0, 0); return day.getTime(); };
@@ -6028,6 +6029,12 @@
           shareErr = "";
           stSave();
           renderRoom();
+          try {
+            await syncMemos();
+          } catch (error) {
+            // 409: セッションがまだ合っていない / 429: 回数の上限。どちらも次の回に送る
+            if (error.status !== 409 && error.status !== 429) console.warn("[測定室] メモを送れていません", error);
+          }
           if (rows.length >= SHARE_BATCH) setTimeout(sharePush, 50);   // まだ送っていない分が残っている
           if (!isSending()) shareLoop();
         } catch (error) {
@@ -6038,6 +6045,79 @@
         } finally {
           shareBusy = false;
         }
+      }
+      // ---- メモ（文と写真）を測定室に送る ----
+      // 送るのは、行（主センサーの記録の番号）ごとの「メモの文」と「写真の番号」。行のメモ・写真は、表と同じく主センサーの記録か、
+      // くらべている相手の同じ時刻の記録から取る。送ってある内容（memoSent）とくらべて、ちがうところだけ送る（消したものは消す）。
+      // 写真は 1 枚ずつ先に送ってから、メモを送る。ページを開き直したときは、サーバーに残っている内容を読んでからくらべる（写真を送り直さない）
+      const MEMO_BATCH = 50, PHOTO_BATCH = 3;   // 1 回（5 秒ごと）に送る数
+      let memoSent = null;        // 行の番号 → "文|写真の番号"。null は、まだサーバーの内容を読んでいない
+      let memoSentFor = "";       // memoSent を作ったときのセッション
+      let photoSent = new Set();  // サーバーに届いている写真の番号
+      function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+      }
+      async function syncMemos() {
+        if (!isSending() || !st.session) return;
+        const base = shareKeys().slice(-1)[0];
+        if (!base || base === "external") return;
+        if (memoSent === null || memoSentFor !== st.session) {
+          const res = await shareApi("GET", `/streams/${st.streamId}/memos`, null, st.token);
+          memoSent = new Map();
+          photoSent = new Set();
+          if (res.session === st.session) {
+            res.memos.forEach(memo => {
+              memoSent.set(memo.seq, `${memo.text}|${memo.photo || ""}`);
+              if (memo.photo) photoSent.add(memo.photo);
+            });
+          }
+          memoSentFor = st.session;
+        }
+        // いま付いているメモと写真（サーバーに届いた行だけ）。文はサーバーと同じ決まりでととのえる（制御文字は空白に、200 字まで）
+        const want = new Map();
+        dataStore[base].forEach(item => {
+          if (item.seq > st.lastAck) return;
+          const ms = item.time.getTime();
+          const text = memoAt(item, ms).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200);
+          const owner = photoAt(item, ms);
+          if (text || owner) want.set(item.seq, { text, photo: owner ? owner.item.photo : "" });
+        });
+        const changes = [];
+        let photos = 0;
+        for (const [seq, memo] of want) {
+          if (changes.length >= MEMO_BATCH) break;
+          const sig = `${memo.text}|${memo.photo}`;
+          if (memoSent.get(seq) === sig) continue;
+          let photo = memo.photo;
+          if (photo && !photoSent.has(photo)) {
+            if (photos >= PHOTO_BATCH) continue;   // 写真は少しずつ。のこりは次の回に
+            const blob = await store.photoGet(photo);
+            if (blob) {
+              await shareApi("POST", `/streams/${st.streamId}/photos/${photo}`, { session: st.session, data: await blobToBase64(blob) }, st.token);
+              photoSent.add(photo);
+              photos += 1;
+            } else {
+              photo = "";   // 画像が見つからない写真は、文だけ送る
+            }
+          }
+          changes.push({ seq, text: memo.text, photo: photo || null, sig });
+        }
+        for (const seq of memoSent.keys()) {   // 消したメモ
+          if (changes.length >= MEMO_BATCH) break;
+          if (!want.has(seq)) changes.push({ seq, text: "", photo: null, sig: null });
+        }
+        if (!changes.length) return;
+        await shareApi("POST", `/streams/${st.streamId}/memos`,
+          { session: st.session, memos: changes.map(({ seq, text, photo }) => ({ seq, text, photo })) }, st.token);
+        changes.forEach(change => {
+          if (change.sig === null) memoSent.delete(change.seq);
+          else memoSent.set(change.seq, change.sig);
+        });
       }
       function shareLoop() {
         clearInterval(shareTimer);
@@ -6076,6 +6156,7 @@
           roomUi.sub.textContent = sending ? (shareErr || sentText()) : "";
         }
         roomUi.sub.classList.toggle("warn", Boolean(shareErr));
+        document.getElementById("roomMemoNote").hidden = !sending;
         roomUi.none.hidden = Boolean(r) || !roomUi.openForm.hidden || !roomUi.joinForm.hidden;
         roomUi.inRoom.hidden = !r;
         if (r) {

@@ -142,6 +142,20 @@
   .data-table th:first-child, .data-table td:first-child { width: 5em; color: var(--muted); }
   .data-table tbody tr:nth-child(even) { background: #f8fcfd; }
   .data-table td.value-cell { font-weight: 900; }
+  /* メモ（文と写真）: 表のいちばん右の列。写真のある行にはカメラの印（乗せると写真が浮かび、押すと大きく見られる） */
+  .data-table th.memo-col, .data-table td.memo-col { text-align: left; }
+  .data-table td.memo-col { min-width: 160px; }
+  .memo-cell { display: flex; align-items: center; gap: 6px; }
+  .memo-cell .memo-text { flex: 1 1 auto; font-weight: 700; overflow-wrap: anywhere; }
+  .row-photo { flex: 0 0 auto; width: 30px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid #dcebf4; border-radius: 8px; color: var(--accent); background: white; cursor: pointer; }
+  .row-photo svg { width: 17px; height: 17px; }
+  .row-photo:hover, .row-photo:focus-visible { border-color: var(--accent); }
+  .photo-pop { position: fixed; z-index: 60; padding: 4px; border-radius: 12px; background: white; box-shadow: 0 8px 26px rgba(0,0,0,.3); pointer-events: none; }
+  .photo-pop[hidden] { display: none; }
+  .photo-pop img { display: block; width: 256px; height: 192px; border-radius: 8px; background: #0d1b26; object-fit: contain; }
+  .ov .win.photo-win { width: min(760px, calc(100vw - 24px)); }
+  .photo-win img { display: block; width: 100%; max-height: 68vh; border-radius: 12px; background: #0d1b26; object-fit: contain; }
+  .photo-win .cap { margin: 0; font-size: .88rem; font-weight: 800; white-space: pre-wrap; overflow-wrap: anywhere; }
   .action-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
   .action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 47px; border: 2px solid var(--line); border-radius: 14px; color: var(--ink); background: white; font-weight: 900; cursor: pointer; transition: transform .14s ease, background .14s ease; }
   .action-btn:hover { transform: translateY(-1px); background: #f7fbfd; }
@@ -360,6 +374,18 @@
   </div>
 </div>
 
+<!-- メモの写真を大きく見る -->
+<div id="ov-photo" class="ov" hidden>
+  <div class="win photo-win">
+    <div class="win-head"><span id="photo-title">写真</span><span class="gap"></span><button id="photo-close" class="btn" type="button">とじる</button></div>
+    <div class="win-body">
+      <img id="photo-img" alt="写真">
+      <p class="cap" id="photo-cap"></p>
+    </div>
+  </div>
+</div>
+<div id="photo-pop" class="photo-pop" hidden><img id="photo-pop-img" alt=""></div>
+
 <div id="ov-download" class="ov" hidden>
   <div class="win">
     <div class="win-head"><span>ダウンロード</span><span class="gap"></span><button id="dl-close" class="btn" type="button">とじる</button></div>
@@ -547,7 +573,7 @@
     d.sensors.forEach(function (s) { vals.appendChild(valueRow(s.name, s.color, fmtVal(d.lastValues[s.key], s), s.unit)); });
     drawMini(t.querySelector('.mini'), d);
     var foot = t.querySelector('.foot'); foot.textContent = '';
-    foot.appendChild(el('span', '', '記録 ' + (d.rowCount || 0).toLocaleString('ja-JP') + ' 件'));
+    foot.appendChild(el('span', '', '記録 ' + (d.rowCount || 0).toLocaleString('ja-JP') + ' 件' + (d.memoCount ? '・メモ ' + d.memoCount.toLocaleString('ja-JP') : '')));
     foot.appendChild(el('span', '', d.startedAt ? '開始 ' + fmtTime(d.startedAt) : ''));
   }
   function updateSelection() {
@@ -842,7 +868,8 @@
         ctx.beginPath(); ctx.moveTo(s1, top); ctx.lineTo(s1, bottom); ctx.moveTo(s2, top); ctx.lineTo(s2, bottom); ctx.stroke();
       }
     }
-    if (has(opts.hover) && !opts.sel) drawHover(ctx, geo, series, opts.hover, opts.fine);
+    if (opts.marks) drawMarks(ctx, geo, opts.marks);
+    if (has(opts.hover) && !opts.sel) drawHover(ctx, geo, series, opts.hover, opts.fine, opts);
     return geo;
   }
   // 時刻 t にいちばん近い、値のある記録（見えている範囲の中だけ）
@@ -853,7 +880,33 @@
     return best;
   }
   // マウスを乗せたところの記録: 縦の線と、線ごとに点と値、上に時刻を描く
-  function drawHover(ctx, g, series, t, fine) {
+  // メモの印（手元の画面と同じ）: 写真のある記録は線の上に小さな丸、文のあるメモは黄色いふきだし
+  function drawMarks(ctx, g, marks) {
+    ctx.save();
+    marks.forEach(function (mark) {
+      if (!has(mark.v) || mark.t < g.xMin || mark.t > g.xMax) return;
+      var panel = null;
+      g.panels.forEach(function (pn) { if (pn.si === mark.si) panel = pn; });
+      if (!panel || !panel.yAt) return;
+      var x = g.X(mark.t), y = panel.yAt(mark.v);
+      if (mark.memo.photo) {
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#3a4550'; ctx.fill();
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      if (!mark.memo.text) return;
+      var dir = y - 15 - 8 < panel.top ? 1 : -1, by = y + dir * 15;   // ふつうは点の上。上に入らなければ下
+      roundRect(ctx, x - 8, by - 6, 16, 12, 4);
+      ctx.fillStyle = '#ffd54a'; ctx.fill();
+      ctx.strokeStyle = '#3a4550'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 3, by - dir * 6); ctx.lineTo(x, by - dir * 10); ctx.lineTo(x + 3, by - dir * 6); ctx.closePath();
+      ctx.fillStyle = '#ffd54a'; ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a4550'; ctx.font = 'bold 9px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('…', x, by - .5);
+    });
+    ctx.restore();
+  }
+  function drawHover(ctx, g, series, t, fine, opts) {
     var found = series.map(function (s) { return nearest(s.pts, t, g.xMin, g.xMax); });
     var ref = null;
     found.forEach(function (p) { if (p && (!ref || Math.abs(p[0] - t) < Math.abs(ref[0] - t))) ref = p; });
@@ -902,6 +955,25 @@
       drawBox(text, bx, by, s.color, 'white');
       placed.push({y: by, h: boxH});
     });
+    // その記録のメモ（文は黄色い枠、写真は読めていれば小さく）。時刻の枠の下に出す
+    var memo = opts && opts.memoAt ? opts.memoAt(ref[0]) : null;
+    if (memo) {
+      var my = g.timeY + boxH + 4;
+      if (memo.text) {
+        var mt = memo.text.length > 28 ? memo.text.slice(0, 28) + '…' : memo.text;
+        ctx.font = font;
+        var mw = ctx.measureText(mt).width + pad * 2;
+        drawBox(mt, x + 8 + mw > rightEdge ? x - 8 - mw : x + 8, my, '#fff3bf', '#3a4550');
+        my += boxH + 3;
+      }
+      var ph = memo.photo && opts.photoFor ? opts.photoFor(memo) : null;
+      if (ph && ph.state === 'ok') {
+        var pw = 120, phh = Math.round(pw * ph.img.naturalHeight / ph.img.naturalWidth);
+        var pl = Math.min(rightEdge - pw, Math.max(g.left, x + 8 + pw > rightEdge ? x - 8 - pw : x + 8));
+        ctx.drawImage(ph.img, pl, my, pw, phh);
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(pl, my, pw, phh);
+      }
+    }
     ctx.restore();
   }
   // タイルの小さなグラフ。目盛りは出さず、線だけ（センサーが 1 つなら下を塗る。2 つ以上は、それぞれの範囲いっぱいに重ねる）
@@ -1177,6 +1249,79 @@
   $('detail-scroll').appendChild(detailScroll.addBar());
   detailSel.attach($('detail-chart'), $('detail-plot'));
   // センサーごとの線（時刻と値）。記録が増えたときだけ作り直す
+  // ===== メモ（文と写真） =====
+  // 端末が記録に付けたメモ。行の連番（seq）ごとに {seq, text, photo}。端末の memoRev が変わったら読み直す。
+  // 写真は、見るときに 1 枚ずつ読む（資格を付けて読むので、<img> に URL をそのまま入れられない）
+  var memoCache = {};    // deviceId -> {rev, session, resetSeq, bySeq, count}
+  var photoCache = {};   // "deviceId:seq:写真の番号" -> {state: 'loading'|'ok'|'ng', url, img, waiting}
+  var ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>';
+  async function fetchMemos(deviceId) {
+    var d = byId(deviceId), m = memoCache[deviceId];
+    if (!d) return m || null;
+    if (m && m.rev === d.memoRev && m.session === d.session && m.resetSeq === d.resetSeq) return m;
+    var list = d.memoCount ? (await api('GET', '/rooms/' + ROOM_ID + '/devices/' + deviceId + '/memos')).memos : [];
+    m = memoCache[deviceId] = {rev: d.memoRev, session: d.session, resetSeq: d.resetSeq, bySeq: {}, count: list.length};
+    list.forEach(function (x) { m.bySeq[x.seq] = x; });
+    return m;
+  }
+  // 写真を読む。読めたら onReady を呼ぶ（読めなかったときも）
+  function photoOf(deviceId, memo, onReady) {
+    var key = deviceId + ':' + memo.seq + ':' + memo.photo, p = photoCache[key];
+    if (p) { if (p.state === 'loading' && onReady) p.waiting.push(onReady); return p; }
+    p = photoCache[key] = {state: 'loading', url: '', img: null, waiting: onReady ? [onReady] : []};
+    var done = function (state) {
+      p.state = state;
+      if (state === 'ng') setTimeout(function () { delete photoCache[key]; }, 10000);   // 少ししたら、もう一度ためせるように
+      var waiting = p.waiting; p.waiting = [];
+      waiting.forEach(function (f) { f(p); });
+    };
+    var headers = {}, tok = viewToken();
+    if (tok) headers.authorization = 'Bearer ' + tok;
+    fetch(API + '/rooms/' + ROOM_ID + '/devices/' + deviceId + '/memos/' + memo.seq + '/photo', {headers: headers})
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.blob(); })
+      .then(function (blob) {
+        p.url = URL.createObjectURL(blob);
+        var img = new Image();
+        img.onload = function () { p.img = img; done('ok'); };
+        img.onerror = function () { done('ng'); };
+        img.src = p.url;
+      })
+      .catch(function () { done('ng'); });
+    return p;
+  }
+  // グラフに出すメモの印（主センサー＝さいごのセンサーの線の上）と、時刻からメモを引く表
+  function marksOf(c, series) {
+    var memos = detail.id && memoCache[detail.id];
+    if (!memos || !memos.count || !series.length) return null;
+    if (c._marks && c._marksLen === c.rows.length && c._marksOf === memos) return c._marks;
+    var main = series.length - 1, list = [], byTime = {};
+    c.rows.forEach(function (r, i) {
+      var memo = memos.bySeq[r[0]];
+      if (!memo) return;
+      var pt = series[main].pts[i];
+      list.push({t: pt[0], v: pt[1], si: main, memo: memo});
+      byTime[pt[0]] = memo;
+    });
+    c._marks = {list: list, byTime: byTime}; c._marksLen = c.rows.length; c._marksOf = memos;
+    return c._marks;
+  }
+  // 写真を大きく見る
+  function openPhoto(deviceId, memo, title) {
+    $('photo-title').textContent = title || '写真';
+    $('photo-cap').textContent = memo.text || '';
+    $('photo-img').removeAttribute('src');
+    $('ov-photo').hidden = false;
+    var show = function (p) {
+      if ($('ov-photo').hidden) return;
+      if (p.state === 'ok') $('photo-img').src = p.url;
+      else $('photo-cap').textContent = (memo.text ? memo.text + '\n' : '') + '（写真を読めませんでした。少ししてから、もう一度ためしてください）';
+    };
+    var p = photoOf(deviceId, memo, show);
+    if (p.state !== 'loading') show(p);
+  }
+  $('photo-close').addEventListener('click', function () { $('ov-photo').hidden = true; });
+  $('ov-photo').addEventListener('click', function (e) { if (e.target === $('ov-photo')) $('ov-photo').hidden = true; });
+
   function seriesOf(c) {
     if (c._series && c._seriesLen === c.rows.length && c._seriesAt === c.startedAt) return c._series;
     c._series = c.sensors.map(function (s, si) {
@@ -1265,7 +1410,10 @@
     $('detail-plot').dataset.panels = String(overlay ? 1 : Math.max(1, series.length));   // パネルの数で箱の高さが変わる（CSS）
     placeScroll(detailScroll, cv, overlay ? unitGroups(series).length - 1 : 0);
     var range = detailScroll.update(extentOf(series.map(function (s) { return s.pts; })));
-    var geo = drawChart(cv, series, {mode: overlay ? 'overlay' : 'stack', range: range, sel: detailSel.sel, hover: detail.hover, fine: isFine(c)});
+    var marks = marksOf(c, series), id = detail.id;
+    var geo = drawChart(cv, series, {mode: overlay ? 'overlay' : 'stack', range: range, sel: detailSel.sel, hover: detail.hover, fine: isFine(c),
+      marks: marks && marks.list, memoAt: marks ? function (t) { return marks.byTime[t] || null; } : null,
+      photoFor: function (memo) { return photoOf(id, memo, function () { if (detail.id === id && detail.view === 'chart') detailDraw(); }); }});
     $('detail-empty').hidden = Boolean(geo);
     detailSel.place(cv, geo);
   }
@@ -1274,12 +1422,14 @@
   function detailTable(c) {
     var wrap = $('detail-table-wrap'), thead = wrap.querySelector('thead'), tbody = wrap.querySelector('tbody');
     var fine = isFine(c);
-    var sig = [detail.id, c.session, c.resetSeq, fine, c.sensors.map(function (s) { return s.key; }).join('+')].join('|');
+    var memos = memoCache[detail.id];
+    var sig = [detail.id, c.session, c.resetSeq, fine, c.sensors.map(function (s) { return s.key; }).join('+'), memos ? memos.rev : ''].join('|');   // メモが変わったら作り直す
     if (tableState.sig !== sig || c.rows.length < tableState.rendered) {
       tableState.sig = sig; tableState.rendered = 0;
       thead.textContent = ''; tbody.textContent = '';
       var trh = el('tr');
       ['番号', '時刻'].concat(c.sensors.map(seriesLabel)).forEach(function (h) { var th = el('th', '', h); th.scope = 'col'; trh.appendChild(th); });
+      var memoHead = el('th', 'memo-col', 'メモ'); memoHead.scope = 'col'; trh.appendChild(memoHead);
       thead.appendChild(trh);
     }
     if (c.rows.length === tableState.rendered) return;
@@ -1290,12 +1440,56 @@
       tr.appendChild(el('td', '', String(r[0])));
       tr.appendChild(el('td', '', timeText(absTime(c, r), fine)));
       c.sensors.forEach(function (s, si) { var td = el('td', 'value-cell', has(r[2 + si]) ? fmtVal(r[2 + si], s) : ''); td.style.color = s.color; tr.appendChild(td); });
+      var memoTd = el('td', 'memo-col'), memo = memos && memos.bySeq[r[0]];
+      if (memo) {
+        var box = el('div', 'memo-cell');
+        box.appendChild(el('span', 'memo-text', memo.text));
+        if (memo.photo) {
+          var cam = el('button', 'row-photo');
+          cam.type = 'button'; cam.title = '写真を見る'; cam.dataset.seq = String(r[0]);
+          cam.setAttribute('aria-label', '番号 ' + r[0] + ' の写真を見る');
+          cam.innerHTML = ICON_CAM;
+          box.appendChild(cam);
+        }
+        memoTd.appendChild(box);
+      }
+      tr.appendChild(memoTd);
       frag.appendChild(tr);
     }
     tbody.appendChild(frag);
     tableState.rendered = c.rows.length;
     if (atBottom) wrap.scrollTop = wrap.scrollHeight;
   }
+  // 表のカメラの印: 乗せると写真が浮かび、押すと大きく見られる
+  (function () {
+    var tbody = $('detail-table-wrap').querySelector('tbody'), popFor = null;
+    var memoOf = function (btn) { var m = detail.id && memoCache[detail.id]; return m ? m.bySeq[btn.dataset.seq] : null; };
+    var hide = function () { popFor = null; $('photo-pop').hidden = true; $('photo-pop-img').removeAttribute('src'); };
+    var show = function (btn) {
+      var memo = memoOf(btn);
+      if (!memo || popFor === btn) return;
+      popFor = btn;
+      var place = function (p) {
+        if (popFor !== btn || p.state !== 'ok') return;
+        $('photo-pop-img').src = p.url;
+        $('photo-pop').hidden = false;
+        var rect = btn.getBoundingClientRect(), w = $('photo-pop').offsetWidth, h = $('photo-pop').offsetHeight;
+        $('photo-pop').style.left = (rect.left - w - 8 >= 8 ? rect.left - w - 8 : Math.min(window.innerWidth - w - 8, rect.right + 8)) + 'px';
+        $('photo-pop').style.top = Math.max(8, Math.min(window.innerHeight - h - 8, rect.top + rect.height / 2 - h / 2)) + 'px';
+      };
+      var p = photoOf(detail.id, memo, place);
+      if (p.state !== 'loading') place(p);
+    };
+    tbody.addEventListener('click', function (e) {
+      var btn = e.target.closest('.row-photo'), memo = btn && memoOf(btn);
+      if (!memo) return;
+      hide();
+      openPhoto(detail.id, memo, $('detail-name').textContent + '　番号 ' + btn.dataset.seq);
+    });
+    tbody.addEventListener('mouseover', function (e) { var btn = e.target.closest('.row-photo'); if (btn) show(btn); });
+    tbody.addEventListener('mouseout', function (e) { var btn = e.target.closest('.row-photo'); if (btn && !btn.contains(e.relatedTarget)) hide(); });
+    $('detail-table-wrap').addEventListener('scroll', hide, {passive: true});
+  })();
   function setDetailView(view) {
     detail.view = view;
     setPressed($('detail-view-chart'), view === 'chart'); setPressed($('detail-view-table'), view === 'table');
@@ -1323,6 +1517,7 @@
     if (!detail.id) return;
     var id = detail.id, c;
     try { c = await fetchRows(id); } catch (e) { if (e.status === 404) closeDetail(); return; }
+    try { await fetchMemos(id); } catch (e) { /* メモが読めなくても、記録は出す */ }
     if (detail.id !== id) return;
     var d = byId(id);
     $('detail-name').textContent = d ? d.name : c.name;
@@ -1763,7 +1958,7 @@
   // Esc: 小さな窓が開いていればそれを閉じる。なければ一覧にもどる
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    var wins = ['ov-download', 'ov-invite', 'ov-settings'].filter(function (id) { return !$(id).hidden; });
+    var wins = ['ov-photo', 'ov-download', 'ov-invite', 'ov-settings'].filter(function (id) { return !$(id).hidden; });
     if (wins.length) { wins.forEach(function (id) { $(id).hidden = true; }); return; }
     if (!$('ov-detail').hidden) closeDetail();
     else if (!$('ov-overlay').hidden) closeOverlay();
