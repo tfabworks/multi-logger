@@ -32,10 +32,11 @@
     await wait(100);
   }
 
-  // 左のカードの「写真の記録」をえらぶ
+  // 左のカードの「写真の記録」をえらぶ。OFF からえらび直すと「写真の記録をはじめる前に」の注意が出るので、「OK」を押す
   function photoMode(value) {
     $("photoMode").value = value;
     $("photoMode").dispatchEvent(new Event("change", { bubbles: true }));
+    if ($("camWarnDialog").open) $("camWarnOk").click();
   }
   // 写真のある記録の番号と、記録の件数。表の行から読むので、いちど表に切りかえる（行は表を出しているときにだけ作られる）
   const rows = () => [...document.querySelectorAll("#tableBody tr")];
@@ -80,6 +81,38 @@
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     }));
+  }
+
+  // 「外部」の「前の記録」に読ませる CSV。このアプリの「ダウンロード」と同じ形で、1 週間前に同じ実験（手でにぎる時間は短め）をした記録。
+  // 撮るとき（記録をとめたあと）にも「いまの時刻」の値があるように、150 秒ぶん作る
+  function previousCsv() {
+    const lines = ["日時,時刻,温度,単位,メモ"];
+    let value = 24.2, seed = 7;
+    for (let i = 0; i <= 300; i++) {
+      const t = i * 0.5;
+      value += ((t >= 8 && t < 27 ? 30.6 : 24.2) - value) * (1 - Math.exp(-0.085 * 0.5));
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const noise = (seed / 4294967296 - 0.5) * 0.08;
+      const s = Math.floor(t), time = `10:${String(20 + Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}.${t % 1 ? 5 : 0}`;
+      lines.push(`2026/11/9,${time},${(value + noise).toFixed(1)},℃,`);
+    }
+    return new File(["\uFEFF" + lines.join("\r\n")], "AkaDako_温度_2026-11-09T01-21-05.csv", { type: "text/csv" });
+  }
+  // 「外部」のタブを押して、えらぶ画面を出す
+  async function openExternal() {
+    tab("external").click();
+    await wait(200);
+  }
+  // えらぶ画面で「前の記録」をえらび、ファイルを入れる（子どもが「ファイルをえらぶ」でえらんだのと同じ）
+  async function pickPrevious() {
+    const radio = document.querySelector('input[name="extType"][value="file"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event("change", { bubbles: true }));
+    const files = new DataTransfer();
+    files.items.add(previousCsv());
+    $("extFileInput").files = files.files;
+    $("extFileInput").dispatchEvent(new Event("change", { bubbles: true }));
+    for (let i = 0; i < 200 && !$("extFileName").textContent.endsWith(".csv"); i++) await wait(50);   // 読みこみが終わるまで
   }
 
   async function connect() {
@@ -222,6 +255,33 @@
       tab("humidity").click();
       await wait(500);
       tab("brightness").click();
+      await wait(500);
+      await record();
+      $("layoutOverlay").click();
+    },
+
+    // 「外部」のタブを押して出る、えらぶ画面
+    async extpick() {
+      await connect();
+      await openExternal();
+      if (document.activeElement) document.activeElement.blur();
+    },
+
+    // 「外部」だけ: 太陽の高さ（今日 1 日ぶん）
+    async extsun() {
+      await connect();
+      await openExternal();
+      $("extOk").click();
+      await wait(500);
+    },
+
+    // 温度と「前の記録」（1 週間前の温度）をくらべて、重ねる。同じ温度どうしなので、目もりが共通になる
+    async extprev() {
+      await connect();
+      $("compareToggle").click();
+      await openExternal();
+      await pickPrevious();
+      $("extOk").click();
       await wait(500);
       await record();
       $("layoutOverlay").click();

@@ -151,7 +151,7 @@
     border-left: 2.5mm solid var(--c, var(--blue)); line-height: 1.85; font-size: 10.5pt;
   }
   .can b { display: block; color: var(--c, var(--blue-dark)); font-size: 13pt; }
-  .toc { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; margin: 2mm 0 0; padding: 0; list-style: none; font-size: 10.5pt; }
+  .toc { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; margin: 2mm 0 0; padding: 0; list-style: none; font-size: 10.5pt; line-height: 1.75; }
   .toc li { display: flex; gap: 2.5mm; align-items: baseline; border-bottom: .3mm dashed var(--line); }
   .toc .n {
     flex: none; display: inline-grid; place-items: center; width: 5.6mm; height: 5.6mm; border-radius: 50%;
@@ -228,7 +228,7 @@
     <p class="sub">センサーではかって、グラフにしよう</p>
   </div>
   <div class="cover-body">
-    <div class="shot full" style="width:146mm;margin:0 auto"><img src="img/shot-graph.png" alt="アプリの画面"></div>
+    <div class="shot full" style="width:139mm;margin:0 auto"><img src="img/shot-graph.png" alt="アプリの画面"></div>
 
     <h3 style="margin-top:5mm">このアプリでできること</h3>
     <div class="can">
@@ -248,10 +248,11 @@
       <li><span class="n">6</span><span>{写真|しゃしん}をのこそう</span></li>
       <li><span class="n">7</span><span>{自動|じどう}で{写真|しゃしん}をとろう</span></li>
       <li><span class="n">8</span><span>センサーをくらべよう</span></li>
-      <li><span class="n">9</span><span>センサーのしゅるい</span></li>
-      <li><span class="n">10</span><span>{共有|きょうゆう}しよう</span></li>
-      <li><span class="n">11</span><span>{記録|きろく}をのこそう</span></li>
-      <li><span class="n">12</span><span>こまったときは</span></li>
+      <li><span class="n">9</span><span>{外部|がいぶ}のデータとくらべよう</span></li>
+      <li><span class="n">10</span><span>センサーのしゅるい</span></li>
+      <li><span class="n">11</span><span>{共有|きょうゆう}しよう</span></li>
+      <li><span class="n">12</span><span>{記録|きろく}をのこそう</span></li>
+      <li><span class="n">13</span><span>こまったときは</span></li>
     </ol>
   </div>
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span></span></div>
@@ -450,17 +451,18 @@
   <div class="cols wide-right">
     <ol class="steps">
       <li>グラフの、{写真|しゃしん}をつけたいところをクリックします。</li>
-      <li>{出|で}てきたわくの <span class="ui">{写真|しゃしん}をとる</span> をおします。とった{写真|しゃしん}の{小|ちい}さな{見本|みほん}が{出|で}ます。</li>
-      <li>メモも{書|か}けます。<span class="ui">{保存|ほぞん}</span> をおすと、メモといっしょにのこります。</li>
+      <li>{出|で}てきたわくの <span class="ui">{写真|しゃしん}をとる</span> をおします。わくの{上|うえ}に、とった{写真|しゃしん}の{見本|みほん}が{出|で}ます。</li>
+      <li>{下|した}にメモも{書|か}けます。<span class="ui">{保存|ほぞん}</span> をおすと、メモといっしょにのこります。</li>
     </ol>
     <div>
       <div class="shot" data-crop="0.599 0.2833 0.3854 0.3833">
         <img src="img/shot-memophoto.png" alt="メモのわくで写真をとったようす">
-        <span class="pin" style="left:28.6%;top:41.7%">1</span>
-        <span class="pin" style="left:64.9%;top:50.7%">2</span>
-        <span class="pin" style="left:46.9%;top:66.7%">3</span>
-        <span class="pin" style="left:39.5%;top:78.5%">4</span>
-        <span class="pin" style="left:82.7%;top:12.2%">5</span>
+        <span class="pin" style="left:28.6%;top:23.5%">1</span>
+        <span class="pin" style="left:75.4%;top:31.7%">2</span>
+        <span class="pin" style="left:73.9%;top:43.5%">3</span>
+        <span class="pin" style="left:80.4%;top:63.5%">4</span>
+        <span class="pin" style="left:39.7%;top:78.7%">5</span>
+        <span class="pin" style="left:82.7%;top:12.2%">6</span>
       </div>
       <p class="cap">{手|て}でにぎったところを{写真|しゃしん}にとったようす</p>
     </div>
@@ -469,8 +471,9 @@
     <li><span class="pin">1</span><b>{見本|みほん}</b> … {虫|むし}めがねで{大|おお}きく{見|み}られます。</li>
     <li><span class="pin">2</span><b>とり{直|なお}す</b> … もう{一度|いちど}とります。</li>
     <li><span class="pin">3</span><b>{写真|しゃしん}を{消|け}す</b> … つけるのをやめます。</li>
-    <li><span class="pin">4</span><b>{保存|ほぞん}</b> … メモと{写真|しゃしん}をのこします。</li>
-    <li><span class="pin">5</span><b>✕</b> … のこさずに、わくをとじます。</li>
+    <li><span class="pin">4</span><b>メモ</b> … {文|ぶん}も{書|か}いておけます。</li>
+    <li><span class="pin">5</span><b>{保存|ほぞん}</b> … メモと{写真|しゃしん}をのこします。</li>
+    <li><span class="pin">6</span><b>✕</b> … のこさずに、わくをとじます。</li>
   </ul>
 
   <h3>{写真|しゃしん}を{見|み}る</h3>
@@ -499,13 +502,14 @@
 
   <ol class="steps">
     <li>カメラの{映像|えいぞう}の{下|した}の <span class="ui">{写真|しゃしん}の{記録|きろく}</span> で、「10{秒|びょう}ごと」などをえらびます。</li>
+    <li>「{写真|しゃしん}の{記録|きろく}をはじめる{前|まえ}に」と{出|で}ます。カメラに{人|ひと}の{顔|かお}や{名前|なまえ}などがうつらないようにおいてから、<span class="ui">OK</span> をおします。</li>
     <li><span class="ui">● {記録|きろく}をはじめる</span> をおします。はじめの{記録|きろく}で1まい、そのあとは、えらんだ{時間|じかん}がたつごとに1まい、{写真|しゃしん}がとられます。
-      <div class="shot full" style="width:150mm;margin:1mm auto">
+      <div class="shot" data-crop="0 0.185 1 0.7" style="width:150mm;margin:1mm auto">
         <img src="img/shot-photohover.png" alt="10秒ごとに写真をとったようす">
-        <span class="pin" style="left:22%;top:70.3%">1</span>
-        <span class="pin" style="left:1.3%;top:60%">2</span>
-        <span class="pin" style="left:22%;top:52.3%">3</span>
-        <span class="pin" style="left:62.1%;top:44%">4</span>
+        <span class="pin" style="left:22%;top:62.7%">1</span>
+        <span class="pin" style="left:1.3%;top:47.7%">2</span>
+        <span class="pin" style="left:22%;top:39.8%">3</span>
+        <span class="pin" style="left:62.1%;top:29.5%">4</span>
       </div>
       <p class="cap">10{秒|びょう}ごとに{写真|しゃしん}をとったところ（{黒|くろ}い{丸|まる}の1つに、マウスをのせています）</p>
     </li>
@@ -521,16 +525,16 @@
   <div class="cols" style="margin-top:4mm">
     <div class="box small" style="margin-top:0">
       <span class="ttl">えらべるとりかた</span>
-      OFF（とらない）、10{秒|びょう}・30{秒|びょう}・1{分|ぷん}・5{分|ふん}・30{分|ぷん}・1{時間|じかん}ごと、{自動|じどう}（{大|おお}きな{変化|へんか}）からえらびます。{記録間隔|きろくかんかく}より{短|みじか}い{時間|じかん}は、えらべません。
+      OFF（とらない）、10{秒|びょう}・30{秒|びょう}・1{分|ぷん}・5{分|ふん}・30{分|ぷん}・1{時間|じかん}ごと、{自動|じどう}（{大|おお}きな{変化|へんか}）からえらびます。{記録間隔|きろくかんかく}より{短|みじか}い{時間|じかん}は、えらべません。{写真|しゃしん}は2,000{枚|まい}までです。
     </div>
     <div class="box small" style="margin-top:0">
       <span class="ttl">「{自動|じどう}（{大|おお}きな{変化|へんか}）」とは</span>
       はかっている{数|かず}が{大|おお}きくかわったときに、{写真|しゃしん}をとります。たとえば{温度|おんど}なら、{前|まえ}の{写真|しゃしん}のときから2℃かわったときです。
     </div>
   </div>
-  <div class="box tip">
-    <span class="ttl">おぼえておこう</span>
-    {自動|じどう}でとった{写真|しゃしん}も、{前|まえ}のページとおなじように、グラフや{表|ひょう}で{見|み}られます。{写真|しゃしん}は2,000{枚|まい}までです。2,000{枚|まい}になると、{写真|しゃしん}の{記録|きろく}は OFF にもどります。
+  <div class="box warn small">
+    <span class="ttl">ちゅうい</span>
+{人|ひと}の{顔|かお}や、{名前|なまえ}などの{個人情報|こじんじょうほう}がうつらないように、カメラのむきをたしかめてから{記録|きろく}をはじめましょう。{注意|ちゅうい}の{画面|がめん}で <span class="ui">やめる</span> をおすと、OFF にもどります。
   </div>
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>7</span></div>
 </section>
@@ -568,9 +572,61 @@
   <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>8</span></div>
 </section>
 
+<!-- ========== 10. 外部のデータとくらべよう ========== -->
+<section class="page">
+  <div class="head"><span class="no">9</span><h2>{外部|がいぶ}のデータとくらべよう</h2></div>
+  <p class="lead">タブのいちばん{右|みぎ}の「{外部|がいぶ}」で、{自分|じぶん}ではかっていないデータを1つえらんで、ならべられます。</p>
+
+  <h3>データをえらぶ</h3>
+  <div class="cols wide-right">
+    <div>
+      <div class="shot" data-crop="0.345 0.22 0.31 0.56" style="width:54mm;margin:0 auto"><img src="img/shot-extpick.png" alt="外部のデータをえらぶ画面"></div>
+    </div>
+    <ol class="steps">
+      <li><span class="ui">{外部|がいぶ}</span> のタブをおします。</li>
+      <li>「{太陽|たいよう}の{高|たか}さ」か「{前|まえ}の{記録|きろく}」をえらびます。
+        <ul class="small" style="margin:0;padding-left:5mm">
+          <li><b>{太陽|たいよう}の{高|たか}さ</b> … {場所|ばしょ}（{都道府県|とどうふけん}）をえらびます。{地平線|ちへいせん}が0°で、しずんでいる{間|あいだ}はマイナスになります。</li>
+          <li><b>{前|まえ}の{記録|きろく}</b> … <span class="ui">ファイルをえらぶ</span> をおして、このアプリでダウンロードした CSV か ZIP をえらびます。</li>
+        </ul>
+      </li>
+      <li><span class="ui">OK</span> をおします。</li>
+    </ol>
+  </div>
+
+  <h3>センサーとくらべる</h3>
+  <div class="cols wide-left">
+    <ol class="steps">
+      <li>はかるセンサー（{温度|おんど}など）のタブをえらび、<span class="ui">くらべる</span> を ON にします。</li>
+      <li><span class="ui">{外部|がいぶ}</span> のタブをおして、データをえらびます。</li>
+      <li><span class="ui">● {記録|きろく}をはじめる</span> をおします。{記録|きろく}した{時刻|じこく}に{合|あ}わせて、{外部|がいぶ}のデータがグラフや{表|ひょう}にならびます。</li>
+    </ol>
+    <div>
+      <div class="shot" data-crop="0.226 0.2 0.766 0.61"><img src="img/shot-extprev.png" alt="温度と前の温度を重ねたようす"></div>
+      <p class="cap">{温度|おんど}と「{前|まえ}の{記録|きろく}」の{温度|おんど}を{重|かさ}ねたところ</p>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top:3mm">
+    <div>
+      <div class="box small" style="margin-top:0">
+        <span class="ttl">「{前|まえ}の{記録|きろく}」のそろえ{方|かた}</span>
+        <b>はじまりをそろえる</b> … {記録|きろく}をはじめてからの{時間|じかん}でそろえます。<br>
+        <b>{時刻|じこく}をそろえる</b> … {日|ひ}がちがっても、{同|おな}じ{時刻|じこく}どうしでそろえます。
+      </div>
+      <p class="small" style="margin-top:2mm">{外部|がいぶ}のデータは、あとからえらんでも、それまでの{記録|きろく}の{分|ぶん}まで{線|せん}が{出|で}ます。</p>
+    </div>
+    <div>
+      <div class="shot" data-crop="0.226 0.2 0.766 0.61"><img src="img/shot-extsun.png" alt="太陽の高さだけを出したようす"></div>
+      <p class="cap" style="text-align:left">「{外部|がいぶ}」だけをえらぶと、{今日|きょう}の{太陽|たいよう}の{高|たか}さのグラフが{出|で}ます。{見|み}るだけで、{記録|きろく}はできません</p>
+    </div>
+  </div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>9</span></div>
+</section>
+
 <!-- ========== 10. センサーのしゅるい ========== -->
 <section class="page">
-  <div class="head"><span class="no">9</span><h2>センサーのしゅるい</h2></div>
+  <div class="head"><span class="no">10</span><h2>センサーのしゅるい</h2></div>
 
   <table class="sensors">
     <thead><tr><th>センサー</th><th>はかれるもの</th><th>{単位|たんい}</th></tr></thead>
@@ -603,21 +659,22 @@
     </div>
   </div>
   <div class="cols wide-left" style="margin-top:4mm;align-items:center">
-    <div class="box tip" style="margin-top:0">
-      <span class="ttl">「AI」のタブ</span>
-      カメラの{画像|がぞう}を AI に{見|み}せて、{数|かず}で{答|こた}えてもらうはたらきです。つかうには{特別|とくべつ}な{登録|とうろく}がいるので、{先生|せんせい}といっしょにつかいましょう。
+    <div class="box tip small" style="margin-top:0">
+      <span class="ttl">「AI」と「{外部|がいぶ}」のタブ</span>
+      <b>AI</b> … カメラの{画像|がぞう}を AI に{見|み}せて、{数|かず}で{答|こた}えてもらいます。{登録|とうろく}がいるので、{先生|せんせい}といっしょにつかいましょう。<br>
+      <b>{外部|がいぶ}</b> … {太陽|たいよう}の{高|たか}さや{前|まえ}の{記録|きろく}など、{自分|じぶん}ではかっていないデータを{出|だ}します（9 の{章|しょう}）。
     </div>
     <div>
       <div class="shot" data-crop="0.345 0.318 0.31 0.365" style="width:62mm;margin:0 auto"><img src="img/shot-water.png" alt="センサーの準備の案内"></div>
       <p class="cap">{水温|すいおん}のタブをおしたときの{案内|あんない}</p>
     </div>
   </div>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>9</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>10</span></div>
 </section>
 
 <!-- ========== 11. 共有しよう（測定室） ========== -->
 <section class="page">
-  <div class="head"><span class="no">10</span><h2>{共有|きょうゆう}しよう</h2></div>
+  <div class="head"><span class="no">11</span><h2>{共有|きょうゆう}しよう</h2></div>
   <h3>{測定室|そくていしつ}に{参加|さんか}する（みんなの{記録|きろく}を1つの{画面|がめん}にあつめる）</h3>
   <div class="cols wide-right">
     <div>
@@ -648,12 +705,12 @@
   </div>
 
   <p class="small" style="margin-top:2mm"><b>{測定室|そくていしつ}をつくるとき（{先生|せんせい}）</b> … <span class="ui">{測定室|そくていしつ}</span> をおして <span class="ui">{作成|さくせい}する</span> をおし、{測定室|そくていしつ}の{名前|なまえ}と{端末|たんまつ}の{名前|なまえ}を{入|い}れると、6けたの ID ができます。この ID をみんなに{知|し}らせます。</p>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>10</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>11</span></div>
 </section>
 
 <!-- ========== 12. 記録をのこそう ========== -->
 <section class="page">
-  <div class="head"><span class="no">11</span><h2>{記録|きろく}をのこそう</h2></div>
+  <div class="head"><span class="no">12</span><h2>{記録|きろく}をのこそう</h2></div>
 
   <div class="shot" data-crop="0.232 0.814 0.752 0.058"><img src="img/shot-graph.png" alt="ダウンロード・コピー・削除・測定室のボタン"></div>
   <ul class="parts" style="margin-top:2mm;grid-template-columns:1fr">
@@ -676,12 +733,12 @@
     <span class="ttl">みんなでつかうパソコンでは</span>
     {前|まえ}につかった{人|ひと}の{記録|きろく}や{写真|しゃしん}が、つぎの{人|ひと}にも{見|み}えます。つかいおわったら、<span class="ui">{削除|さくじょ}</span> をおして{消|け}しておきましょう。
   </div>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>11</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>12</span></div>
 </section>
 
 <!-- ========== 13. こまったときは ========== -->
 <section class="page">
-  <div class="head"><span class="no">12</span><h2>こまったときは</h2></div>
+  <div class="head"><span class="no">13</span><h2>こまったときは</h2></div>
 
   <dl class="qa">
     <dt>「AkaDako」が「{接続中|せつぞくちゅう}」にならない</dt>
@@ -694,6 +751,10 @@
     <dd>カメラのわくに{理由|りゆう}が{出|で}ています。カメラをつかうことを「{許可|きょか}」しているか、ほかのアプリがカメラをつかっていないかをたしかめて、わくの「もう{一度|いちど}ためす」をおします。カメラのないパソコンでは、{写真|しゃしん}はとれません。</dd>
     <dt>「{動|うご}き」「{音量|おんりょう}」がはかれない</dt>
     <dd>カメラやマイクをつかうことを「{許可|きょか}」しているか、たしかめます。</dd>
+    <dt>「{外部|がいぶ}のデータは{見|み}るだけです」と{出|で}て、{記録|きろく}できない</dt>
+    <dd>「{外部|がいぶ}」だけをえらんでいます。<span class="ui">くらべる</span> を ON にして、センサーのタブと「{外部|がいぶ}」のタブをえらぶと、{記録|きろく}にならびます。</dd>
+    <dt>「このファイルは{読|よ}めませんでした」と{出|で}た</dt>
+    <dd>「{前|まえ}の{記録|きろく}」でえらべるのは、このアプリの <span class="ui">ダウンロード</span> でのこした CSV か ZIP だけです。</dd>
     <dt>ひらいたら、{前|まえ}の{記録|きろく}が{出|で}てきた</dt>
     <dd>{前|まえ}の{記録|きろく}がのこっているからです。つづきから{記録|きろく}できます。いらないときは <span class="ui">{削除|さくじょ}</span> をおします。</dd>
     <dt>「ほかのタブでも{開|ひら}いているので、このタブの{記録|きろく}は{保存|ほぞん}されません」と{出|で}た</dt>
@@ -702,7 +763,7 @@
     <dd>このページがほかのタブやウィンドウのうしろにかくれると、{記録|きろく}がおそくなります。はかっているあいだは、このページを{前|まえ}に{出|だ}したままにします。パソコンがスリープすると、{記録|きろく}は{止|と}まります。</dd>
   </dl>
   <p class="small" style="margin-top:2mm">それでもなおらないときは、{先生|せんせい}に{聞|き}きましょう。</p>
-  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>12</span></div>
+  <div class="foot"><span>AkaDako Multi Cloud Logger(β) つかいかた</span><span>13</span></div>
 </section>
 
 <script>

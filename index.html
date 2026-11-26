@@ -216,7 +216,7 @@
     .sensor-btn {
       --sensor-color: var(--blue);
       position: relative;
-      flex: 1 0 clamp(58px, 5.6vw, 92px);
+      flex: 1 0 clamp(58px, 5.2vw, 92px);   /* タブは 16 個。ふつうのパソコンの幅（1366px など）で 1 段におさまる太さにする */
       min-height: clamp(74px, 7.4vw, 94px);
       padding: clamp(6px, .7vw, 10px) clamp(3px, .5vw, 8px) clamp(6px, .65vw, 9px);
       border: 3px solid transparent;
@@ -1068,6 +1068,45 @@
     .memo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     .memo-actions .sel-btn { min-height: 30px; padding: 3px 10px; font-size: .78rem; }
 
+    /* ===== 「外部」のデータをえらぶ ===== */
+    .ext-body { text-align: left; }
+    .ext-body h3 { text-align: center; }
+    .ext-body .ext-lead { margin: 0 0 10px; font-size: .85rem; text-align: center; }
+    .ext-choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 8px;
+      padding: 9px 11px;
+      border: 2px solid var(--line);
+      border-radius: 13px;
+      cursor: pointer;
+    }
+    .ext-choice:has(input:checked) { border-color: var(--blue); background: #f3f8fb; }
+    .ext-choice input { margin-top: 5px; }
+    .ext-choice b { display: block; }
+    .ext-choice small { color: var(--muted); font-weight: 700; }
+    .ext-detail { display: grid; gap: 7px; margin: 7px 0 2px 31px; color: var(--muted); font-size: .85rem; font-weight: 800; }
+    .ext-detail[hidden] { display: none; }
+    .ext-detail label { display: flex; align-items: center; gap: 8px; }
+    .ext-detail label[hidden] { display: none; }
+    .ext-detail select, .ext-btn {
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-weight: 800;
+    }
+    .ext-detail select { flex: 1 1 auto; min-width: 0; }
+    .ext-btn { justify-self: start; cursor: pointer; }
+    .ext-file-name { color: var(--ink); overflow-wrap: anywhere; }
+    .ext-body .ext-err { margin: 9px 0 0; color: #c0392b; font-size: .82rem; }
+    .ext-body .ext-err[hidden] { display: none; }
+    .ext-body .dialog-actions { margin-top: 16px; }
+
     /* ===== カメラの映像と写真 ===== */
     /* 左のカード: カメラの映像（いつも出す）と、その下の「写真の記録」 */
     .cam-panel { display: grid; gap: 7px; margin: 0 0 10px; }
@@ -1148,7 +1187,9 @@
       cursor: pointer;
     }
     .thumb-zoom svg { width: 14px; height: 14px; }
-    .memo-photo { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .memo-photo { display: flex; align-items: center; gap: 8px; }
+    .memo-photo .thumb img { width: 124px; height: 93px; }
+    .memo-photo-btns { display: grid; gap: 6px; justify-items: start; }
     .memo-photo .sel-btn { min-height: 30px; padding: 3px 10px; font-size: .78rem; display: inline-flex; align-items: center; gap: 5px; }
     .memo-photo .sel-btn svg { width: 15px; height: 15px; }
     .memo-photo .sel-btn[hidden] { display: none; }
@@ -1547,6 +1588,14 @@
         </span>
         <span class="sensor-name">電力</span>
       </button>
+
+      <!-- 自分で測っていないデータ（太陽の高さ・前に保存した記録）。押すと、どれを出すかをえらぶ画面が出る -->
+      <button class="sensor-btn" style="--sensor-color:#5b6b7a" data-sensor="external" aria-selected="false" type="button">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><text x="16" y="17" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" font-size="21" font-weight="900">外</text></svg>
+        </span>
+        <span class="sensor-name">外部</span>
+      </button>
       </nav>
       <button id="tabsScrollLeft" class="tabs-arrow tabs-arrow--left" type="button" aria-label="左のセンサーを表示する" hidden>◀</button>
       <button id="tabsScrollRight" class="tabs-arrow tabs-arrow--right" type="button" aria-label="右のセンサーを表示する" hidden>▶</button>
@@ -1658,12 +1707,15 @@
               <div id="memoTitle" class="memo-title"></div>
               <button id="memoCancel" class="memo-close" type="button" aria-label="とじる" title="とじる">✕</button>
             </div>
-            <textarea id="memoInput" class="memo-input" rows="2" placeholder="メモ（例: 窓を開けた）"></textarea>
+            <!-- 写真が主役: いちばん上に写真の見本、その右に「とり直す」「写真を消す」。メモの文はその下 -->
             <div class="memo-photo">
               <span id="memoThumb" class="thumb" hidden><img id="memoThumbImg" alt="写真"><button id="memoZoom" class="thumb-zoom" type="button" aria-label="写真を大きく見る" title="大きく見る"></button></span>
-              <button id="memoCam" class="sel-btn" type="button"><span id="memoCamIcon"></span><span id="memoCamLabel">写真をとる</span></button>
-              <button id="memoPhotoDel" class="sel-btn" type="button" hidden>写真を消す</button>
+              <div class="memo-photo-btns">
+                <button id="memoCam" class="sel-btn" type="button"><span id="memoCamIcon"></span><span id="memoCamLabel">写真をとる</span></button>
+                <button id="memoPhotoDel" class="sel-btn" type="button" hidden>写真を消す</button>
+              </div>
             </div>
+            <textarea id="memoInput" class="memo-input" rows="2" placeholder="メモ（例: 窓を開けた）"></textarea>
             <div class="memo-actions">
               <button id="memoSave" class="sel-btn sel-btn--primary" type="button">保存</button>
               <button id="memoDelete" class="sel-btn sel-btn--danger" type="button">消す</button>
@@ -1728,6 +1780,47 @@
       <p id="photoDialogCaption"></p>
       <div class="dialog-actions">
         <button id="photoDialogClose" class="dialog-close" type="button">とじる</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 「外部」タブ: 自分で測っていないデータを 1 つえらぶ -->
+  <dialog id="extDialog" aria-labelledby="extDialogTitle">
+    <div class="dialog-body ext-body">
+      <h3 id="extDialogTitle">外部のデータをえらぶ</h3>
+      <p class="ext-lead">自分ではかっていないデータを 1 つえらんで、グラフや表にならべます</p>
+      <label class="ext-choice"><input type="radio" name="extType" value="sun" checked><span><b>太陽の高さ</b><small>場所と時刻から計算します（地平線より上が 0°より大きい）</small></span></label>
+      <div id="extSunBox" class="ext-detail">
+        <label>場所<select id="extPref"></select></label>
+      </div>
+      <label class="ext-choice"><input type="radio" name="extType" value="file"><span><b>前の記録</b><small>このアプリで保存した CSV か ZIP をえらびます</small></span></label>
+      <div id="extFileBox" class="ext-detail" hidden>
+        <button id="extFileBtn" class="ext-btn" type="button">ファイルをえらぶ</button>
+        <input id="extFileInput" type="file" accept=".csv,.zip,text/csv,application/zip" hidden>
+        <span id="extFileName" class="ext-file-name">まだえらんでいません</span>
+        <label id="extColBox" hidden>項目<select id="extCol"></select></label>
+        <label>そろえ方<select id="extAlign">
+          <option value="start">はじまりをそろえる</option>
+          <option value="clock">時刻をそろえる</option>
+        </select></label>
+      </div>
+      <p id="extErr" class="ext-err" hidden></p>
+      <div class="dialog-actions">
+        <button id="extCancel" class="dialog-cancel" type="button">キャンセル</button>
+        <button id="extOk" class="dialog-close" type="button">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 「写真の記録」を OFF から ON にしたときの注意 -->
+  <dialog id="camWarnDialog" aria-labelledby="camWarnTitle">
+    <div class="dialog-body">
+      <div class="dialog-icon" aria-hidden="true">!</div>
+      <h3 id="camWarnTitle">写真の記録をはじめる前に</h3>
+      <p>必ず顔や個人情報が撮影されないように設置してから記録をはじめてください</p>
+      <div class="dialog-actions">
+        <button id="camWarnCancel" class="dialog-cancel" type="button">やめる</button>
+        <button id="camWarnOk" class="dialog-close" type="button">OK</button>
       </div>
     </div>
   </dialog>
@@ -2747,6 +2840,17 @@
           },
           fetch: () => readPowerLevels().power
         },
+        // 「外部」タブ。自分で測っていないデータ（下の「外部のデータ」の節）。名前・単位・小数の桁は、えらんだデータに合わせて入れかえる。
+        // 記録としては持たない（dataStore.external は、時刻から値を出して作り直したもの）
+        external: {
+          name: "外部",
+          unit: "",
+          csvUnit: "",
+          color: "#5b6b7a",
+          decimals: 1,
+          needsBoard: false,
+          fetch: () => extNow()
+        },
         // 「AI」タブ。switchSensor では選べず、enterAiMode() からだけ選ばれる。
         // saveOnly: 毎秒のライブ測定ではAIを呼ばず、記録のタイミングだけ問い合わせる（API利用を増やさない）
         // noteLabel: 表・CSVに回答文の列を足す / decimals: null は小数を省略せずそのまま出す
@@ -2869,6 +2973,22 @@
         camNoteText: document.getElementById("camNoteText"),
         camRetry: document.getElementById("camRetry"),
         photoMode: document.getElementById("photoMode"),
+        extDialog: document.getElementById("extDialog"),
+        extSunBox: document.getElementById("extSunBox"),
+        extPref: document.getElementById("extPref"),
+        extFileBox: document.getElementById("extFileBox"),
+        extFileBtn: document.getElementById("extFileBtn"),
+        extFileInput: document.getElementById("extFileInput"),
+        extFileName: document.getElementById("extFileName"),
+        extColBox: document.getElementById("extColBox"),
+        extCol: document.getElementById("extCol"),
+        extAlign: document.getElementById("extAlign"),
+        extErr: document.getElementById("extErr"),
+        extCancel: document.getElementById("extCancel"),
+        extOk: document.getElementById("extOk"),
+        camWarnDialog: document.getElementById("camWarnDialog"),
+        camWarnCancel: document.getElementById("camWarnCancel"),
+        camWarnOk: document.getElementById("camWarnOk"),
         photoPop: document.getElementById("photoPop"),
         photoPopImg: document.getElementById("photoPopImg"),
         photoDialog: document.getElementById("photoDialog"),
@@ -3460,6 +3580,10 @@
         }
         const sensor = sensors[sensorKey];
         if (!sensor) return;
+        if (sensorKey === "external" && !(aiMode && savedSensor === "external")) {
+          openExtDialog();   // どのデータを出すかをえらぶ（「外部」だけを出しているときに押したら、えらび直し）
+          return;
+        }
         if (activeKeys().includes(sensorKey) || (aiMode && sensorKey === savedSensor)) {
           exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ。くらべる OFF で選んでいるタブを押しても何もしない
           return;
@@ -3563,10 +3687,12 @@
       function compareAdd(sensorKey) {
         exitAiMode();
         if (!sensors[sensorKey] || activeKeys().includes(sensorKey)) return;
-        const others = [...compareKeys, selectedSensor];
+        // 外部は主センサーにしない（行の基準は、自分で測ったセンサー）。いまの主センサーはそのままで、相手に足す
+        const asPartner = sensorKey === "external";
+        const others = asPartner ? [...compareKeys, sensorKey] : [...compareKeys, selectedSensor];
         const dropped = others.splice(0, Math.max(0, others.length - (COMPARE_MAX - 1)));
         compareKeys = others;
-        selectedSensor = sensorKey;
+        if (!asPartner) selectedSensor = sensorKey;
         lastAdded.key = sensorKey;
         lastAdded.at = performance.now();
         applySensorUI();
@@ -3576,8 +3702,13 @@
       // 記録はセンサーごとの保存先に残る（もう一度選べば続きから）。最後の 1 つは外さない
       function compareRemove(sensorKey) {
         if (!compareKeys.length || !activeKeys().includes(sensorKey)) return;
-        if (sensorKey === selectedSensor) selectedSensor = compareKeys.pop();
-        else compareKeys = compareKeys.filter(key => key !== sensorKey);
+        if (sensorKey === selectedSensor) {
+          // 次の主センサーは、いちばん新しい「自分で測ったセンサー」（外部しか残らなければ外部）
+          const next = compareKeys.reduce((found, key, i) => key !== "external" ? i : found, -1);
+          selectedSensor = next < 0 ? compareKeys.pop() : compareKeys.splice(next, 1)[0];
+        } else {
+          compareKeys = compareKeys.filter(key => key !== sensorKey);
+        }
         applySensorUI();
         showToast(`${sensors[sensorKey].name}を外しました`);
       }
@@ -3651,6 +3782,10 @@
 
       function startRecording() {
         if (!canReadAny() || isRecording) return;
+        if (activeKeys().every(key => key === "external")) {
+          showToast("外部のデータは見るだけです。「くらべる」でセンサーといっしょにえらぶと、記録にならびます");
+          return;
+        }
         if (selectedSensor === "ai" && !els.aiPrompt.value.trim()) {
           showToast("プロンプトを入力してください");
           els.aiPrompt.focus();
@@ -3735,7 +3870,7 @@
         if (sensor.saveOnly && !save) return false;   // AIは記録のときだけ問い合わせる
         try {
           // fetch は数値か、{ value, note } （note は表・CSVに添える文。AIの回答文）を返す
-          const result = DEMO ? demoRead(key) : await sensor.fetch(board);
+          const result = DEMO && key !== "external" ? demoRead(key) : await sensor.fetch(board);
           const isDetailed = result !== null && typeof result === "object";
           const value = Number(isDetailed ? result.value : result);
           const note = isDetailed && result.note !== undefined ? String(result.note) : undefined;
@@ -3743,7 +3878,7 @@
           latestValues[key] = value;   // 測定室に送る「現在値」
           delete compareErrors[key];
 
-          if (save) {
+          if (save && key !== "external") {   // 外部は記録として持たない（syncExternal が時刻から作る）
             seqCounters[key] += 1;
             const item = { time, value, seq: seqCounters[key] };
             if (note !== undefined) item.note = note;
@@ -3778,6 +3913,7 @@
             if (key === "ai") reportAiError(error);
           } else if (activeKeys().includes(key)) {
             compareErrors[key] = message;   // 相手のセンサーの行に出す
+            if (key === "external") delete latestValues[key];   // 前の記録の範囲を過ぎたら、古い値を出しつづけない
           }
           return false;
         }
@@ -3791,6 +3927,7 @@
 
       // showLatest: false のときは現在値・測定時刻の表示に触れない（ライブ値を上書きしないため）
       function updateSummary(showLatest = true) {
+        syncExternal();
         const sensor = sensors[selectedSensor];
         const data = dataStore[selectedSensor];
         const hasData = data.length > 0;
@@ -3842,6 +3979,7 @@
       }
 
       function refreshView() {
+        syncExternal();
         if (viewMode === "table") renderTable();
         else drawChart();
       }
@@ -4554,7 +4692,7 @@
       }
       function openMemoEditor(index) {
         const item = dataStore[selectedSensor][index];
-        if (!item) return;
+        if (!item || selectedSensor === "external") return;   // 外部だけを見ているときは、メモを付ける記録が無い
         memoEdit = { key: selectedSensor, seq: item.seq, shot: undefined };   // shot: とったばかりの写真（保存を押すまでは仮）。null は「写真を消す」
         hover = index;
         const sensor = sensors[selectedSensor];
@@ -4831,7 +4969,7 @@
       }
 
       function deleteCurrentData() {
-        const keys = activeKeys().filter(key => dataStore[key].length);
+        const keys = activeKeys().filter(key => key !== "external" && dataStore[key].length);   // 外部は記録ではないので、消すものが無い
         if (!keys.length) return;
         const names = keys.map(key => sensors[key].name).join("・");
         if (!window.confirm(`${names}の記録データをすべて削除しますか？`)) return;
@@ -4932,7 +5070,8 @@
       let chartGeo = null;        // 直近に描いたグラフの座標（範囲選択で使う）
 
       function resetChartView() {
-        view = { count: CHART_POINTS, end: null };
+        // 「外部」だけを見ているとき（太陽の高さの 1 日ぶん・前の記録のファイル）は、はじめから全部を見せる
+        view = { count: selectedSensor === "external" ? 100000 : CHART_POINTS, end: null };
         sel = null;
         hover = null;
         memoEdit = null;
@@ -5263,6 +5402,253 @@
         return out;
       }
 
+      // ===== 外部のデータ（自分で測っていないデータ） =================================
+      // 「外部」タブで 1 つえらぶ。値は時刻から決まる（太陽の高さは計算、前の記録はファイルの値を時刻に合わせて引く）ので、
+      // 記録としては持たず、そのつど作り直す（dataStore.external。保存もしない）:
+      //   ・センサーとくらべているとき … 主センサーの記録の時刻ごとに値を出す（あとから「外部」を足しても、それまでの記録の分まで線が出る）
+      //   ・「外部」だけのとき … 見るだけ（記録はできない）。太陽の高さは今日 1 日ぶん（10 分ごと）、前の記録はファイルの中身をそのまま出す
+      // くらべているとき、外部は主センサーにしない（表・CSV・測定室の行の基準は、自分で測ったセンサーの記録）
+      // 場所は都道府県（県庁のある市）でえらぶ。[名前, 北緯, 東経]
+      const PREFS = [
+        ["北海道", 43.06, 141.35], ["青森県", 40.82, 140.74], ["岩手県", 39.70, 141.15], ["宮城県", 38.27, 140.87], ["秋田県", 39.72, 140.10],
+        ["山形県", 38.24, 140.36], ["福島県", 37.75, 140.47], ["茨城県", 36.34, 140.45], ["栃木県", 36.57, 139.88], ["群馬県", 36.39, 139.06],
+        ["埼玉県", 35.86, 139.65], ["千葉県", 35.60, 140.12], ["東京都", 35.69, 139.69], ["神奈川県", 35.45, 139.64], ["新潟県", 37.90, 139.02],
+        ["富山県", 36.70, 137.21], ["石川県", 36.59, 136.63], ["福井県", 36.07, 136.22], ["山梨県", 35.66, 138.57], ["長野県", 36.65, 138.18],
+        ["岐阜県", 35.39, 136.72], ["静岡県", 34.98, 138.38], ["愛知県", 35.18, 136.91], ["三重県", 34.73, 136.51], ["滋賀県", 35.00, 135.87],
+        ["京都府", 35.02, 135.76], ["大阪府", 34.69, 135.52], ["兵庫県", 34.69, 135.18], ["奈良県", 34.69, 135.83], ["和歌山県", 34.23, 135.17],
+        ["鳥取県", 35.50, 134.24], ["島根県", 35.47, 133.05], ["岡山県", 34.66, 133.93], ["広島県", 34.40, 132.46], ["山口県", 34.19, 131.47],
+        ["徳島県", 34.07, 134.56], ["香川県", 34.34, 134.04], ["愛媛県", 33.84, 132.77], ["高知県", 33.56, 133.53], ["福岡県", 33.61, 130.42],
+        ["佐賀県", 33.25, 130.30], ["長崎県", 32.74, 129.87], ["熊本県", 32.79, 130.74], ["大分県", 33.24, 131.61], ["宮崎県", 31.91, 131.42],
+        ["鹿児島県", 31.56, 130.56], ["沖縄県", 26.21, 127.68]
+      ];
+      // type: null（まだえらんでいない）/ "sun" / "file"。file: { name, series: [{ name, unit, points: [[時刻ms, 値], ...] }] }
+      const ext = { type: null, pref: "東京都", align: "start", col: 0, file: null };
+      let extVersion = 0;   // えらび直すたびに 1 ふやす（作り直しの合図）
+      let extSig = "";      // いまの dataStore.external を作ったときの条件
+      function extReady() {
+        return ext.type === "sun" || (ext.type === "file" && Boolean(ext.file && ext.file.series[ext.col]));
+      }
+      // 太陽の高さ（度）。地平線が 0、真上が 90、しずんでいる間はマイナス。天文年鑑の略算式（誤差は 0.1 度より小さい）
+      function sunElevation(ms, lat, lon) {
+        const rad = Math.PI / 180;
+        const d = ms / 86400000 - 10957.5;   // 2000 年 1 月 1 日 12 時（世界時）からの日数
+        const g = (357.528 + 0.9856003 * d) * rad;
+        const lambda = (280.460 + 0.9856474 * d + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;   // 太陽の黄経
+        const eps = (23.439 - 0.0000004 * d) * rad;
+        const ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));   // 赤経
+        const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));                     // 赤緯
+        const gmst = (18.697374558 + 24.06570982441908 * d) * 15 * rad;              // グリニッジ恒星時
+        const hourAngle = gmst + lon * rad - ra;
+        return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(hourAngle)) / rad;
+      }
+      // 前の記録: その時刻の値（前後の値のあいだをまっすぐ結ぶ）。記録の範囲の外は null
+      function extFileValue(points, t) {
+        if (!points.length || t < points[0][0] || t > points[points.length - 1][0]) return null;
+        let lo = 0, hi = points.length - 1;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (points[mid][0] <= t) lo = mid; else hi = mid;
+        }
+        const [t0, v0] = points[lo], [t1, v1] = points[hi];
+        return t1 === t0 ? v0 : v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+      }
+      // 時刻 ms の値。baseT0 は、いまの記録のはじまりの時刻（前の記録をそろえる基準）
+      function extValueAt(ms, baseT0) {
+        if (ext.type === "sun") {
+          const place = PREFS.find(pref => pref[0] === ext.pref) || PREFS[12];
+          return sunElevation(ms, place[1], place[2]);
+        }
+        const points = ext.file.series[ext.col].points;
+        const dayStart = t => { const day = new Date(t); day.setHours(0, 0, 0, 0); return day.getTime(); };
+        // はじまりをそろえる: 記録をはじめてからの時間で合わせる / 時刻をそろえる: 日付だけずらして、同じ時刻どうしを合わせる
+        const shifted = ext.align === "clock" ? ms - dayStart(baseT0) + dayStart(points[0][0]) : ms - baseT0 + points[0][0];
+        return extFileValue(points, shifted);
+      }
+      // えらんだデータに合わせて、名前・単位・小数の桁を入れかえる
+      function applyExtMeta() {
+        const def = sensors.external;
+        if (ext.type === "sun") {
+          Object.assign(def, { name: "太陽の高さ", unit: "°", csvUnit: "°", decimals: 1 });
+        } else if (extReady()) {
+          const series = ext.file.series[ext.col];
+          const same = Object.keys(sensors).map(key => sensors[key]).find(sensor => sensor !== def && sensor.name === series.name);   // 同じ名前のセンサーがあれば、単位と桁を合わせる（軸を共通にできる）
+          Object.assign(def, { name: `前の${series.name}`, unit: same ? same.unit : series.unit, csvUnit: same ? same.csvUnit : series.unit, decimals: same && same.decimals !== null ? same.decimals : 2 });
+        } else {
+          Object.assign(def, { name: "外部", unit: "", csvUnit: "", decimals: 1 });
+        }
+      }
+      // いまの値（左のカードに出す）
+      function extNow() {
+        if (!extReady()) throw new SensorNoticeError("「外部」のタブを押して、データをえらんでください");
+        const alone = selectedSensor === "external";
+        if (ext.type === "file" && alone) throw new SensorNoticeError(`${ext.file.name} の記録を表示しています`);
+        const base = alone ? [] : dataStore[selectedSensor];
+        const now = Date.now();
+        const value = extValueAt(now, base.length ? base[0].time.getTime() : now);
+        if (value === null) throw new SensorNoticeError("前の記録に、この時刻の値はありません");
+        return value;
+      }
+      // dataStore.external を作り直す（条件が変わっていなければ何もしない）。グラフ・表・集計の前に呼ぶ
+      function syncExternal() {
+        const list = dataStore.external;
+        const clear = () => { if (list.length) { list.length = 0; timeIndex.external = null; } extSig = ""; };
+        if (!activeKeys().includes("external") || !extReady()) { clear(); return; }
+        const alone = selectedSensor === "external";
+        const base = alone ? null : dataStore[selectedSensor];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const sig = alone ? `alone|${extVersion}|${ext.type === "sun" ? today.getTime() : ""}`
+          : `with|${extVersion}|${selectedSensor}|${base.length}|${base.length ? `${base[0].seq}-${base[base.length - 1].seq}` : ""}`;
+        if (sig === extSig) return;
+        list.length = 0;
+        timeIndex.external = null;   // 時刻で引くための索引も作り直す
+        if (!alone) {
+          const baseT0 = base.length ? base[0].time.getTime() : 0;
+          base.forEach(item => {
+            const value = extValueAt(item.time.getTime(), baseT0);
+            if (value !== null) list.push({ time: item.time, value, seq: item.seq });
+          });
+        } else if (ext.type === "sun") {
+          for (let n = 0; n <= 144; n++) {   // 今日の 0 時から 24 時まで、10 分ごと
+            const t = today.getTime() + n * 600000;
+            list.push({ time: new Date(t), value: extValueAt(t, t), seq: n + 1 });
+          }
+        } else {
+          ext.file.series[ext.col].points.forEach(([t, value], n) => list.push({ time: new Date(t), value, seq: n + 1 }));
+        }
+        extSig = sig;
+      }
+      // えらんだ内容を反映する
+      function applyExternal(next) {
+        Object.assign(ext, next);
+        extVersion += 1;
+        applyExtMeta();
+        resetTable();
+        store.metaPut("extFile", ext.file);
+        store.touchUi();
+      }
+
+      // ---- ファイル（このアプリで保存した CSV・ZIP）を読む ----
+      function parseCsv(text) {
+        const rows = [];
+        let row = [], cell = "", quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (quoted) {
+            if (ch !== '"') cell += ch;
+            else if (text[i + 1] === '"') { cell += '"'; i += 1; }
+            else quoted = false;
+          } else if (ch === '"') quoted = true;
+          else if (ch === ",") { row.push(cell); cell = ""; }
+          else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+          else if (ch !== "\r") cell += ch;
+        }
+        if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+        return rows;
+      }
+      // CSV → 項目ごとの値のならび。1 つのセンサーの CSV（日時,時刻,名前,単位,…）と、くらべたときの CSV（日時,時刻,名前（単位）,…,メモ）の両方を読む
+      function seriesFromCsv(text) {
+        const rows = parseCsv(text.replace(/^\uFEFF/, ""));
+        const head = rows[0] || [];
+        if (head[0] !== "日時" || head[1] !== "時刻" || head.length < 3) throw new Error("format");
+        const cols = [];
+        if (head[3] === "単位") {
+          cols.push({ index: 2, name: head[2], unit: (rows[1] && rows[1][3]) || "" });
+        } else {
+          for (let i = 2; i < head.length && head[i] !== "メモ"; i++) {
+            const m = /^(.*?)（(.*)）$/.exec(head[i]);
+            cols.push({ index: i, name: m ? m[1] : head[i], unit: m ? m[2] : "" });
+          }
+        }
+        const series = cols.map(col => ({ name: col.name, unit: col.unit, points: [] }));
+        rows.slice(1).forEach(row => {
+          const d = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(row[0] || "");
+          const t = /^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d))?$/.exec(row[1] || "");
+          if (!d || !t) return;
+          const ms = new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]), Number(t[3]), t[4] ? Number(t[4]) * 100 : 0).getTime();
+          cols.forEach((col, n) => {
+            const raw = row[col.index];
+            if (raw !== undefined && raw !== "" && Number.isFinite(Number(raw))) series[n].points.push([ms, Number(raw)]);
+          });
+        });
+        const filled = series.filter(one => one.points.length);
+        if (!filled.length) throw new Error("empty");
+        filled.forEach(one => one.points.sort((a, b) => a[0] - b[0]));
+        return filled;
+      }
+      // ファイルの中身（CSV の文）。ZIP なら、中のはじめの CSV を取り出す
+      async function csvTextFromFile(file) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return new TextDecoder("utf-8").decode(bytes);
+        const view = new DataView(bytes.buffer);
+        let pos = 0;
+        while (pos + 30 <= bytes.length && view.getUint32(pos, true) === 0x04034b50) {
+          const flags = view.getUint16(pos + 6, true), method = view.getUint16(pos + 8, true), size = view.getUint32(pos + 18, true);
+          const nameLength = view.getUint16(pos + 26, true), extraLength = view.getUint16(pos + 28, true);
+          const name = new TextDecoder("utf-8").decode(bytes.subarray(pos + 30, pos + 30 + nameLength));
+          const start = pos + 30 + nameLength + extraLength;
+          if (flags & 8) break;   // 大きさをあとに書く形式は読まない
+          if (/\.csv$/i.test(name)) {
+            const body = bytes.subarray(start, start + size);
+            if (method === 0) return new TextDecoder("utf-8").decode(body);
+            if (method === 8 && window.DecompressionStream) {
+              return await new Response(new Blob([body]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+            }
+            break;
+          }
+          pos = start + size;
+        }
+        throw new Error("zip");
+      }
+
+      // ---- えらぶ画面 ----
+      let extPicked = null;   // えらぶ画面で読みこんだファイル（OK を押すまでは仮）
+      function extDialogType() { return els.extDialog.querySelector('input[name="extType"]:checked').value; }
+      function renderExtDialog() {
+        const type = extDialogType();
+        els.extSunBox.hidden = type !== "sun";
+        els.extFileBox.hidden = type !== "file";
+        els.extFileName.textContent = extPicked ? extPicked.name : "まだえらんでいません";
+        const series = extPicked ? extPicked.series : [];
+        els.extColBox.hidden = series.length < 2;
+        const current = els.extCol.value;
+        els.extCol.replaceChildren(...series.map((one, n) => {
+          const option = document.createElement("option");
+          option.value = String(n);
+          option.textContent = `${one.name}${one.unit ? `（${one.unit}）` : ""}`;
+          return option;
+        }));
+        if (series[Number(current)]) els.extCol.value = current;
+      }
+      function openExtDialog() {
+        extPicked = ext.file;
+        els.extDialog.querySelector(`input[name="extType"][value="${ext.type === "file" ? "file" : "sun"}"]`).checked = true;
+        els.extPref.value = ext.pref;
+        els.extAlign.value = ext.align;
+        els.extErr.hidden = true;
+        renderExtDialog();
+        if (extPicked && extPicked.series[ext.col]) els.extCol.value = String(ext.col);
+        if (typeof els.extDialog.showModal === "function") els.extDialog.showModal();
+        else els.extDialog.setAttribute("open", "");
+      }
+      function closeExtDialog() {
+        if (typeof els.extDialog.close === "function") els.extDialog.close();
+        else els.extDialog.removeAttribute("open");
+      }
+      function confirmExtDialog() {
+        const type = extDialogType();
+        if (type === "file" && !extPicked) {
+          els.extErr.textContent = "ファイルをえらんでください";
+          els.extErr.hidden = false;
+          return;
+        }
+        applyExternal(type === "sun" ? { type, pref: els.extPref.value }
+          : { type, file: extPicked, col: Number(els.extCol.value) || 0, align: els.extAlign.value });
+        closeExtDialog();
+        if (aiMode || !activeKeys().includes("external")) pickSensor("external");
+        else applySensorUI();   // えらび直しただけ
+      }
+
       // ===== 記録をブラウザに残す（IndexedDB） ========================================
       // ページを閉じたり端末を再起動したりしても、次に開いたときに前の画面（選んでいたセンサー・記録・メモ・写真）から続けられるようにする。
       //   records: 記録 1 件ごと（キーは [センサー, 番号]） / photos: 写真の画像（キーは写真の番号） / meta の "ui": 画面のようす（uiState）
@@ -5275,7 +5661,8 @@
           sensor: aiMode ? (savedSensor || "temperature") : selectedSensor, ai: aiMode,
           compareOn, compareKeys: [...compareKeys], overlay, view: viewMode,
           interval: els.intervalSelect.value, photoMode: els.photoMode.value, aiPrompt: els.aiPrompt.value,
-          seq: { ...seqCounters }, fine: { ...fineTime }
+          seq: { ...seqCounters }, fine: { ...fineTime },
+          external: { type: ext.type, pref: ext.pref, align: ext.align, col: ext.col }
         };
       }
       const store = (() => {
@@ -5307,6 +5694,7 @@
               else if (op.type === "clear") records.delete(IDBKeyRange.bound([op.key, 0], [op.key, Number.MAX_SAFE_INTEGER]));
               else if (op.type === "photo") { photos.put({ id: op.id, blob: op.blob }); written.push(op.id); }
               else if (op.type === "photoDel") photos.delete(op.id);
+              else if (op.type === "meta") { if (op.value === null || op.value === undefined) tx.objectStore("meta").delete(op.name); else tx.objectStore("meta").put(op.value, op.name); }
             });
             if (ui) tx.objectStore("meta").put(uiState(), "ui");
             tx.oncomplete = () => written.forEach(id => pending.delete(id));
@@ -5315,7 +5703,7 @@
             console.warn("[保存] 書きこめませんでした", error);
           }
         }
-        function push(op) { if (db) { ops.push(op); uiDirty = true; schedule(); } }   // 番号（seq）も一緒に残すので、画面のようすも書く
+        function push(op) { if (db && op.key !== "external") { ops.push(op); uiDirty = true; schedule(); } }   // 外部（key が "external"）は記録として残さない   // 番号（seq）も一緒に残すので、画面のようすも書く
         return {
           flush,
           open() {
@@ -5337,10 +5725,11 @@
           },
           async load() {
             const tx = db.transaction(["records", "photos", "meta"], "readonly");
-            const [records, photoIds, ui] = await Promise.all([
-              done(tx.objectStore("records").getAll()), done(tx.objectStore("photos").getAllKeys()), done(tx.objectStore("meta").get("ui"))
+            const [records, photoIds, ui, extFile] = await Promise.all([
+              done(tx.objectStore("records").getAll()), done(tx.objectStore("photos").getAllKeys()),
+              done(tx.objectStore("meta").get("ui")), done(tx.objectStore("meta").get("extFile"))
             ]);
-            return { records, photoIds, ui };
+            return { records, photoIds, ui, extFile };
           },
           put(key, item) { push({ type: "put", key, item }); },
           remove(key, item) {
@@ -5355,6 +5744,7 @@
             dataStore[key].forEach(item => push({ type: "put", key, item }));
           },
           touchUi() { if (db) { uiDirty = true; schedule(); } },
+          metaPut(name, value) { push({ type: "meta", name, value }); },
           photoPut(id, blob) {
             if (!db) { memPhotos.set(id, blob); return; }
             pending.set(id, blob);
@@ -5420,6 +5810,18 @@
           seqCounters[key] = Math.max(seqCounters[key], Number(ui.seq && ui.seq[key]) || 0, last ? last.seq : 0);
           fineTime[key] = Boolean(ui.fine && ui.fine[key]);
         });
+        // 外部のデータ（えらんだ内容と、前の記録のファイル）
+        const savedExt = ui.external || {};
+        const file = saved.extFile && Array.isArray(saved.extFile.series) ? saved.extFile : null;
+        Object.assign(ext, {
+          type: savedExt.type === "sun" || (savedExt.type === "file" && file) ? savedExt.type : null,
+          pref: PREFS.some(pref => pref[0] === savedExt.pref) ? savedExt.pref : ext.pref,
+          align: savedExt.align === "clock" ? "clock" : "start",
+          col: file && file.series[savedExt.col] ? savedExt.col : 0,
+          file
+        });
+        extVersion += 1;
+        applyExtMeta();
         if (saved.ui) applyUiState(ui);
         else { updateSummary(); refreshView(); }
         renderPhotoCount();
@@ -5429,10 +5831,14 @@
         }
       }
       function applyUiState(ui) {
-        const ok = key => Boolean(sensors[key]) && key !== "ai";
+        const ok = key => Boolean(sensors[key]) && key !== "ai" && (key !== "external" || extReady());
         if (ok(ui.sensor)) selectedSensor = ui.sensor;
         const others = (Array.isArray(ui.compareKeys) ? ui.compareKeys : []).filter(key => ok(key) && key !== selectedSensor);
         compareKeys = [...new Set(others)].slice(-(COMPARE_MAX - 1));
+        if (selectedSensor === "external" && compareKeys.length) {   // 外部は主センサーにしない
+          selectedSensor = compareKeys.pop();
+          compareKeys.push("external");
+        }
         compareOn = Boolean(ui.compareOn) || compareKeys.length > 0;
         els.compareToggle.setAttribute("aria-pressed", String(compareOn));
         els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
@@ -5444,6 +5850,7 @@
         if ([...els.intervalSelect.options].some(option => option.value === ui.interval)) els.intervalSelect.value = ui.interval;
         syncPhotoModes();   // 記録間隔を戻してから、写真の記録を戻す（選べる周期は記録間隔で決まる）
         if ([...els.photoMode.options].some(option => option.value === ui.photoMode)) els.photoMode.value = ui.photoMode;
+        els.photoMode.dispatchEvent(new CustomEvent("restored"));
         setViewMode(ui.view);
       }
 
@@ -5582,7 +5989,7 @@
         const out = [];
         const keys = shareKeys();
         const base = keys[keys.length - 1];
-        const data = dataStore[base] || [];
+        const data = base === "external" ? [] : dataStore[base] || [];   // 外部だけのときは、行は送らない（現在値だけ）
         for (let i = 0; i < data.length && out.length < SHARE_BATCH; i++) {
           const r = data[i];
           if (r.seq <= st.lastAck) continue;
@@ -5975,11 +6382,61 @@
       els.layoutOverlay.addEventListener("click", () => setOverlay(true));
       els.intervalSelect.addEventListener("change", () => { syncPhotoModes(); store.touchUi(); });
       els.aiPrompt.addEventListener("change", () => store.touchUi());
+      // 「写真の記録」を OFF から ON にしたときは、顔や個人情報が写らないように置くことを確かめてもらう
+      let photoModeWas = "off";
       els.photoMode.addEventListener("change", () => {
+        const turnedOn = photoModeWas === "off" && els.photoMode.value !== "off";
+        photoModeWas = els.photoMode.value;
         lastPhotoAt = 0;   // えらび直したら、次の記録から数え直す
         store.touchUi();
-        if (els.photoMode.value !== "off" && camPanelError) showToast(`カメラを使えないので、写真は記録されません（${camPanelError}）`);
+        if (turnedOn) {
+          if (typeof els.camWarnDialog.showModal === "function") els.camWarnDialog.showModal();
+          else els.camWarnDialog.setAttribute("open", "");
+        } else if (els.photoMode.value !== "off" && camPanelError) {
+          showToast(`カメラを使えないので、写真は記録されません（${camPanelError}）`);
+        }
       });
+      els.photoMode.addEventListener("restored", () => { photoModeWas = els.photoMode.value; });   // 開き直して戻したときは、注意を出さない
+      const closeCamWarn = keep => {
+        if (typeof els.camWarnDialog.close === "function") els.camWarnDialog.close();
+        else els.camWarnDialog.removeAttribute("open");
+        if (!keep) {   // やめる → OFF にもどす
+          els.photoMode.value = "off";
+          photoModeWas = "off";
+          store.touchUi();
+        } else if (camPanelError) {
+          showToast(`カメラを使えないので、写真は記録されません（${camPanelError}）`);
+        }
+      };
+      els.camWarnOk.addEventListener("click", () => closeCamWarn(true));
+      els.camWarnCancel.addEventListener("click", () => closeCamWarn(false));
+      els.camWarnDialog.addEventListener("cancel", event => { event.preventDefault(); closeCamWarn(false); });   // Esc は「やめる」
+      // 「外部」のデータをえらぶ画面
+      els.extPref.replaceChildren(...PREFS.map(([name]) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        return option;
+      }));
+      els.extDialog.querySelectorAll('input[name="extType"]').forEach(input => input.addEventListener("change", () => { els.extErr.hidden = true; renderExtDialog(); }));
+      els.extFileBtn.addEventListener("click", () => els.extFileInput.click());
+      els.extFileInput.addEventListener("change", async () => {
+        const file = els.extFileInput.files[0];
+        els.extFileInput.value = "";   // 同じファイルをえらび直しても change が出るように
+        if (!file) return;
+        try {
+          extPicked = { name: file.name, series: seriesFromCsv(await csvTextFromFile(file)) };
+          els.extErr.hidden = true;
+        } catch (error) {
+          console.warn("[外部] ファイルを読めませんでした", error);
+          els.extErr.textContent = "このファイルは読めませんでした。このアプリの「ダウンロード」で保存した CSV か ZIP をえらんでください";
+          els.extErr.hidden = false;
+        }
+        renderExtDialog();
+      });
+      els.extOk.addEventListener("click", confirmExtDialog);
+      els.extCancel.addEventListener("click", closeExtDialog);
+      els.extDialog.addEventListener("click", event => { if (event.target === els.extDialog) closeExtDialog(); });
       els.camRetry.addEventListener("click", startCamPanel);
       // ページを閉じる・裏に回るときは、ためている分をすぐ書く
       window.addEventListener("pagehide", () => store.flush());

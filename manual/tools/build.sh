@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 WORK="${TMPDIR:-/tmp}/multi-logger-manual"
-SCENES="start connected recording graph hover memo memophoto photohover phototable select table compare overlay room water"
+SCENES="start connected recording graph hover memo memophoto photohover phototable select table compare overlay extpick extsun extprev room water"
 # 「共有しよう」の写真は測定室のページ（room.html）を撮る。場所がちがうときは ROOM_HTML で指定する
 ROOM_HTML="${ROOM_HTML:-$ROOT/room.html}"
 ROOM_SCENES="before after"
