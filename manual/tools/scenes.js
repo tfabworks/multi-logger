@@ -291,7 +291,10 @@
     async ask() {
       await scenes.graph();
       $("askBtn").click();
-      await wait(800);
+      await wait(300);
+      $("askInput").value = "このグラフから、どんなことが分かる？";   // 開いただけでは AI にきかない。質問を書いて「きく」
+      $("askForm").requestSubmit();
+      await wait(1200);
       $("askLog").scrollTop = 0;
       $("askInput").value = "どうして、手をはなすと下がるの？";
       if (document.activeElement) document.activeElement.blur();

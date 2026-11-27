@@ -1828,7 +1828,7 @@
     <div id="askInfo" class="ask-info"></div>
     <div id="askLog" class="ask-log" aria-live="polite"></div>
     <form id="askForm" class="ask-form">
-      <textarea id="askInput" rows="2" placeholder="もっとくわしく聞く（例: どうして、とちゅうで上がったの？）" aria-label="AIに聞くこと"></textarea>
+      <textarea id="askInput" rows="2" placeholder="AI に聞きたいこと（例: このグラフから、どんなことが分かる？）" aria-label="AIに聞くこと"></textarea>
       <button id="askSend" class="ask-send" type="submit">きく</button>
     </form>
     <p class="ask-note">AI の答えは、まちがっていることもあります。記録とくらべて、たしかめましょう。</p>
@@ -5487,16 +5487,13 @@
       // 送るのは、グラフの画像と、データを文にしたもの（センサーごとの最小・最大・平均、間引いた値の表、メモ）。
       // しらべるのは、選んでいるセンサーの記録の全部（グラフをスクロールして画面に出ていない、前の時間の分もふくむ）。
       // ダイアログを出している間も、測定と記録は止めない（しらべるのは、開いたときの記録）
-      // つづけて聞くときは、同じデータと、それまでのやりとりを付けて送る（AI は前の話をおぼえていないため）
+      // 開いただけでは AI にきかない（まず入力まち）。「きく」をおすたびに、データと、それまでのやりとりを付けて送る（AI は前の話をおぼえていないため）
       const ASK_MAX_ROWS = 120;  // AI に送る表の行の数（多いときは、同じ間隔で間引く）
       const ASK_HISTORY = 6;     // AI に送り直す、これまでのやりとりの数（新しいほうから）
       const ASK_RULES = "あなたは小学生に理科を教える先生です。下の[データ]は、子どもがセンサーで記録したものです（グラフの画像も付いています）。"
         + "小学生にも分かるやさしい日本語で、短い文で答えてください。数字は[データ]にあるものだけを使い、分からないことは「分からない」と書いてください。"
         + "記号（* や # など）は使わず、ふつうの文と「・」の箇条書きで書いてください。";
-      const ASK_FIRST = "このデータから分かることを教えてください。次の順に、それぞれ 1〜3 文で書いてください。\n"
-        + "1. 全体のようす\n2. 目立つところ（いちばん高い・低い、急に変わったところと、その時刻）\n"
-        + "3. メモがあれば、メモの出来事と値の変化の関係\n4. 考えられる理由\n5. 次にしらべるとよいこと";
-      const ask = { sig: "", data: "", image: "", info: "", talk: [], busy: false };   // talk: [{ q（null は、はじめの解析）, a, error }]
+      const ask = { sig: "", data: "", image: "", info: "", talk: [], busy: false };   // talk: [{ q, a, error }]
       // いま出ている記録を、AI に読ませる文にする
       function askDataText() {
         const keys = activeKeys(), data = dataStore[selectedSensor], cols = tableColumns();
@@ -5553,8 +5550,8 @@
       }
       function askPrompt(question) {
         const history = ask.talk.filter(turn => turn.a).slice(-ASK_HISTORY)
-          .map(turn => `子ども: ${turn.q === null ? "このデータから分かることを教えてください。" : turn.q}\n先生: ${turn.a}`).join("\n\n");
-        return `${ASK_RULES}\n\n[データ]\n${ask.data}\n\n${history ? `[これまでのやりとり]\n${history}\n\n` : ""}[質問]\n${question === null ? ASK_FIRST : question}`;
+          .map(turn => `子ども: ${turn.q}\n先生: ${turn.a}`).join("\n\n");
+        return `${ASK_RULES}\n\n[データ]\n${ask.data}\n\n${history ? `[これまでのやりとり]\n${history}\n\n` : ""}[質問]\n${question}`;
       }
       function renderAsk() {
         const box = (cls, who, text) => {
@@ -5573,7 +5570,7 @@
           nodes.push(img);
         }
         ask.talk.forEach((turn, n) => {
-          if (turn.q !== null) nodes.push(box("me", "きいたこと", turn.q));
+          nodes.push(box("me", "きいたこと", turn.q));
           if (turn.a) nodes.push(box("ai", "AI の答え", turn.a));
           else if (turn.error) {
             const div = box("err", "", turn.error.text);
@@ -5595,6 +5592,8 @@
             nodes.push(div);
           } else nodes.push(box("ai wait", "", "AI が考えています…"));
         });
+        // 開いただけでは AI にきかない。まず、聞きたいことを書いてもらう
+        if (!ask.talk.length) nodes.push(box("ai wait", "", "下のらんに、AI に聞きたいことを書いて「きく」をおしてください。"));
         els.askLog.replaceChildren(...nodes);
         els.askLog.scrollTop = els.askLog.scrollHeight;
         els.askSend.disabled = ask.busy;
@@ -5645,7 +5644,7 @@
         if (typeof els.askDialog.showModal === "function") els.askDialog.showModal();
         else els.askDialog.setAttribute("open", "");
         renderAsk();
-        if (!ask.talk.length) askSend(null);
+        els.askInput.focus();   // 開いたら、まず入力まち（AI には「きく」をおしたときに送る）
       }
       function closeAsk() {
         if (typeof els.askDialog.close === "function") els.askDialog.close();

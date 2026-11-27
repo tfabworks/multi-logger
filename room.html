@@ -101,7 +101,7 @@
   .tile .compare-row { padding: 4px 10px; }
   .tile .compare-row .val { font-size: 1.15rem; }
 
-  /* ---- 1 台を大きく見る・重ねて表示（手元の画面と同じ 2 列） ---- */
+  /* ---- 1 台を大きく見る・くらべる（手元の画面と同じ 2 列） ---- */
   .crumb { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   .crumb h2 { margin: 0; min-width: 0; font-size: clamp(1.1rem, 2vw, 1.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .back-btn { min-height: 42px; padding: 4px 16px 4px 12px; border-radius: 14px; }
@@ -188,12 +188,20 @@
   .chart-scroll .grip.l { left: 0; }
   .chart-scroll .grip.r { right: 0; }
   .chart-scroll .span-label { font-size: 11px; font-weight: 800; color: #3b4d61; white-space: nowrap; pointer-events: none; }
-  /* 重ねて表示: 左のカードに端末ごとの行（線の色・いまの値・動かす・ずらす） */
+  /* くらべる: 左のカードに端末ごとの行（線の色・いまの値・動かす・ずらす） */
   .dev-row .ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; color: var(--muted); font-size: .74rem; font-weight: 800; }
   .dev-row .ctl label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .dev-row .ctl input[type="radio"] { margin: 0; accent-color: var(--accent); }
   .dev-row .ctl input[type="number"] { width: 68px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: .8rem; font-weight: 800; }
   .dev-row.moving { box-shadow: inset 0 0 0 2px var(--row-color); }
+  /* くらべる: 出すセンサーをえらぶ印（線の種類の見本つき。押すと出す・出さないが切りかわる） */
+  .ov-sensors { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .ov-sensors[hidden] { display: none; }
+  .ov-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 2px 10px; border: 2px solid var(--line); border-radius: 999px; color: var(--muted); background: white; font-size: .78rem; font-weight: 800; cursor: pointer; }
+  .ov-chip svg { width: 26px; height: 8px; flex: 0 0 auto; }
+  .ov-chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
+  .ov-chip[aria-pressed="false"] svg { opacity: .35; }
+  a.primary-btn { display: inline-flex; align-items: center; text-decoration: none; }
 
   /* ---- 小さな窓（測定室 ID・ダウンロード・設定） ---- */
   .ov { position: fixed; inset: 0; z-index: 20; background: rgba(8, 33, 52, .55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -280,6 +288,8 @@
         <button id="btn-settings" class="primary-btn ghost" type="button">設定</button>
       </span>
       <button id="btn-json" class="primary-btn ghost" type="button" hidden title="この測定室のデータを JSON で開く（外部プログラムから参照する形。公開中だけ）">JSON</button>
+      <!-- 説明書（アプリと同じ manual.pdf）の「共有しよう」の章を、別のタブで開く。説明書のページが増減したら #page= の数字を直す -->
+      <a id="btn-help" class="primary-btn ghost" href="manual.pdf#page=13" target="_blank" rel="noopener" title="使い方の説明書（PDF）の「共有しよう」のページを開く">？ 使い方</a>
     </div>
   </header>
 
@@ -287,7 +297,7 @@
   <section id="view-list">
     <div id="tools" class="card">
       <label><input type="checkbox" id="sel-all"> すべて選ぶ</label>
-      <button id="btn-overlay" class="btn primary" type="button" disabled>重ねて表示</button>
+      <button id="btn-overlay" class="btn primary" type="button" disabled>くらべる</button>
       <span id="owner-sel" hidden>
         <button id="btn-reset" class="btn" type="button" disabled title="選んだ端末の、いままでのデータを測定室から消す（端末側の記録は消えない）">リセット</button>
         <button id="btn-kick" class="btn danger" type="button" disabled title="選んだ端末を測定室から退出させる">退出</button>
@@ -357,23 +367,29 @@
     </div>
   </section>
 
-  <!-- 重ねて表示: 選んだ端末の、同じセンサーの線を 1 枚に重ねる -->
+  <!-- くらべる: 選んだ端末の線を、上下に並べるか、1 枚に重ねる（センサーがちがっても重ねられる。縦軸は単位ごと） -->
   <section id="ov-overlay" hidden>
     <div class="crumb">
       <button id="ov-close" class="btn back-btn" type="button">← 一覧にもどる</button>
-      <h2>重ねて表示</h2>
+      <h2>くらべる</h2>
     </div>
     <div class="dashboard">
       <aside class="side-card">
         <div class="current-label" id="ov-label">端末ごとの現在値</div>
         <div id="ov-legend" class="compare-rows"></div>
-        <div class="hint" style="margin-top:10px">折れ線を左右にドラッグすると、その端末の時間がずれます。数値（秒）でも直せます。空白を左右にドラッグすると、範囲を選んで拡大できます。</div>
+        <div class="hint" style="margin-top:10px">線の色は端末、線の種類はセンサーです。折れ線を左右にドラッグすると、その端末の時間がずれます。数値（秒）でも直せます。空白を左右にドラッグすると、範囲を選んで拡大できます。</div>
       </aside>
       <article class="chart-card">
         <div class="chart-head">
-          <div class="chart-title-group"><h2 id="ov-title">重ねて表示</h2><p id="ov-desc"></p></div>
+          <div class="chart-title-group"><h2 id="ov-title">くらべる</h2><p id="ov-desc"></p></div>
           <div class="chart-head-right">
-            <label class="row">センサー <select id="ov-sensor"></select></label>
+            <!-- センサーが 2 種類以上あるときだけ: 出すセンサーをえらぶ（はじめは全部） -->
+            <span id="ov-sensors" class="ov-sensors" hidden></span>
+            <!-- 線が 2 本以上で、重ねられるときだけ: 上下に並べる／1 枚に重ねる（縦軸は単位ごとに 1 本。3 本まで） -->
+            <div id="ov-layout" class="view-toggle view-toggle--mini" role="group" aria-label="グラフの出し方" hidden>
+              <button id="ov-stack" class="view-btn" type="button" aria-pressed="false">並べる</button>
+              <button id="ov-over" class="view-btn is-active" type="button" aria-pressed="true">重ねる</button>
+            </div>
             <button id="ov-align-time" class="btn" type="button" title="時計どおりに重ねる（ずらす秒数を 0 にする）">時刻でそろえる</button>
             <button id="ov-align-start" class="btn" type="button" title="それぞれの記録のはじまりをそろえる">はじまりをそろえる</button>
           </div>
@@ -457,7 +473,7 @@
   var POLL_MS = 5000, STALE_MS = 20000;
   var OWNER_KEY = 'slink-room-owner:' + ROOM_ID;
   var MEMBER_KEY = 'slink-room-member:' + ROOM_ID;
-  // 重ねて表示で端末ごとに付ける色
+  // くらべるで端末ごとに付ける色
   var COLORS = ['#0877c9', '#ef5b5b', '#18a06d', '#f6a900', '#7b61d1', '#ff7043', '#12b0a0', '#d8489a', '#7fae1b', '#5a6fd8', '#9b51e0', '#e07d10'];
 
   // #owner=...（作成者）や #member=...（参加中の端末）で開かれたら、その資格をこのブラウザに保存する（URL からは消す）
@@ -510,7 +526,7 @@
   function pickedIds() { return devices.filter(function (d) { return picked[d.deviceId]; }).map(function (d) { return d.deviceId; }); }
   function isOwner() { return Boolean(room && room.isOwner); }
 
-  // 画面は 3 つ: 一覧（タイル）／1 台を大きく見る／重ねて表示。帯はいつも出したままにする
+  // 画面は 3 つ: 一覧（タイル）／1 台を大きく見る／くらべる。帯はいつも出したままにする
   function showView(name) {
     $('view-list').hidden = name !== 'list';
     $('ov-detail').hidden = name !== 'detail';
@@ -608,7 +624,7 @@
     $('btn-overlay').disabled = n === 0;
     $('btn-reset').disabled = n === 0;
     $('btn-kick').disabled = n === 0;
-    $('btn-overlay').textContent = n ? '重ねて表示（' + n + '）' : '重ねて表示';
+    $('btn-overlay').textContent = n ? 'くらべる（' + n + '）' : 'くらべる';
     $('sel-all').checked = devices.length > 0 && n === devices.length;
     [].forEach.call($('tiles').querySelectorAll('.tile'), function (t) { t.classList.toggle('picked', Boolean(picked[t.dataset.id])); t.querySelector('.pick').checked = Boolean(picked[t.dataset.id]); });
   }
@@ -732,7 +748,7 @@
       ctx.strokeStyle = s.color; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
     }
   }
-  function seriesLabel(s) { return s.label || s.name + unitSuffix(s); }   // label: 重ねて表示で端末の名前に付ける（ずらした秒数など）
+  function seriesLabel(s) { return s.label || s.name + unitSuffix(s); }   // label: くらべるで端末の名前に付ける（ずらした秒数など）
   // 1 本の線を p の枠（top/bottom/left/right）に描く（上下に並べるときの 1 段）。戻り値は値 → y の関数（記録がなければ null）
   function drawPanel(ctx, s, vis, p, X) {
     var panelH = p.bottom - p.top;
@@ -761,7 +777,7 @@
   }
   // 何本かの線を 1 枚に重ねる。縦軸は単位ごとに 1 本（unitGroups）で、左・右・いちばん右（右の軸の外。p.axisWidth ずつ離す）の順に置く。
   // 線が 1 本だけの軸はその線の色、同じ単位の 2 本以上で共有する軸は灰色で描き、目盛りの本数をそろえて横線を共有する。
-  // p.legend: 'auto' はセンサーの名前を枠の中に書く（線の見本つき）。'fit' は 1 行に入るときだけ書く（重ねて表示。端末の名前は左のカードにもある）
+  // p.legend: 'auto' はセンサーの名前を枠の中に書く（線の見本つき）。'fit' は 1 行に入るときだけ書く（くらべる。端末の名前は左のカードにもある）
   function drawOverlaid(ctx, series, vises, groups, p, X) {
     var panelH = p.bottom - p.top;
     var axes = groups.map(function (members, a) {
@@ -1626,9 +1642,12 @@
     cv.addEventListener('pointerleave', function () { if (detail.hover !== null) { detail.hover = null; detailDraw(); } });
   })();
 
-  // ===== 重ねて表示（選んだ端末の、同じセンサーの線を 1 枚に重ねる） =====
-  // offsets: 端末ごとにずらす秒数、moving: 「動かす」を選んである端末、rows: 左のカードの行（端末ごと）
-  var ov = {ids: [], offsets: {}, moving: null, sensorKey: '', drag: null, msPerPx: 0, hover: null, caches: null, rows: null};
+  // ===== くらべる（選んだ端末の線を、上下に並べるか、1 枚に重ねる） =====
+  // 手元の画面の「くらべる」と同じ考え方: 並べる＝線ごとに 1 段、重ねる＝1 枚（縦軸は単位ごとに 1 本で 3 本まで。センサーがちがっても重ねられる）。
+  // 線の色は端末、線の種類（実線・破線・点線…）はセンサー。出すセンサーは、見出しの右の印でえらぶ（はじめは全部）
+  // offsets: 端末ごとにずらす秒数、moving: 「動かす」を選んである端末、rows: 左のカードの行（端末ごと）、
+  // layout: 'overlay'（重ねる）／'stack'（並べる）、off: 出さないセンサー、union: 選んだ端末にあるセンサー
+  var ov = {ids: [], offsets: {}, moving: null, layout: 'overlay', off: {}, union: [], drag: null, msPerPx: 0, hover: null, caches: null, rows: null};
   var ovScroll = makeScroll(function () { overlayDraw(); });
   var ovSel = makeSelect(ovScroll, function () { overlayDraw(); });
   $('ov-scroll').appendChild(ovScroll.addBar());
@@ -1672,12 +1691,24 @@
     if ($('ov-overlay').hidden || ids.join() !== ov.ids.join()) return;   // 待っている間に閉じた・選び直した
     var union = [];
     caches.forEach(function (c) { if (c) c.sensors.forEach(function (s) { if (!union.some(function (u) { return u.key === s.key; })) union.push(s); }); });
-    var sel = $('ov-sensor');
-    if (rebuild || sel.options.length !== union.length) {
-      sel.textContent = '';
-      union.forEach(function (s) { var o = el('option', '', s.name + unitSuffix(s)); o.value = s.key; sel.appendChild(o); });
-      if (!union.some(function (u) { return u.key === ov.sensorKey; })) ov.sensorKey = union.length ? union[0].key : '';
-      sel.value = ov.sensorKey;
+    // 出すセンサーをえらぶ印。センサーの顔ぶれが変わったときだけ作り直す
+    var sig = union.map(function (u) { return u.key; }).join('+');
+    if (rebuild || sig !== ov.unionSig) {
+      ov.unionSig = sig; ov.union = union;
+      var box = $('ov-sensors'); box.textContent = '';
+      union.forEach(function (u) {
+        var chip = el('button', 'ov-chip'); chip.type = 'button'; chip.dataset.key = u.key;
+        chip.title = '押すと、' + u.name + 'を出す・出さないが切りかわります';
+        chip.innerHTML = '<svg viewBox="0 0 26 8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+        chip.appendChild(document.createTextNode(u.name + unitSuffix(u)));
+        chip.addEventListener('click', function () {
+          var shown = ov.union.filter(function (x) { return !ov.off[x.key]; });
+          if (!ov.off[u.key] && shown.length <= 1) return;   // さいごの 1 つは消さない
+          ov.off[u.key] = !ov.off[u.key];
+          overlayDraw();
+        });
+        box.appendChild(chip);
+      });
     }
     if (rebuild || !ov.rows) buildLegend();
     ov.caches = caches;
@@ -1685,43 +1716,85 @@
   }
   // ずらした時刻の線。記録が増えたとき・ずらす秒数が変わったときだけ作り直す
   function ovPts(c, si, off) {
-    var key = [si, off, c.rows.length, c.startedAt].join('|');
-    if (!c._ov || c._ov.key !== key) c._ov = {key: key, pts: c.rows.map(function (r) { return [absTime(c, r) + off * 1000, r[2 + si]]; })};
-    return c._ov.pts;
+    var key = [off, c.rows.length, c.startedAt].join('|');
+    if (!c._ov || c._ov.key !== key) c._ov = {key: key, pts: {}};   // センサーごとに持つ
+    if (!c._ov.pts[si]) c._ov.pts[si] = c.rows.map(function (r) { return [absTime(c, r) + off * 1000, r[2 + si]]; });
+    return c._ov.pts[si];
+  }
+  // 重ねられるか（縦軸は 3 本まで。3 本のときは、線を描く幅が足りる画面だけ）
+  function ovCanOverlay(series) {
+    var axes = unitGroups(series).length;
+    if (axes > 3) return false;
+    if (axes < 3) return true;
+    var w = Math.max(320, $('ov-plot').clientWidth), m = chartMargin(w, 2);
+    return w - m.left - m.right >= OVERLAY_MIN_PLOT;
   }
   function overlayDraw() {
     if (!ov.caches) return;
-    var series = [], sensor = null, fine = false;
+    var series = [], fine = false;
+    var shown = ov.union.filter(function (u) { return !ov.off[u.key]; });   // 出すセンサー（この順に、実線・破線・点線…）
+    var kinds = shown.length > 1;
+    // 印の見た目（出している・いない、線の種類）
+    Array.prototype.forEach.call($('ov-sensors').children, function (chip) {
+      var n = -1;
+      shown.forEach(function (u, k) { if (u.key === chip.dataset.key) n = k; });
+      chip.setAttribute('aria-pressed', String(n >= 0));
+      var dash = n >= 0 ? DASHES[n % DASHES.length] : [];
+      chip.querySelector('line').setAttribute('stroke-dasharray', dash.length ? dash.map(function (v) { return Math.max(0.5, v * 0.5); }).join(' ') : '');
+    });
+    $('ov-sensors').hidden = ov.union.length < 2;
     ov.ids.forEach(function (id, i) {
-      var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0, si = -1;
-      if (c) c.sensors.forEach(function (s, n) { if (s.key === ov.sensorKey) si = n; });
-      var s = si >= 0 ? c.sensors[si] : null;
-      if (s && !sensor) sensor = s;
+      var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0;
+      var mine = [];
+      if (c) c.sensors.forEach(function (sn, si) { if (!ov.off[sn.key]) mine.push({s: sn, si: si}); });
       if (r) {
-        r.name.textContent = (c ? c.name : d ? d.name : '') + (c && !s ? '（このセンサーはありません）' : '');
-        r.val.textContent = s && d ? fmtVal(d.lastValues[s.key], s) : '—';
-        if (s && s.unit) r.val.appendChild(el('small', '', s.unit));
+        r.name.textContent = (c ? c.name : d ? d.name : '') + (c && !mine.length ? '（出しているセンサーはありません）' : '');
+        r.val.textContent = mine.length ? '' : '—';
+        mine.forEach(function (x, k) {   // いまの値（センサーが 2 つ以上なら「 / 」で区切る）
+          if (k) r.val.appendChild(document.createTextNode(' / '));
+          r.val.appendChild(document.createTextNode(d ? fmtVal(d.lastValues[x.s.key], x.s) : '—'));
+          if (x.s.unit) r.val.appendChild(el('small', '', x.s.unit));
+        });
         r.rb.checked = ov.moving === id;
         r.row.classList.toggle('moving', ov.moving === id);
         if (document.activeElement !== r.num) r.num.value = String(Math.round(off * 10) / 10);
       }
-      if (!s) return;
+      if (!mine.length) return;
       if (isFine(c)) fine = true;
-      series.push({id: id, color: COLORS[i % COLORS.length], name: c.name, label: c.name + (off ? '（' + (off > 0 ? '+' : '') + Math.round(off) + '秒）' : ''),
-        unit: s.unit, decimals: s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, si, off)});
+      mine.forEach(function (x) {
+        var kind = 0;
+        shown.forEach(function (u, k) { if (u.key === x.s.key) kind = k; });
+        var name = c.name + (kinds ? ' ' + x.s.name : '');
+        series.push({id: id, key: x.s.key, color: COLORS[i % COLORS.length], dash: DASHES[kind % DASHES.length], name: name, sensorName: x.s.name,
+          shift: off ? '（' + (off > 0 ? '+' : '') + Math.round(off) + '秒）' : '',
+          unit: x.s.unit, decimals: x.s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, x.si, off)});
+      });
     });
-    $('ov-title').textContent = sensor ? sensor.name + 'を重ねて表示' : '重ねて表示';
-    $('ov-desc').textContent = sensor ? '横軸：時刻　縦軸：' + sensor.name + unitSuffix(sensor) + '　線の色：端末' : '';
-    var cv = $('ov-chart');
-    placeScroll(ovScroll, cv, Math.max(0, unitGroups(series).length - 1));
-    var range = ovScroll.update(extentOf(series.map(function (s) { return s.pts; })));
-    var geo = drawChart(cv, series, {mode: 'overlay', range: range, sel: ovSel.sel, hover: ov.drag ? null : ov.hover, fine: fine, legend: 'fit', fill: series.length > 4 ? 0 : 0.1});
+    // 並べる／重ねる（線が 2 本以上で、重ねられるときだけえらべる。重ねられないときは並べる）
+    var can = series.length >= 2 && ovCanOverlay(series);
+    var overlay = series.length < 2 ? true : can && ov.layout === 'overlay';
+    $('ov-layout').hidden = !can;
+    setPressed($('ov-stack'), !overlay); setPressed($('ov-over'), overlay);
+    // 並べるときは段の見出しに単位まで出す。重ねるときの名前は短く（単位は軸に出る）
+    series.forEach(function (sr) { sr.label = sr.name + sr.shift + (overlay ? '' : unitSuffix(sr)); });
+    var names = shown.map(function (u) { return u.name + unitSuffix(u); });
+    $('ov-title').textContent = (shown.length ? shown.map(function (u) { return u.name; }).join('・') + 'を' : '') + 'くらべる';
+    $('ov-desc').textContent = !series.length ? ''
+      : '横軸：時刻　縦軸：' + (overlay ? names.join('・') : '上から、端末' + (kinds ? 'とセンサー' : '') + 'ごと') + '　線の色：端末' + (kinds ? '　線の種類：センサー' : '')
+        + (series.length >= 2 && !can ? '　（単位が 4 種類以上あるので、重ねずに並べています）' : '');
+    var cv = $('ov-chart'), plot = $('ov-plot'), stackN = overlay ? 1 : series.length;
+    plot.dataset.panels = String(Math.min(6, Math.max(1, stackN)));   // 段の数で箱の高さが変わる（CSS）。7 段以上は、ここで高さを決める
+    plot.style.minHeight = stackN > 6 ? (stackN * 165 + 30) + 'px' : '';
+    placeScroll(ovScroll, cv, overlay ? Math.max(0, unitGroups(series).length - 1) : 0);
+    var range = ovScroll.update(extentOf(series.map(function (sr) { return sr.pts; })));
+    var geo = drawChart(cv, series, {mode: overlay ? 'overlay' : 'stack', range: range, sel: ovSel.sel, hover: ov.drag ? null : ov.hover, fine: fine, legend: 'fit', fill: series.length > 4 ? 0 : 0.1});
     $('ov-empty').hidden = Boolean(geo);
     ov.msPerPx = geo ? geo.msPerPx : 0;
     ov.drawn = series;
     ovSel.place(cv, geo);
   }
-  $('ov-sensor').addEventListener('change', function () { ov.sensorKey = $('ov-sensor').value; overlayDraw(); });
+  $('ov-stack').addEventListener('click', function () { ov.layout = 'stack'; overlayDraw(); });
+  $('ov-over').addEventListener('click', function () { ov.layout = 'overlay'; overlayDraw(); });
   $('ov-align-time').addEventListener('click', function () { ov.ids.forEach(function (id) { ov.offsets[id] = 0; }); overlayDraw(); });
   $('ov-align-start').addEventListener('click', function () {
     // それぞれの記録のはじまりを、いちばん早い端末に合わせる
