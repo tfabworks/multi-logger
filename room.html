@@ -882,7 +882,7 @@
     for (var i = 0; i <= xt; i++) {
       var t = xMin + (xMax - xMin) * i / xt, x = X(t), label = fmtTime(t), half = ctx.measureText(label).width / 2;
       ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-      ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 10);   // 右端の時刻が切れないように、枠の中へ寄せる
+      ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 16);   // 右端の時刻が切れないように、枠の中へ寄せる。枠と時刻のあいだに「写真の帯」が入る
     }
     var maxPoints = Math.max(200, Math.floor(pw) * 2);
     var vises = series.map(function (s) { return visible(s.pts, xMin, xMax, maxPoints); });
@@ -924,20 +924,45 @@
     return best;
   }
   // マウスを乗せたところの記録: 縦の線と、線ごとに点と値、上に時刻を描く
-  // メモの印（手元の画面と同じ）: 写真のある記録は線の上に小さな丸、文のあるメモは黄色いふきだし
+  // メモの印（手元の画面と同じ）: 写真のある記録は下の「写真の帯」に印、文のあるメモは黄色いふきだし
+  // 写真の帯（手元の画面と同じ）: 写真のある時刻に、グラフの枠のすぐ下（時刻の目もりの上）へ小さな印を並べる。
+  // 線の上に丸を打つと、長い記録で丸だらけになって線の色が見えなくなる。となりあう印はつながって帯に見える
+  var PHOTO_STRIP = {gap: 4, height: 7, tick: 4};
+  function drawPhotoStrip(ctx, g, xs) {
+    if (!xs.length) return;
+    var y = g.top + g.height + PHOTO_STRIP.gap, h = PHOTO_STRIP.height, half = PHOTO_STRIP.tick / 2, runs = [];
+    xs.sort(function (a, b) { return a - b; }).forEach(function (x) {
+      var last = runs[runs.length - 1];
+      if (last && x - half <= last[1]) last[1] = Math.max(last[1], x + half);
+      else runs.push([x - half, x + half]);
+    });
+    roundRect(ctx, g.left, y, g.width, h, h / 2);   // うすい地（帯のある場所）
+    ctx.fillStyle = 'rgba(58, 69, 80, .13)'; ctx.fill();
+    ctx.fillStyle = '#3a4550';
+    runs.forEach(function (r) { roundRect(ctx, r[0], y, r[1] - r[0], h, 1.5); ctx.fill(); });
+  }
+  // マウスを乗せた記録に写真があるとき、帯の印を大きくして目立たせる
+  function drawPhotoStripHover(ctx, g, x) {
+    var y = g.top + g.height + PHOTO_STRIP.gap - 2, h = PHOTO_STRIP.height + 4;
+    ctx.save();
+    ctx.setLineDash([]);
+    roundRect(ctx, x - 4.5, y, 9, h, 3);
+    ctx.fillStyle = 'white'; ctx.fill();
+    roundRect(ctx, x - 3, y + 1.5, 6, h - 3, 2);
+    ctx.fillStyle = '#3a4550'; ctx.fill();
+    ctx.restore();
+  }
   function drawMarks(ctx, g, marks) {
     ctx.save();
+    var photoXs = [];
+    marks.forEach(function (mark) { if (mark.memo.photo && mark.t >= g.xMin && mark.t <= g.xMax) photoXs.push(g.X(mark.t)); });
+    drawPhotoStrip(ctx, g, photoXs);
     marks.forEach(function (mark) {
       if (!has(mark.v) || mark.t < g.xMin || mark.t > g.xMax) return;
       var panel = null;
       g.panels.forEach(function (pn) { if (pn.si === mark.si) panel = pn; });
       if (!panel || !panel.yAt) return;
       var x = g.X(mark.t), y = panel.yAt(mark.v);
-      if (mark.memo.photo) {
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#3a4550'; ctx.fill();
-        ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
-      }
       if (!mark.memo.text) return;
       var dir = mark.up ? -1 : 1, by = y + dir * 15;   // 山なら点の上、谷なら点の下（手元の画面と同じ）
       roundRect(ctx, x - 8, by - 6, 16, 12, 4);
@@ -956,6 +981,8 @@
     found.forEach(function (p) { if (p && (!ref || Math.abs(p[0] - t) < Math.abs(ref[0] - t))) ref = p; });
     if (!ref) return;
     var x = g.X(ref[0]), bottom = g.top + g.height, rightEdge = g.left + g.width;
+    var refMemo = opts && opts.memoAt ? opts.memoAt(ref[0]) : null;
+    if (refMemo && refMemo.photo) drawPhotoStripHover(ctx, g, x);
     ctx.save();
     ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(58, 69, 80, .55)'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(x, g.top); ctx.lineTo(x, bottom); ctx.stroke();

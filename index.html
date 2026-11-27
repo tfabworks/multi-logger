@@ -4258,7 +4258,7 @@
           ctx.lineTo(x, plotBottom);
           ctx.stroke();
           const label = data[index].time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-          ctx.fillText(label, x, plotBottom + 10);
+          ctx.fillText(label, x, plotBottom + 16);   // 枠と時刻のあいだに「写真の帯」が入る
         });
 
         let panels = [];
@@ -4288,6 +4288,7 @@
 
         chartGeo = { left: margin.left, width: plotW, top: plotTop, bottom: plotBottom, start: vr.start, count: data.length, xAt, panels, small };
         drawSelection();
+        drawPhotoStrip();
         drawMemoIcons();
         drawHover();
         placeMemoBox();
@@ -4599,7 +4600,51 @@
         }
         return Math.abs(items[hi].time.getTime() - ms) < Math.abs(items[lo].time.getTime() - ms) ? items[hi] : items[lo];
       }
-      // メモ（文字）のある記録に小さな吹き出しの印を描く（点の少し上）。写真のある記録は、線の上に小さな丸
+      // 写真の帯: 写真のある時刻に、グラフの枠のすぐ下（時刻の目もりの上）へ小さな印を並べる。
+      // 線の上に丸を打つと、長い記録で自動で撮ったときに丸だらけになって、線の色が見えなくなる。
+      // 写真は「その時刻のもの」なので、くらべているときも、どの線かに関係なく 1 本の帯にまとめる。となりあう印はつながって帯に見える
+      const PHOTO_STRIP = { gap: 4, height: 7, tick: 4 };
+      function photoStripRuns(xs) {
+        const half = PHOTO_STRIP.tick / 2, runs = [];
+        xs.sort((a, b) => a - b).forEach(x => {
+          const last = runs[runs.length - 1];
+          if (last && x - half <= last[1]) last[1] = Math.max(last[1], x + half);
+          else runs.push([x - half, x + half]);
+        });
+        return runs;
+      }
+      function drawPhotoStrip() {
+        const g = chartGeo;
+        if (!g) return;
+        const xs = [];
+        g.panels.forEach(panel => panel.data.forEach((item, i) => { if (item.photo) xs.push(panel.xs(i)); }));
+        if (!xs.length) return;
+        const y = g.bottom + PHOTO_STRIP.gap, h = PHOTO_STRIP.height;
+        ctx.save();
+        roundRect(ctx, g.left, y, g.width, h, h / 2);   // うすい地（帯のある場所）
+        ctx.fillStyle = "rgba(58, 69, 80, .13)";
+        ctx.fill();
+        ctx.fillStyle = "#3a4550";
+        photoStripRuns(xs).forEach(([a, b]) => {
+          roundRect(ctx, a, y, b - a, h, 1.5);
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+      // マウスを乗せた記録に写真があるとき、帯の印を大きくして目立たせる
+      function drawPhotoStripHover(x) {
+        const g = chartGeo, y = g.bottom + PHOTO_STRIP.gap - 2, h = PHOTO_STRIP.height + 4;
+        ctx.save();
+        ctx.setLineDash([]);
+        roundRect(ctx, x - 4.5, y, 9, h, 3);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        roundRect(ctx, x - 3, y + 1.5, 6, h - 3, 2);
+        ctx.fillStyle = "#3a4550";
+        ctx.fill();
+        ctx.restore();
+      }
+      // メモ（文字）のある記録に小さな吹き出しの印を描く（点の少し上）。写真の印は、下の「写真の帯」に出す
       function drawMemoIcons() {
         const g = chartGeo;
         if (!g) return;
@@ -4608,18 +4653,7 @@
           if (!panel.yAt) return;
           const data = panel.data;
           data.forEach((item, i) => {
-            if (!item.memo && !item.photo) return;
-            if (item.photo) {
-              // 写真のある記録は、線の上に小さな丸。ふきだしにすると、自動でたくさん撮ったときにふきだしだらけになる
-              ctx.beginPath();
-              ctx.arc(panel.xs(i), panel.yAt(item.value), 4, 0, Math.PI * 2);
-              ctx.fillStyle = "#3a4550";
-              ctx.fill();
-              ctx.strokeStyle = "white";
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-            }
-            if (!item.memo) return;   // ふきだしは、文字で書いたメモだけ
+            if (!item.memo) return;   // ふきだしは、文字で書いたメモだけ（写真は下の帯）
             // 山（前後より高い）なら点の上に、谷なら点の下に出す。端の記録は隣の 1 件とくらべる
             const around = [data[i - 1], data[i + 1]].filter(Boolean).map(it => it.value);
             const up = !around.length || item.value >= around.reduce((sum, v) => sum + v, 0) / around.length;
@@ -4656,6 +4690,7 @@
         if (!primary) return;
         const ms = primary.time.getTime();
         const x = g.xAt(hover - g.start);
+        if (photoAt(primary, ms)) drawPhotoStripHover(x);
         ctx.save();
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = "rgba(58, 69, 80, .55)";
