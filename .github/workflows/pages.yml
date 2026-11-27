@@ -1,8 +1,13 @@
 name: Deploy to GitHub Pages
 
+# main の中身を、そのままいちばん上（https://log.699.jp/）に出す。
+# テスト版（v2 ブランチ）は v2/ フォルダ（https://log.699.jp/v2/）に入れて、いっしょに出す。
+# v2 ブランチに push したときは、v2 ブランチの .github/workflows/v2-deploy.yml が、このワークフローを main で動かす
+# （github-pages の環境は main からしかデプロイできないので、v2 から直接は出さない）
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,6 +26,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+      # テスト版。取れなくても（v2 ブランチを消したあとなど）、本番の配信は止めない
+      - name: Add the test version (v2 branch) under v2/
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: v2
+          path: v2
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
