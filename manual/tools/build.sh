@@ -67,7 +67,7 @@ room_shots() {
   fi
   sed -e 's#</head>#<script src="room-mock.js"></script></head>#' "$ROOM_HTML" > "$WORK/room.html"
   grep -q 'src="room-mock.js"' "$WORK/room.html" || { echo "room-mock.js を差し込めませんでした" >&2; exit 1; }
-  cp "$ROOT/manual/tools/room-mock.js" "$WORK/"
+  cp "$ROOT/manual/tools/room-mock.js" "$ROOT/v2db.js" "$WORK/"
   for scene in $ROOM_SCENES; do
     shoot --virtual-time-budget=8000 \
       --screenshot="$ROOT/manual/img/shot-share-$scene.png" "file://$WORK/room.html?room=demo#scene=$scene"

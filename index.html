@@ -1477,6 +1477,7 @@
     .v2-off { display: none !important; }
     body[data-view="home"] .measure-only, body[data-view="choose"] .measure-only { display: none !important; }
     .title-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .v2-badge { flex: 0 0 auto; padding: 2px 10px; border-radius: 999px; color: #5a4a00; background: var(--yellow); font-size: .72rem; font-weight: 900; white-space: nowrap; }
     .rec-name { color: white; font-size: .95rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .95; }
     .home-view, .choose-view { display: grid; gap: 16px; }
     .home-view[hidden], .choose-view[hidden] { display: none; }
@@ -1588,6 +1589,8 @@
         <!-- はかる画面・えらぶ画面から、トップページ（一覧）にもどる -->
         <button id="homeBtn" class="compare-toggle home-btn measure-only" type="button" title="記録をとめて、一覧にもどる">← 一覧</button>
         <h1>AkaDako Multi Cloud Logger(β)</h1>
+        <!-- 本番（log.699.jp/）と見分けるための印。本番にするときに外す -->
+        <span class="v2-badge" title="ためしに作っている新しい版です。本番は https://log.699.jp/">v2 テスト版</span>
         <span id="recName" class="rec-name measure-only"></span>
       </div>
       <div class="connection-panel">
@@ -1889,7 +1892,7 @@
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 コピー
               </button>
-              <button id="deleteBtn" class="tool-btn delete" type="button" disabled title="いま出している記録を消す">
+              <button id="deleteBtn" class="tool-btn delete" type="button" disabled title="この記録を消す（消したあと、一覧で「もとにもどす」をおせます）">
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 削除
               </button>
@@ -4224,7 +4227,7 @@
         els.emptyState.classList.toggle("hidden", hasData);
         els.downloadBtn.disabled = !hasData;
         els.copyBtn.disabled = !hasData;
-        els.deleteBtn.disabled = !activeKeys().some(key => dataStore[key].length);
+        els.deleteBtn.disabled = !curRec;   // v2: 「削除」は記録をまるごと消す（空の記録も消せる）
 
         if (!hasData) {
           els.minValue.textContent = "--";
@@ -6989,7 +6992,7 @@
           roomUi.openGo.disabled = true;
           roomError("");
           try {
-            const res = await withStream(dev, () => shareApi("POST", `/streams/${st.streamId}/rooms`, { name, share }, st.token));
+            const res = await withStream(dev, () => shareApi("POST", `/streams/${st.streamId}/rooms`, { name, share, ...(curRec ? { lesson: lessonCode() } : {}) }, st.token));
             // 古い API は作成した端末をかならず参加させるので、共有しないときはこちらから外す
             if (!share && res.share !== false) await shareApi("POST", `/streams/${st.streamId}/leave`, {}, st.token);
             st.room = { roomId: res.roomId, name: res.name, isOwner: true, code: res.code, ownerToken: res.ownerToken, roomPage: res.roomPage, url: res.url, public: Boolean(res.public), share };
@@ -7031,6 +7034,13 @@
             renderRoom();
             shareLoop();
             showToast("参加しました");
+            // 先生が、はかる画面から測定室を作ったときは、そのセンサーの組がとどく。同じ組ではじめるかを聞く
+            const names = res.lesson ? lessonNames(res.lesson) : "";
+            const same = curRec && lessonCode() === res.lesson;
+            if (names && !same && window.confirm(`先生と同じ組（${names}）で、はかる画面をひらきますか？`)) {
+              closeRoomDialog();
+              location.hash = `#lesson=${res.lesson}`;   // 授業用リンクをひらいたのと同じ動き
+            }
           } catch (error) { roomError(error.message); roomUi.joinGo.disabled = false; }
         });
         roomUi.view.addEventListener("click", () => { if (st && st.room) window.open(roomPageUrl(), "_blank", "noopener"); });
@@ -7505,6 +7515,17 @@
           amedasWanted = false;
         }
       }
+      // はかる画面の「削除」: いまの記録をまるごと消して、一覧にもどる。まちがえても、一覧に出る「もとにもどす」で戻せる
+      async function deleteThisRecord() {
+        if (!curRec) return;
+        const id = curRec.id;
+        leaveRecord();
+        homeSel.clear();
+        homeSel.add(id);
+        viewName = "home";   // homeDelete の中の renderHome の前に、読み取りを止める
+        await homeDelete();
+        showView("home");
+      }
       // 一覧にもどる（記録はとめて、保存する）
       function goHome() {
         const wasRecording = isRecording;
@@ -7610,7 +7631,8 @@
         const bin = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
         return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
       }
-      function lessonLink() {
+      // リンクの中身（センサーの組・記録間隔・場所）。測定室を作るときにも渡す（参加した端末が、先生と同じ組ではじめられる）
+      function lessonCode() {
         const keys = activeKeys().filter(key => key !== "xPrev");
         const data = { k: keys, i: Number(els.intervalSelect.value) };
         if (keys.some(key => EXT_AMEDAS[key] || key === "xElev") && place.chosen) {
@@ -7618,7 +7640,15 @@
           data.p = place.pref;
           if (station) data.s = [station.id, station.name, station.pref, station.flags || "", station.lat, station.lon];
         }
-        return `${location.origin}${location.pathname}#lesson=${b64urlEncode(JSON.stringify(data))}`;
+        return b64urlEncode(JSON.stringify(data));
+      }
+      function lessonLink() { return `${location.origin}${location.pathname}#lesson=${lessonCode()}`; }
+      // リンクの中身から、センサーの名前（「温度・湿度」）を出す。読めなければ空
+      function lessonNames(code) {
+        try {
+          const data = JSON.parse(b64urlDecode(code));
+          return (Array.isArray(data.k) ? data.k : []).filter(key => sensors[key]).map(key => sensors[key].name.replace(/（.*）$/, "")).join("・");
+        } catch (error) { return ""; }
       }
       function openLessonDialog() {
         const keys = activeKeys();
@@ -7981,10 +8011,13 @@
       els.camRetry.addEventListener("click", startCamPanel);
       // ページを閉じる・裏に回るときは、ためている分をすぐ書く
       window.addEventListener("pagehide", () => { persistExternal(); store.touchUi(); store.flush(); });
-      document.addEventListener("visibilitychange", () => { if (document.hidden) { persistExternal(); store.flush(); } });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) { persistExternal(); store.flush(); }
+        else if (viewName === "home") renderHome();   // 測定室のページ（別のタブ）で「自分の一覧にとりこむ」をしたあと、もどってきたとき
+      });
       els.downloadBtn.addEventListener("click", downloadCsv);
       els.copyBtn.addEventListener("click", copyTsv);
-      els.deleteBtn.addEventListener("click", deleteCurrentData);
+      els.deleteBtn.addEventListener("click", deleteThisRecord);
       window.addEventListener("resize", () => {
         updateTabsArrows();
         syncOverlayFit();   // 軸が 3 本の組は、幅がせまくなると重ねられない

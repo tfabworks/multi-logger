@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>測定室 - AkaDako Multi Cloud Logger</title>
+<!-- 記録の保存先（IndexedDB）。手元の記録をくらべる（?local=…）・測定室の「自分の記録を足す」「自分の一覧にとりこむ」で使う。読めなくても測定室は動く -->
+<script src="v2db.js"></script>
 <style>
   /* 見た目とグラフの描き方は、手元で測定する画面（Multi Cloud Logger。../akadako-multi/index.html）にそろえている。
      カード・現在値・グラフ・表・ボタンの形は同じで、帯と背景とボタンの色だけをオレンジ系にして、
@@ -188,12 +190,59 @@
   .chart-scroll .grip.l { left: 0; }
   .chart-scroll .grip.r { right: 0; }
   .chart-scroll .span-label { font-size: 11px; font-weight: 800; color: #3b4d61; white-space: nowrap; pointer-events: none; }
-  /* くらべる: 左のカードに端末ごとの行（線の色・いまの値・動かす・ずらす） */
-  .dev-row .ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; color: var(--muted); font-size: .74rem; font-weight: 800; }
-  .dev-row .ctl label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  .dev-row .ctl input[type="radio"] { margin: 0; accent-color: var(--accent); }
-  .dev-row .ctl input[type="number"] { width: 68px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: .8rem; font-weight: 800; }
-  .dev-row.moving { box-shadow: inset 0 0 0 2px var(--row-color); }
+  /* くらべる: 左のカードは、記録（測定室では端末＝班）ごとのまとまり。
+     見出し＝色の印（押すと、その記録の線をまるごと出す・消す）＋名前（押すと開く・たたむ）。
+     中＝センサーごとのチェック（1 本ずつ出す・消す）と、「動かす」「ずらす」。たためば 1 行なので、10 班でも名前が 1 画面に並ぶ */
+  #ov-overlay .dashboard { grid-template-columns: clamp(280px, 22vw, 340px) minmax(0, 1fr); }   /* 記録の名前（「11/25 10:15 の記録」）が入るように、1 台を見る画面より少し広い */
+  .rec-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }   /* 列の幅は、中の文の長さで広げない（長い名前は「…」で切る） */
+  .rec-group { --row-color: var(--accent); border-radius: 12px; background: #f3f8fb; }
+  .rec-group.moving { box-shadow: inset 0 0 0 2px var(--row-color); }
+  .rec-head { display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 2px 0 6px; }
+  .rec-swatch { flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 3px solid var(--row-color); border-radius: 7px; color: white; background: var(--row-color); cursor: pointer; }
+  .rec-swatch svg { width: 16px; height: 16px; }
+  .rec-swatch[aria-pressed="false"] { background: white; }
+  .rec-swatch[aria-pressed="false"] svg { visibility: hidden; }
+  .rec-toggle { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 6px; border: 0; border-radius: 10px; color: var(--ink); background: transparent; font-size: .88rem; font-weight: 900; text-align: left; cursor: pointer; }
+  .rec-toggle:hover .chev { color: var(--accent-dark); }
+  .rec-toggle .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec-group.open .rec-toggle .name { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.3; padding: 5px 0; }   /* 開いたときは、長い名前も全部読める */
+  .rec-toggle .badge { flex: 0 0 auto; }
+  /* たたんだときに、出している線のあらまし（測定室はいまの値、手元の記録はセンサーの名前）を右に出す。名前を先に広げ、のこりの幅に入るだけ出す */
+  .rec-toggle .sum { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; color: var(--muted); font-size: .74rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .rec-toggle .chev { flex: 0 0 auto; width: 12px; color: var(--muted); font-size: .62rem; text-align: center; transition: transform .14s ease; }
+  .rec-group.open .chev { transform: rotate(90deg); }
+  .rec-group.open .sum { visibility: hidden; }
+  .rec-group.off .name { color: var(--muted); }
+  .rec-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; padding: 0 8px 8px 36px; }
+  .rec-group:not(.open) .rec-body { display: none; }
+  .rec-sensor { display: flex; align-items: center; gap: 7px; min-height: 28px; font-size: .82rem; font-weight: 800; cursor: pointer; }
+  .rec-sensor input { flex: 0 0 auto; width: 17px; height: 17px; margin: 0; cursor: pointer; accent-color: var(--row-color); }
+  .rec-sensor svg { flex: 0 0 auto; width: 26px; height: 8px; color: var(--line-color, var(--row-color)); }
+  .rec-sensor:not(.on) svg { visibility: hidden; }
+  .rec-sensor .sname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec-sensor:not(.on) .sname { color: var(--muted); }
+  .rec-sensor .val { flex: 0 0 auto; color: var(--muted); font-size: .8rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rec-sensor.on .val { color: var(--ink); }
+  .rec-body .ctl { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; margin: 5px 0 0 -26px; padding-top: 6px; border-top: 1px dashed var(--line); color: var(--muted); font-size: .74rem; font-weight: 800; }
+  .rec-body .ctl label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .rec-body .ctl input[type="radio"] { margin: 0; accent-color: var(--row-color); }
+  .rec-body .ctl input[type="number"] { width: 82px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: .8rem; font-weight: 800; }
+  .rec-body .ctl .btn { min-height: 26px; padding: 0 9px; border-radius: 8px; font-size: .72rem; }
+  .add-btn { margin-top: 10px; border-style: dashed; }
+  /* くらべる: グラフのすぐ上の列。左に「どの色がどの記録か」（線の種類とセンサーの対応も）、右に そろえ方 と 並べる／重ねる */
+  .ov-bar { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ov-key { flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 3px 14px; flex-wrap: wrap; font-size: .8rem; font-weight: 900; }
+  .key-item { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+  .key-item .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .key-item i { flex: 0 0 auto; width: 13px; height: 13px; border-radius: 4px; background: var(--key-color); }
+  .key-item svg { flex: 0 0 auto; width: 26px; height: 8px; color: var(--key-color); }
+  .key-item.kind { color: var(--muted); font-weight: 800; }
+  .ov-tools { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-left: auto; }
+  .ov-tools-label { color: var(--muted); font-size: .76rem; font-weight: 900; white-space: nowrap; }
+  .ov-align-box { display: inline-flex; align-items: center; gap: 6px; }
+  .view-toggle--3 { grid-template-columns: repeat(3, auto); }
+  .view-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .view-btn:disabled:hover { color: var(--muted); }
   /* くらべる: 出すセンサーをえらぶ印（線の種類の見本つき。押すと出す・出さないが切りかわる） */
   .ov-sensors { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .ov-sensors[hidden] { display: none; }
@@ -201,6 +250,26 @@
   .ov-chip svg { width: 26px; height: 8px; flex: 0 0 auto; }
   .ov-chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
   .ov-chip[aria-pressed="false"] svg { opacity: .35; }
+  /* 一部の記録でだけ出しているセンサー: ふちは点線、地はしま模様（全部＝ぬりつぶし と、なし＝白 のあいだ） */
+  .ov-chip[aria-pressed="mixed"] { border-style: dashed; border-color: var(--accent); color: var(--accent-dark); background: repeating-linear-gradient(135deg, var(--accent-soft) 0 6px, white 6px 12px); }
+  .crumb .btn { min-height: 36px; }
+  .rec-pick { display: grid; gap: 2px; min-height: 52px; padding: 7px 14px; text-align: left; white-space: normal; }
+  .rec-pick small { color: var(--muted); font-size: .74rem; font-weight: 800; }
+  #empty-back { display: inline-flex; align-items: center; margin-top: 16px; min-height: 44px; text-decoration: none; }
+  #print-sheet { display: none; }
+
+  /* ---- 手元の記録をくらべる（?local=…）: アプリ本体（index.html）と同じ青にして、測定室（オレンジ）と区別する ---- */
+  body.local {
+    --accent: #0877c9; --accent-dark: #07599a; --accent-soft: #e8f7ff;
+    background:
+      radial-gradient(circle at 8% 3%, rgba(255, 210, 63, 0.28) 0 80px, transparent 81px),
+      radial-gradient(circle at 94% 8%, rgba(8, 119, 201, 0.14) 0 120px, transparent 121px),
+      linear-gradient(180deg, #f6fcff 0%, #eaf6fb 100%);
+  }
+  body.local .hero { background: linear-gradient(135deg, #0877c9 0%, #00a5d8 100%); }
+  body.local .empty-bubble { background: rgba(232,247,255,.94); border-color: #8dc6e6; }
+  /* 測定室だけのもの（札・最終更新・開室中・測定室 ID・設定・JSON）は出さない */
+  body.local .room-mark, body.local #meta, body.local #status, body.local #owner-tools, body.local #btn-json, body.local #ov-crumb { display: none !important; }
   a.primary-btn { display: inline-flex; align-items: center; text-decoration: none; }
 
   /* ---- 小さな窓（測定室 ID・ダウンロード・設定） ---- */
@@ -250,6 +319,10 @@
     .chart-title-group p { margin-top: 2px; }
     .table-wrap { height: clamp(220px, calc(100vh - 300px), 430px); min-height: 0; }
     .canvas-wrap { height: clamp(194px, calc(100vh - 326px), 404px); min-height: 0; }
+    #ov-plot { height: clamp(194px, calc(100vh - 372px), 404px); }   /* くらべるは、グラフの上に 1 列（色と名前・そろえ方）多い */
+    .rec-list { gap: 5px; }
+    .rec-head, .rec-toggle { min-height: 32px; }
+    .ov-bar { margin-bottom: 6px; }
     .action-bar { margin-top: 9px; gap: 8px; }
     .action-btn { min-height: 40px; }
   }
@@ -271,9 +344,20 @@
     #tiles { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  /* 印刷（くらべる画面）: 帯やボタンは出さず、「画像でのこす」と同じ 1 枚（見出し・色と名前・グラフ）だけを紙に出す。
+     画面のグラフをそのまま刷ると、紙の幅に合わせて横だけ縮んでゆがむので、画像にしてから出している */
+  @page chart { size: landscape; margin: 12mm; }   /* グラフは横長なので、紙も横向きに（この 1 枚にだけ効く） */
+  @media print {
+    body.print-ov { background: white !important; }
+    body.print-ov > *:not(#print-sheet) { display: none !important; }
+    body.print-ov #print-sheet { display: block; page: chart; }
+    body.print-ov #print-sheet img { display: block; max-width: 100%; max-height: 170mm; margin: 0 auto; }
+  }
 </style>
 </head>
 <body>
+<!-- 手元の記録をくらべるとき（?local=…）は、絵が出る前に青の見た目にしておく（オレンジが一瞬見えないように） -->
+<script>if (new URLSearchParams(location.search).has('local')) document.body.classList.add('local');</script>
 <div class="page">
   <header class="hero" id="bar">
     <div class="title-wrap">
@@ -307,7 +391,10 @@
       <button id="btn-download" class="btn" type="button">全データをダウンロード</button>
     </div>
     <main id="tiles"></main>
-    <div id="empty" hidden><div class="empty-bubble" id="empty-text">まだ端末がありません。Multi Cloud Logger の「測定室」→「参加する」で入れます。</div></div>
+    <div id="empty" hidden><div class="empty-bubble" id="empty-text">まだ端末がありません。Multi Cloud Logger の「測定室」→「参加する」で入れます。</div>
+      <!-- 手元の記録をくらべるとき、記録が見つからなかったら出す -->
+      <div><a id="empty-back" class="btn primary" href="./" hidden>← 一覧にもどる</a></div>
+    </div>
   </section>
 
   <!-- 1 台を大きく見る（手元の画面と同じ並び: 左に現在値、右にグラフ・表） -->
@@ -362,41 +449,62 @@
         <div id="detail-table-wrap" class="table-wrap" hidden><table class="data-table"><thead></thead><tbody></tbody></table></div>
         <div class="action-bar">
           <button id="detail-csv" class="action-btn" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>ダウンロード</button>
+          <!-- この端末の記録を、自分の記録の一覧（アプリのトップページ）に写す。写したものは、通信が無くても見られる・くらべられる -->
+          <button id="detail-import" class="action-btn" type="button" title="この記録を、自分の記録の一覧にとりこむ（この端末にのこる）"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7.5 12 4l8 3.5v9L12 20l-8-3.5v-9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9v6m0 0-2.5-2.5M12 15l2.5-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="detail-import-text">自分の一覧にとりこむ</span></button>
         </div>
       </article>
     </div>
   </section>
 
-  <!-- くらべる: 選んだ端末の線を、上下に並べるか、1 枚に重ねる（センサーがちがっても重ねられる。縦軸は単位ごと） -->
+  <!-- くらべる: 選んだ端末（手元のモードでは記録）の線を、上下に並べるか、1 枚に重ねる（センサーがちがっても重ねられる。縦軸は単位ごと） -->
   <section id="ov-overlay" hidden>
     <div class="crumb">
       <button id="ov-close" class="btn back-btn" type="button">← 一覧にもどる</button>
-      <h2>くらべる</h2>
+      <h2 id="ov-crumb">くらべる</h2>
+      <span class="gap"></span>
+      <!-- 学習支援アプリなどに出すため: いまのグラフを、色と名前の見出しつきの 1 枚の画像（PNG）にする／紙に出す -->
+      <button id="ov-save-image" class="btn" type="button" title="いまのグラフを、1 枚の画像（PNG）にして保存する">画像でのこす</button>
+      <button id="ov-print" class="btn" type="button" title="いまのグラフを印刷する">印刷</button>
     </div>
     <div class="dashboard">
       <aside class="side-card">
-        <div class="current-label" id="ov-label">端末ごとの現在値</div>
-        <div id="ov-legend" class="compare-rows"></div>
-        <div class="hint" style="margin-top:10px">線の色は端末、線の種類はセンサーです。折れ線を左右にドラッグすると、その端末の時間がずれます。数値（秒）でも直せます。空白を左右にドラッグすると、範囲を選んで拡大できます。</div>
+        <div class="current-label" id="ov-label">出す線をえらぶ</div>
+        <div id="ov-legend" class="rec-list"></div>
+        <!-- 測定室だけ: この端末にある記録を、この画面にだけ足す（サーバーには送らない） -->
+        <button id="ov-add" class="btn add-btn" type="button" hidden title="この端末にある記録を、この画面にだけ足す（ほかの人には見えません）">＋ 自分の記録を足す</button>
+        <div class="hint" id="ov-hint" style="margin-top:10px"></div>
       </aside>
       <article class="chart-card">
         <div class="chart-head">
           <div class="chart-title-group"><h2 id="ov-title">くらべる</h2><p id="ov-desc"></p></div>
           <div class="chart-head-right">
-            <!-- センサーが 2 種類以上あるときだけ: 出すセンサーをえらぶ（はじめは全部） -->
+            <!-- センサーが 2 種類以上あるときだけ: 同じセンサーを、全部の記録でまとめて出す・消す -->
             <span id="ov-sensors" class="ov-sensors" hidden></span>
+          </div>
+        </div>
+        <div class="ov-bar">
+          <!-- どの色がどの記録（班）か。線の種類とセンサーの対応も、ここに出す -->
+          <div id="ov-key" class="ov-key"></div>
+          <div class="ov-tools">
+            <!-- 時間のそろえ方。線をドラッグしてずらすと、どれも選ばれていない状態になる -->
+            <div class="ov-align-box">
+              <span class="ov-tools-label">そろえる</span>
+              <div id="ov-align" class="view-toggle view-toggle--mini view-toggle--3" role="group" aria-label="時間のそろえ方">
+                <button id="ov-align-time" class="view-btn is-active" type="button" aria-pressed="true" title="記録した日と時刻のとおりに出す（ずらした分を元にもどす）">日と時刻</button>
+                <button id="ov-align-day" class="view-btn" type="button" aria-pressed="false" title="日付がちがっても、同じ時刻（10 時は 10 時）が重なるように出す">時刻だけ</button>
+                <button id="ov-align-start" class="view-btn" type="button" aria-pressed="false" title="それぞれの記録のはじまりを重ねて出す">はじまり</button>
+              </div>
+            </div>
             <!-- 線が 2 本以上で、重ねられるときだけ: 上下に並べる／1 枚に重ねる（縦軸は単位ごとに 1 本。3 本まで） -->
             <div id="ov-layout" class="view-toggle view-toggle--mini" role="group" aria-label="グラフの出し方" hidden>
               <button id="ov-stack" class="view-btn" type="button" aria-pressed="false">並べる</button>
               <button id="ov-over" class="view-btn is-active" type="button" aria-pressed="true">重ねる</button>
             </div>
-            <button id="ov-align-time" class="btn" type="button" title="時計どおりに重ねる（ずらす秒数を 0 にする）">時刻でそろえる</button>
-            <button id="ov-align-start" class="btn" type="button" title="それぞれの記録のはじまりをそろえる">はじまりをそろえる</button>
           </div>
         </div>
         <div id="ov-plot" class="canvas-wrap">
           <canvas id="ov-chart"></canvas>
-          <div class="empty-state" id="ov-empty"><div class="empty-bubble">まだ記録がありません。</div></div>
+          <div class="empty-state" id="ov-empty"><div class="empty-bubble" id="ov-empty-text">まだ記録がありません。</div></div>
         </div>
         <div id="ov-scroll"></div>
       </article>
@@ -429,6 +537,18 @@
 </div>
 <div id="photo-pop" class="photo-pop" hidden><img id="photo-pop-img" alt=""></div>
 
+<!-- 測定室の「くらべる」に足す、自分の記録をえらぶ -->
+<div id="ov-addrec" class="ov" hidden>
+  <div class="win">
+    <div class="win-head"><span>自分の記録を足す</span><span class="gap"></span><button id="addrec-close" class="btn" type="button">とじる</button></div>
+    <div class="win-body">
+      <div class="hint">足した記録は、この画面にだけ出ます。ほかの人には見えません。</div>
+      <div id="addrec-list" class="dl-list"></div>
+      <div id="addrec-empty" class="hint" hidden>この端末には、まだ記録がありません。</div>
+    </div>
+  </div>
+</div>
+
 <div id="ov-download" class="ov" hidden>
   <div class="win">
     <div class="win-head"><span>ダウンロード</span><span class="gap"></span><button id="dl-close" class="btn" type="button">とじる</button></div>
@@ -459,6 +579,8 @@
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<!-- 印刷のときだけ出す 1 枚（くらべる画面の「印刷」） -->
+<div id="print-sheet"><img id="print-img" alt="くらべるグラフ"></div>
 <script>
 (function () {
   'use strict';
@@ -470,6 +592,9 @@
   var DEV = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   var API = (DEV && String(params.get('api') || '').replace(/\/+$/, '')) || 'https://logdb.699.jp';
   var ROOM_ID = String(params.get('room') || params.get('id') || '').trim();
+  // ?local=<id>,<id>,… は「手元の記録をくらべる」モード。測定室ではなく、この端末の記録（IndexedDB）どうしをくらべる。API は呼ばない
+  var LOCAL_IDS = params.has('local') ? String(params.get('local')).split(',').map(function (x) { return x.trim(); }).filter(Boolean) : null;
+  var LOCAL = Boolean(LOCAL_IDS);
   var POLL_MS = 5000, STALE_MS = 20000;
   var OWNER_KEY = 'slink-room-owner:' + ROOM_ID;
   var MEMBER_KEY = 'slink-room-member:' + ROOM_ID;
@@ -631,9 +756,10 @@
   $('sel-all').addEventListener('change', function () { devices.forEach(function (d) { picked[d.deviceId] = $('sel-all').checked; }); updateSelection(); });
 
   // ===== 描画（手元の画面のグラフと同じ描き方。横軸だけは、端末どうしを重ねられるように時刻で取る） =====
+  // canvas._fixed = {w, h, scale}: 画面に出していない canvas に、決めた大きさ・細かさで描く（「画像でのこす」用）
   function prep(canvas) {
-    var dpr = window.devicePixelRatio || 1;
-    var w = canvas.clientWidth || 300, h = canvas.clientHeight || 100;
+    var fixed = canvas._fixed, dpr = fixed ? fixed.scale : window.devicePixelRatio || 1;
+    var w = fixed ? fixed.w : canvas.clientWidth || 300, h = fixed ? fixed.h : canvas.clientHeight || 100;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
     var ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -777,7 +903,8 @@
   }
   // 何本かの線を 1 枚に重ねる。縦軸は単位ごとに 1 本（unitGroups）で、左・右・いちばん右（右の軸の外。p.axisWidth ずつ離す）の順に置く。
   // 線が 1 本だけの軸はその線の色、同じ単位の 2 本以上で共有する軸は灰色で描き、目盛りの本数をそろえて横線を共有する。
-  // p.legend: 'auto' はセンサーの名前を枠の中に書く（線の見本つき）。'fit' は 1 行に入るときだけ書く（くらべる。端末の名前は左のカードにもある）
+  // p.legend: 'auto' はセンサーの名前を枠の中に書く（線の見本つき）。'none' は書かない（くらべる。色と名前はグラフの上の列に出す）。
+  // 'none' のときは、どの軸が何の目盛りか分かるように、軸の上へセンサーの名前と単位（入りきらなければ単位だけ）を書く
   function drawOverlaid(ctx, series, vises, groups, p, X) {
     var panelH = p.bottom - p.top;
     var axes = groups.map(function (members, a) {
@@ -840,10 +967,28 @@
     };
     var room = p.right - p.left - 14, all = series.map(function (s, n) { return n; });
     p.nameRows = 1;   // 枠の上の端に書いた名前の行数（マウスを乗せたときの時刻を、その下に出す）
-    if (axes.length === 1) {
-      if (namesWidth(all) > room) p.nameRows = p.legend === 'fit' ? 0 : all.length;
+    if (p.legend === 'none') {
+      p.nameRows = 0;
+      ctx.textBaseline = 'bottom';
+      axes.forEach(function (axis, a) {
+        var kinds = [], unit = series[axis.members[0]].unit || '';
+        axis.members.forEach(function (n) { var name = series[n].sensorName || series[n].name; if (kinds.indexOf(name) < 0) kinds.push(name); });
+        var full = kinds.length === 1 ? kinds[0] + (unit ? '（' + unit + '）' : '') : unit;
+        ctx.fillStyle = axis.textColor;
+        // 左の軸の分は、軸の左に入りきらなければ左の端から書く（枠の上は空いている）。右の軸の分は、軸の右に入るときだけ名前も書く
+        if (a === 0) {
+          var wide = ctx.measureText(full).width > p.left - 6;
+          ctx.textAlign = wide ? 'left' : 'right';
+          ctx.fillText(full, wide ? 4 : axis.x - 2, p.top - 8);
+        } else {
+          ctx.textAlign = 'left';
+          ctx.fillText(ctx.measureText(full).width <= p.axisWidth - 6 ? full : unit, axis.x + 2, p.top - 8);
+        }
+      });
+      ctx.textBaseline = 'top';
+    } else if (axes.length === 1) {
       if (namesWidth(all) <= room) all.forEach(function (n) { drawName(n, p.left + 7 + (all.length > 1 ? n / (all.length - 1) : 0) * (room - nameWidth(n)), p.top + 4); });
-      else if (p.legend !== 'fit') all.forEach(function (n) { drawName(n, p.left + 7, p.top + 4 + n * lineH); });   // 横に入りきらないときは、左上に縦に並べる
+      else { p.nameRows = all.length; all.forEach(function (n) { drawName(n, p.left + 7, p.top + 4 + n * lineH); }); }   // 横に入りきらないときは、左上に縦に並べる
     } else {
       // 左上と右上の名前が横に入りきらないときは、右上の分を 1 行下げる
       var crowded = namesWidth(axes[0].members) + nameGap + namesWidth(axes[1].members) > room;
@@ -858,7 +1003,8 @@
   }
   // series: [{name, unit, color, decimals, dash, width, pts: [[時刻（ミリ秒）, 値], ...]}]。pts は時刻の順
   // opts.mode: 'stack'（上下に並べる）／'overlay'（1 枚に重ねる）、range: {start, end}（見える範囲。なければ全部）、
-  //      sel: 選んだ範囲、hover: マウスを乗せた時刻、fine: 時刻を 0.1 秒まで出す、legend・fill: drawOverlaid を参照
+  //      sel: 選んだ範囲、hover: マウスを乗せた時刻、fine: 時刻を 0.1 秒まで出す、legend・fill: drawOverlaid を参照、
+  //      dates: 見える範囲が日をまたぐとき、時刻の下に日付も書く（くらべる。べつの日の記録どうしを並べることがある）
   // 戻り値は位置の情報（記録が 1 つもなければ null）
   function drawChart(canvas, series, opts) {
     opts = opts || {};
@@ -879,10 +1025,12 @@
     ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1'; ctx.fillStyle = '#667b8c';
     ctx.font = (small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     var xt = w < 500 ? 3 : 5;
+    var withDate = Boolean(opts.dates) && new Date(xMin).toDateString() !== new Date(xMax).toDateString();
     for (var i = 0; i <= xt; i++) {
       var t = xMin + (xMax - xMin) * i / xt, x = X(t), label = fmtTime(t), half = ctx.measureText(label).width / 2;
       ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-      ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 16);   // 右端の時刻が切れないように、枠の中へ寄せる。枠と時刻のあいだに「写真の帯」が入る
+      ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + (withDate ? 8 : 16));   // 右端の時刻が切れないように、枠の中へ寄せる。枠と時刻のあいだに「写真の帯」が入る
+      if (withDate) { var day = new Date(t); ctx.fillText((day.getMonth() + 1) + '/' + day.getDate(), Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 23); }
     }
     var maxPoints = Math.max(200, Math.floor(pw) * 2);
     var vises = series.map(function (s) { return visible(s.pts, xMin, xMax, maxPoints); });
@@ -1309,7 +1457,7 @@
     return g.xMin + Math.max(0, Math.min(1, (x - g.left) / g.width)) * (g.xMax - g.xMin);
   }
   // 記録間隔が 1 秒より短い端末は、時刻を 0.1 秒の位まで出す
-  function isFine(c) { var n = c.rows.length; return n > 1 && (c.rows[n - 1][1] - c.rows[0][1]) / (n - 1) < 950; }
+  function isFine(c) { var n = c.rows.length; if (c.local && has(c.fine)) return Boolean(c.fine); return n > 1 && (c.rows[n - 1][1] - c.rows[0][1]) / (n - 1) < 950; }   // 手元の記録は、見出しに書いてある
 
   // ===== 1 台を大きく見る（手元の画面と同じ並び） =====
   // view: 'chart'（グラフ）／'table'（表）、overlay: センサーが 2 つ以上のとき 1 枚に重ねるか、hover: マウスを乗せた時刻
@@ -1669,76 +1817,198 @@
     cv.addEventListener('pointerleave', function () { if (detail.hover !== null) { detail.hover = null; detailDraw(); } });
   })();
 
-  // ===== くらべる（選んだ端末の線を、上下に並べるか、1 枚に重ねる） =====
-  // 手元の画面の「くらべる」と同じ考え方: 並べる＝線ごとに 1 段、重ねる＝1 枚（縦軸は単位ごとに 1 本で 3 本まで。センサーがちがっても重ねられる）。
-  // 線の色は端末、線の種類（実線・破線・点線…）はセンサー。出すセンサーは、見出しの右の印でえらぶ（はじめは全部）
-  // offsets: 端末ごとにずらす秒数、moving: 「動かす」を選んである端末、rows: 左のカードの行（端末ごと）、
-  // layout: 'overlay'（重ねる）／'stack'（並べる）、off: 出さないセンサー、union: 選んだ端末にあるセンサー
-  var ov = {ids: [], offsets: {}, moving: null, layout: 'overlay', off: {}, union: [], drag: null, msPerPx: 0, hover: null, caches: null, rows: null};
+  // ===== くらべる（選んだ端末・記録の線を、上下に並べるか、1 枚に重ねる） =====
+  // 測定室の「くらべる」（端末＝班どうし）と、手元の記録どうしの「くらべる」（?local=…）で、同じ画面を使う。
+  // 並べる＝線ごとに 1 段、重ねる＝1 枚（縦軸は単位ごとに 1 本で 3 本まで。センサーがちがっても重ねられる）。
+  // 線の色は記録（端末）、線の種類（実線・破線・点線…）はセンサー。記録が 1 つだけのときは、センサーごとの色で実線にする。
+  // 出す・出さないは「記録 × センサー」ごとに持つ（vis）。左の一覧のチェックで 1 本ずつ、色の印で記録まるごと、
+  // 見出しの右の印で同じセンサーを全部の記録でまとめて、出したり消したりする。1 本も出さないこともできる（グラフの所に案内を出す）。
+  // ids: くらべる相手（端末の ID か、"local:" + 手元の記録の ID）、extra: 測定室で足した自分の記録、
+  // offsets: 記録ごとにずらす秒数、align: そろえ方（'time' 日と時刻／'day' 時刻だけ／'start' はじまり／null 手でずらした）、
+  // moving: 「動かす」を選んである記録、rows: 左の一覧のまとまり（記録ごと）、layout: 'overlay'（重ねる）／'stack'（並べる）、
+  // saved: 色の印でまるごと消す前に出していたセンサー（もう一度押したときに戻す）、union: 選んだ記録にあるセンサー
+  var LOCAL_PREFIX = 'local:';
+  function isLocalId(id) { return String(id).indexOf(LOCAL_PREFIX) === 0; }
+  var ENTRY = LOCAL ? '記録' : '端末';   // 左の一覧の 1 まとまりの呼び方
+  var KEY_GRAY = '#5b6b7a';
+  var ov = {ids: [], extra: [], offsets: {}, align: 'time', moving: null, layout: 'overlay', vis: {}, saved: {}, inited: {}, visFor: null,
+    union: [], drag: null, msPerPx: 0, hover: null, caches: null, rows: null, last: null};
+  function vk(id, key) { return id + '|' + key; }
   var ovScroll = makeScroll(function () { overlayDraw(); });
   var ovSel = makeSelect(ovScroll, function () { overlayDraw(); });
   $('ov-scroll').appendChild(ovScroll.addBar());
+  var ZOOM_HINT = '何もない所を左右にドラッグすると、そこを大きくして見られます。';
   async function openOverlay() {
-    ov.ids = pickedIds();
-    if (!ov.ids.length) return;
+    var ids = LOCAL ? ov.ids.slice() : pickedIds().concat(ov.extra);
+    if (!ids.length || (!LOCAL && !pickedIds().length)) return;
+    ov.ids = ids;
     ovScroll.reset();
     ovSel.sel = null;
-    ov.hover = null; ov.caches = null; ov.rows = null;
+    ov.hover = null; ov.caches = null; ov.rows = null; ov.last = null;
     ov.ids.forEach(function (id) { if (ov.offsets[id] === undefined) ov.offsets[id] = 0; });
     if (!ov.moving || ov.ids.indexOf(ov.moving) < 0) ov.moving = ov.ids[0];
-    $('ov-legend').textContent = ''; $('ov-empty').hidden = true;
+    // 前と同じ組で開き直したときは、出す・出さないをそのままにする。組が変わったら、はじめのチェック（共通のセンサーだけ）からやり直す
+    var sig = ov.ids.join();
+    if (ov.visFor !== sig) { ov.visFor = sig; ov.vis = {}; ov.saved = {}; ov.inited = {}; ov.autoAlign = true; }
+    $('ov-legend').textContent = ''; $('ov-key').textContent = ''; delete $('ov-key').dataset.sig; $('ov-empty').hidden = true;
+    $('ov-add').hidden = LOCAL || !window.V2DB;
     showView('overlay');
     prep($('ov-chart'));
     await overlayRefresh(true);
   }
-  // 左のカードの行。端末の線の色、名前、いまの値、「動かす」「ずらす」。値は overlayDraw が入れる
-  function buildLegend() {
+  function ovCacheOf(id) { return ov.caches ? ov.caches[ov.ids.indexOf(id)] || null : null; }
+  function keysOf(c) { return c.sensors.map(function (s) { return s.key; }); }
+  // はじめのチェック。開いたときは「全部の記録に共通するセンサーだけ」（共通のものが無ければ全部）。
+  // あとから加わった記録（足した自分の記録・読みこみがおくれた端末）は「いま出ているのと同じセンサーだけ」（1 つも無ければ全部）。
+  // 記録のとちゅうで足されたセンサーは、チェックなしで並べる（見たい人が自分で入れる）
+  function initVis(caches) {
+    var fresh = [];
+    ov.ids.forEach(function (id, i) { if (caches[i] && !ov.inited[id]) fresh.push(i); });
+    if (fresh.length) {
+      var want;
+      if (!Object.keys(ov.inited).length) {
+        var loaded = caches.filter(Boolean);
+        want = keysOf(loaded[0]).filter(function (k) { return loaded.every(function (c) { return keysOf(c).indexOf(k) >= 0; }); });
+      } else {
+        var showing = {};
+        ov.ids.forEach(function (id, i) { if (caches[i] && ov.inited[id]) keysOf(caches[i]).forEach(function (k) { if (ov.vis[vk(id, k)]) showing[k] = true; }); });
+        want = Object.keys(showing);
+      }
+      fresh.forEach(function (i) {
+        var id = ov.ids[i], keys = keysOf(caches[i]), hit = keys.filter(function (k) { return want.indexOf(k) >= 0; });
+        keys.forEach(function (k) { ov.vis[vk(id, k)] = !hit.length || hit.indexOf(k) >= 0; });
+        ov.inited[id] = true;
+      });
+    }
+    ov.ids.forEach(function (id, i) { if (caches[i]) keysOf(caches[i]).forEach(function (k) { if (ov.vis[vk(id, k)] === undefined) ov.vis[vk(id, k)] = false; }); });
+  }
+  // 色の印: その記録の線をまるごと消す。もう一度押すと、消す前に出していた線を戻す
+  function toggleRecord(id) {
+    var c = ovCacheOf(id);
+    if (!c) return;
+    var keys = keysOf(c), on = keys.filter(function (k) { return ov.vis[vk(id, k)]; });
+    if (on.length) { ov.saved[id] = on; keys.forEach(function (k) { ov.vis[vk(id, k)] = false; }); }
+    else {
+      var back = (ov.saved[id] || []).filter(function (k) { return keys.indexOf(k) >= 0; });
+      if (!back.length) back = keys.filter(function (k) { return ov.ids.some(function (other) { return ov.vis[vk(other, k)]; }); });   // ほかの記録で出しているセンサー
+      if (!back.length) back = keys;
+      back.forEach(function (k) { ov.vis[vk(id, k)] = true; });
+    }
+    overlayDraw();
+  }
+  // 見出しの右の印: 同じセンサーを、全部の記録でまとめて出す・消す。
+  // 「出す」は、いま線を出している記録にだけ入れる（色の印でまるごと消した記録を、勝手に戻さない）。そういう記録に無いセンサーなら、持っている記録の全部に入れる
+  function chipTargets(key) {
+    var holders = ov.ids.filter(function (id) { var c = ovCacheOf(id); return c && keysOf(c).indexOf(key) >= 0; });
+    var active = holders.filter(function (id) { return keysOf(ovCacheOf(id)).some(function (k) { return ov.vis[vk(id, k)]; }); });
+    return {holders: holders, targets: active.length ? active : holders};
+  }
+  function chipState(key) {
+    var t = chipTargets(key).targets, on = t.filter(function (id) { return ov.vis[vk(id, key)]; }).length;
+    return !on ? 'false' : on === t.length ? 'true' : 'mixed';
+  }
+  function toggleChip(key) {
+    var t = chipTargets(key);
+    if (chipState(key) === 'true') t.holders.forEach(function (id) { ov.vis[vk(id, key)] = false; });
+    else t.targets.forEach(function (id) { ov.vis[vk(id, key)] = true; });
+    overlayDraw();
+  }
+  var ICON_CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7"/></svg>';
+  var LINE_SVG = '<svg viewBox="0 0 26 8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+  function setDash(svg, dash) { svg.querySelector('line').setAttribute('stroke-dasharray', dash && dash.length ? dash.map(function (v) { return Math.max(0.5, v * 0.5); }).join(' ') : ''); }
+  // 左の一覧。記録（端末）ごとのまとまりを作る。中のセンサーの行は syncSensors が、値やチェックは overlayDraw が入れる。
+  // はじめに開いておくか: 記録が 2 つまでか、開いても行が少ない（全部で 9 行まで）ときは開く。多いときはたたんで、名前が 1 画面に並ぶようにする
+  function buildLegend(caches) {
     var legend = $('ov-legend'); legend.textContent = '';
     ov.rows = {};
+    var lines = 0;
+    caches.forEach(function (c) { lines += c ? c.sensors.length + 1 : 1; });
+    var open = ov.ids.length <= 2 || lines <= 9;
+    // 使い方のひとこと（記録が 1 つだけのときは、ずらす相手がいないので、ドラッグの話はしない）
+    $('ov-hint').textContent = ov.ids.length < 2 ? 'チェックを入れたセンサーの線が出ます。' + ZOOM_HINT
+      : '色の印を押すと、その' + ENTRY + 'の線をまとめて出したり消したりできます。線を左右にドラッグすると、その' + ENTRY + 'の時間がずれます。' + ZOOM_HINT;
     ov.ids.forEach(function (id, i) {
-      var row = el('div', 'compare-row dev-row'); row.style.setProperty('--row-color', COLORS[i % COLORS.length]);
-      var name = el('span', 'name'), val = el('span', 'val');
-      row.appendChild(name); row.appendChild(val);
+      var box = el('div', 'rec-group' + (open ? ' open' : '')); box.style.setProperty('--row-color', COLORS[i % COLORS.length]);
+      var head = el('div', 'rec-head');
+      var swatch = el('button', 'rec-swatch'); swatch.type = 'button'; swatch.innerHTML = ICON_CHECK;
+      swatch.addEventListener('click', function () { toggleRecord(id); });
+      var toggle = el('button', 'rec-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-expanded', String(open));
+      var name = el('span', 'name'), sum = el('span', 'sum'), chev = el('span', 'chev', '▶'); chev.setAttribute('aria-hidden', 'true');
+      toggle.appendChild(name);
+      if (!LOCAL && isLocalId(id)) toggle.appendChild(el('span', 'badge', '自分'));   // 測定室に足した、自分の記録
+      toggle.appendChild(sum); toggle.appendChild(chev);
+      toggle.addEventListener('click', function () { var on = !box.classList.contains('open'); box.classList.toggle('open', on); toggle.setAttribute('aria-expanded', String(on)); });
+      head.appendChild(swatch); head.appendChild(toggle);
+      var body = el('div', 'rec-body'), sensors = el('div');
       var ctl = el('div', 'ctl');
       var lab = el('label'), rb = el('input'); rb.type = 'radio'; rb.name = 'moving';
       rb.addEventListener('change', function () { ov.moving = id; overlayDraw(); });
+      lab.title = '線が重なっていてつかみにくいときに。えらんだ' + ENTRY + 'の線が太くなり、ドラッグで先に動きます';
       lab.appendChild(rb); lab.appendChild(document.createTextNode('動かす')); ctl.appendChild(lab);
       var lab2 = el('label'); lab2.appendChild(document.createTextNode('ずらす'));
       var num = el('input'); num.type = 'number'; num.step = '1';
-      num.addEventListener('change', function () { ov.offsets[id] = Number(num.value) || 0; overlayDraw(); });
+      num.addEventListener('change', function () { ov.offsets[id] = Number(num.value) || 0; ov.align = null; overlayDraw(); });
       lab2.appendChild(num); lab2.appendChild(document.createTextNode('秒')); ctl.appendChild(lab2);
-      row.appendChild(ctl);
-      legend.appendChild(row);
-      ov.rows[id] = {row: row, name: name, val: val, rb: rb, num: num};
+      if (ov.ids.length < 2) { lab.hidden = true; lab2.hidden = true; ctl.hidden = true; }   // 記録が 1 つだけなら、ずらす相手がいない
+      if (!LOCAL && isLocalId(id)) {
+        var drop = el('button', 'btn', 'はずす'); drop.type = 'button'; drop.title = 'この記録を、くらべる画面からはずす（記録は消えません）';
+        drop.addEventListener('click', function () { removeLocal(id); });
+        ctl.appendChild(drop); ctl.hidden = false;
+      }
+      body.appendChild(sensors); body.appendChild(ctl);
+      box.appendChild(head); box.appendChild(body);
+      legend.appendChild(box);
+      ov.rows[id] = {box: box, swatch: swatch, name: name, sum: sum, sensors: sensors, sig: null, items: {}, rb: rb, num: num};
+    });
+  }
+  // まとまりの中の、センサーごとの行（チェック・線の見本・名前・いまの値）。センサーの顔ぶれが変わったときだけ作り直す
+  function syncSensors(id, c, r) {
+    var sig = c ? keysOf(c).join('+') : '';
+    if (r.sig === sig) return;
+    r.sig = sig; r.items = {}; r.sensors.textContent = '';
+    if (!c) return;
+    c.sensors.forEach(function (s) {
+      var row = el('label', 'rec-sensor'), cb = el('input'); cb.type = 'checkbox';
+      cb.addEventListener('change', function () { ov.vis[vk(id, s.key)] = cb.checked; overlayDraw(); });
+      var holder = el('span'); holder.innerHTML = LINE_SVG;
+      var line = holder.firstChild, val = el('span', 'val');
+      row.appendChild(cb); row.appendChild(line); row.appendChild(el('span', 'sname', s.name)); row.appendChild(val);
+      row.title = s.name + unitSuffix(s);
+      r.sensors.appendChild(row);
+      r.items[s.key] = {row: row, cb: cb, line: line, val: val};
     });
   }
   async function overlayRefresh(rebuild) {
     var ids = ov.ids.slice(), caches = [];
-    for (var i = 0; i < ids.length; i++) { try { caches.push(await fetchRows(ids[i])); } catch (e) { caches.push(null); } }
+    for (var i = 0; i < ids.length; i++) { try { caches.push(isLocalId(ids[i]) ? rowsCache[ids[i]] || null : await fetchRows(ids[i])); } catch (e) { caches.push(null); } }
     if ($('ov-overlay').hidden || ids.join() !== ov.ids.join()) return;   // 待っている間に閉じた・選び直した
     var union = [];
     caches.forEach(function (c) { if (c) c.sensors.forEach(function (s) { if (!union.some(function (u) { return u.key === s.key; })) union.push(s); }); });
-    // 出すセンサーをえらぶ印。センサーの顔ぶれが変わったときだけ作り直す
+    // 見出しの右の印（同じセンサーをまとめて出す・消す）。センサーの顔ぶれが変わったときだけ作り直す
     var sig = union.map(function (u) { return u.key; }).join('+');
     if (rebuild || sig !== ov.unionSig) {
       ov.unionSig = sig; ov.union = union;
       var box = $('ov-sensors'); box.textContent = '';
       union.forEach(function (u) {
         var chip = el('button', 'ov-chip'); chip.type = 'button'; chip.dataset.key = u.key;
-        chip.title = '押すと、' + u.name + 'を出す・出さないが切りかわります';
-        chip.innerHTML = '<svg viewBox="0 0 26 8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+        chip.innerHTML = LINE_SVG;
         chip.appendChild(document.createTextNode(u.name + unitSuffix(u)));
-        chip.addEventListener('click', function () {
-          var shown = ov.union.filter(function (x) { return !ov.off[x.key]; });
-          if (!ov.off[u.key] && shown.length <= 1) return;   // さいごの 1 つは消さない
-          ov.off[u.key] = !ov.off[u.key];
-          overlayDraw();
-        });
+        chip.addEventListener('click', function () { toggleChip(u.key); });
         box.appendChild(chip);
       });
     }
-    if (rebuild || !ov.rows) buildLegend();
     ov.caches = caches;
+    initVis(caches);
+    if (rebuild || !ov.rows) buildLegend(caches);
+    // あたらしい組で開いたとき、日付のちがう記録があれば「時刻だけ」でそろえて始める
+    // （日と時刻のままだと、何日もはなれた細い線が両はしに出るだけで、くらべられない）。もう手でずらしてあるときは、さわらない
+    if (ov.autoAlign && caches.some(Boolean)) {
+      ov.autoAlign = false;
+      var days = {};
+      ovStarts().forEach(function (t) { if (t !== null) days[dayStart(t)] = true; });
+      var untouched = ov.ids.every(function (id) { return !ov.offsets[id]; });
+      if (untouched) { if (Object.keys(days).length > 1) { alignBy('day'); return; } ov.align = 'time'; }
+    }
     overlayDraw();
   }
   // ずらした時刻の線。記録が増えたとき・ずらす秒数が変わったときだけ作り直す
@@ -1756,88 +2026,160 @@
     var w = Math.max(320, $('ov-plot').clientWidth), m = chartMargin(w, 2);
     return w - m.left - m.right >= OVERLAY_MIN_PLOT;
   }
+  // ずらした分の言い方。線が動く向きで言う（「+」「−」は、小学生にはまだむずかしい）
+  function shiftText(off) {
+    var sec = Math.round(Math.abs(off));
+    if (!sec) return '';
+    var days = Math.floor(sec / 86400), rest = sec % 86400;
+    return '（' + (off > 0 ? '右へ ' : '左へ ') + (days ? days + '日' : '') + (days && rest ? ' ' : '') + (rest ? spanText(rest * 1000) : '') + '）';
+  }
+  function dayStart(ms) { var d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+  // それぞれの記録の、はじまりの時刻（ずらす前。記録が無ければ null）
+  function ovStarts() { return ov.ids.map(function (id, i) { var c = ov.caches && ov.caches[i]; return c && c.rows.length ? absTime(c, c.rows[0]) : null; }); }
+  // グラフの上の「どの色がどの記録か」。items: [{color, text, line: 線の見本にするか（しなければ四角）, dash, kind: センサーの線の種類の説明か}]
+  function renderKey(items) {
+    var box = $('ov-key'), sig = JSON.stringify(items);
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig; box.textContent = '';
+    items.forEach(function (it) {
+      var item = el('span', 'key-item' + (it.kind ? ' kind' : '')); item.style.setProperty('--key-color', it.color);
+      if (it.line) { item.innerHTML = LINE_SVG; setDash(item.firstChild, it.dash); } else item.appendChild(el('i'));
+      item.appendChild(el('span', 'txt', it.text));
+      box.appendChild(item);
+    });
+  }
   function overlayDraw() {
     if (!ov.caches) return;
-    var series = [], fine = false;
-    var shown = ov.union.filter(function (u) { return !ov.off[u.key]; });   // 出すセンサー（この順に、実線・破線・点線…）
+    var series = [], fine = false, keyItems = [];
+    var one = ov.ids.length === 1;   // 記録が 1 つだけ: その中のセンサーどうしを見る（線の色はセンサーごと、どれも実線）
+    var mines = ov.ids.map(function (id, i) {   // 記録ごとの、出すセンサー
+      var c = ov.caches[i], list = [];
+      if (c) c.sensors.forEach(function (s, si) { if (ov.vis[vk(id, s.key)]) list.push({s: s, si: si}); });
+      return list;
+    });
+    var shown = ov.union.filter(function (u) { return mines.some(function (mine) { return mine.some(function (x) { return x.s.key === u.key; }); }); });   // 出ているセンサー（この順に、実線・破線・点線…）
     var kinds = shown.length > 1;
-    // 印の見た目（出している・いない、線の種類）
+    // 並べる／重ねる（線が 2 本以上で、重ねられるときだけえらべる。重ねられないときは並べる）
+    var lines = [];
+    mines.forEach(function (mine) { mine.forEach(function (x) { lines.push({unit: x.s.unit}); }); });
+    var can = lines.length >= 2 && ovCanOverlay(lines);
+    var overlay = lines.length < 2 ? true : can && ov.layout === 'overlay';
+    // 線の種類でセンサーを見分けるのは、いくつかの記録の、2 種類以上のセンサーを重ねたときだけ（並べたときは段の見出しで分かるので、どれも実線）
+    var dashed = overlay && !one && kinds;
+    var dashOf = function (key) { var n = 0; shown.forEach(function (u, k) { if (u.key === key) n = k; }); return dashed ? DASHES[n % DASHES.length] : []; };
+    // 見出しの右の印の見た目（全部の記録で出している・一部だけ・出していない、線の種類）
     Array.prototype.forEach.call($('ov-sensors').children, function (chip) {
-      var n = -1;
-      shown.forEach(function (u, k) { if (u.key === chip.dataset.key) n = k; });
-      chip.setAttribute('aria-pressed', String(n >= 0));
-      var dash = n >= 0 ? DASHES[n % DASHES.length] : [];
-      chip.querySelector('line').setAttribute('stroke-dasharray', dash.length ? dash.map(function (v) { return Math.max(0.5, v * 0.5); }).join(' ') : '');
+      var key = chip.dataset.key, state = chipState(key), u = null;
+      ov.union.forEach(function (x) { if (x.key === key) u = x; });
+      if (!u) return;
+      chip.setAttribute('aria-pressed', state);
+      chip.title = u.name + (state === 'true' ? 'を出しています。押すと、全部の' + ENTRY + 'で消します' : state === 'mixed' ? 'は、一部の' + ENTRY + 'でだけ出ています。押すと、全部の' + ENTRY + 'で出します' : 'は出ていません。押すと、全部の' + ENTRY + 'で出します');
+      setDash(chip.firstChild, state === 'false' ? [] : dashOf(key));
+      chip.firstChild.style.color = one && state !== 'false' ? u.color : '';
     });
     $('ov-sensors').hidden = ov.union.length < 2;
     ov.ids.forEach(function (id, i) {
-      var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0;
-      var mine = [];
-      if (c) c.sensors.forEach(function (sn, si) { if (!ov.off[sn.key]) mine.push({s: sn, si: si}); });
+      var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0, mine = mines[i], color = COLORS[i % COLORS.length];
+      var name = c ? c.name : d ? d.name : '';
       if (r) {
-        r.name.textContent = (c ? c.name : d ? d.name : '') + (c && !mine.length ? '（出しているセンサーはありません）' : '');
-        r.val.textContent = mine.length ? '' : '—';
-        mine.forEach(function (x, k) {   // いまの値（センサーが 2 つ以上なら「 / 」で区切る）
-          if (k) r.val.appendChild(document.createTextNode(' / '));
-          r.val.appendChild(document.createTextNode(d ? fmtVal(d.lastValues[x.s.key], x.s) : '—'));
-          if (x.s.unit) r.val.appendChild(el('small', '', x.s.unit));
+        syncSensors(id, c, r);
+        r.name.textContent = name;
+        r.name.parentNode.title = name;
+        r.box.classList.toggle('off', !mine.length);
+        r.swatch.setAttribute('aria-pressed', String(mine.length > 0));
+        r.swatch.title = mine.length ? '押すと、この' + ENTRY + 'の線をぜんぶ消します' : '押すと、この' + ENTRY + 'の線を出します';
+        r.swatch.setAttribute('aria-label', name + 'の線を出す');
+        // たたんだときのあらまし: 測定室の端末は、出している線のいまの値。手元の記録（いまの値が無い）は、出しているセンサーの名前
+        r.sum.textContent = !c ? '読みこめません' : !mine.length ? '出していません'
+          : mine.map(function (x) { return d ? fmtVal(d.lastValues[x.s.key], x.s) + (x.s.unit || '') : x.s.name; }).join(d ? ' / ' : '・');
+        if (c) c.sensors.forEach(function (s) {
+          var it = r.items[s.key], on = Boolean(ov.vis[vk(id, s.key)]);
+          if (!it) return;
+          it.cb.checked = on;
+          it.row.classList.toggle('on', on);
+          setDash(it.line, on ? dashOf(s.key) : []);
+          if (one) it.row.style.setProperty('--line-color', s.color); else it.row.style.removeProperty('--line-color');
+          it.val.textContent = d ? fmtVal(d.lastValues[s.key], s) + (s.unit || '') : '';
         });
         r.rb.checked = ov.moving === id;
-        r.row.classList.toggle('moving', ov.moving === id);
+        r.box.classList.toggle('moving', ov.moving === id && !one);
         if (document.activeElement !== r.num) r.num.value = String(Math.round(off * 10) / 10);
       }
       if (!mine.length) return;
       if (isFine(c)) fine = true;
+      if (!one) keyItems.push({color: color, text: name + shiftText(off)});
       mine.forEach(function (x) {
-        var kind = 0;
-        shown.forEach(function (u, k) { if (u.key === x.s.key) kind = k; });
-        var name = c.name + (kinds ? ' ' + x.s.name : '');
-        series.push({id: id, key: x.s.key, color: COLORS[i % COLORS.length], dash: DASHES[kind % DASHES.length], name: name, sensorName: x.s.name,
-          shift: off ? '（' + (off > 0 ? '+' : '') + Math.round(off) + '秒）' : '',
-          unit: x.s.unit, decimals: x.s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, x.si, off)});
+        var lineName = one ? x.s.name : name + (kinds ? ' ' + x.s.name : '');   // マウスを乗せたときの値の札に出す名前
+        if (one) keyItems.push({color: x.s.color, line: true, dash: [], text: x.s.name + unitSuffix(x.s)});
+        series.push({id: id, key: x.s.key, color: one ? x.s.color : color, dash: dashOf(x.s.key), name: lineName, sensorName: x.s.name,
+          recName: one ? '' : name + shiftText(off), unit: x.s.unit, decimals: x.s.decimals, width: id === ov.moving && !one ? 4 : 3, pts: ovPts(c, x.si, off)});
       });
     });
-    // 並べる／重ねる（線が 2 本以上で、重ねられるときだけえらべる。重ねられないときは並べる）
-    var can = series.length >= 2 && ovCanOverlay(series);
-    var overlay = series.length < 2 ? true : can && ov.layout === 'overlay';
+    if (dashed) shown.forEach(function (u) { keyItems.push({color: KEY_GRAY, line: true, dash: dashOf(u.key), kind: true, text: u.name + unitSuffix(u)}); });
+    renderKey(keyItems);
+    // そろえ方（どれが選ばれているか）。「時刻だけ」は、日付のちがう記録があるときだけ使える
+    var days = {};
+    ovStarts().forEach(function (t) { if (t !== null) days[dayStart(t)] = true; });
+    $('ov-align-day').disabled = Object.keys(days).length < 2;
+    $('ov-align').parentNode.hidden = one;
+    setPressed($('ov-align-time'), ov.align === 'time'); setPressed($('ov-align-day'), ov.align === 'day'); setPressed($('ov-align-start'), ov.align === 'start');
     $('ov-layout').hidden = !can;
     setPressed($('ov-stack'), !overlay); setPressed($('ov-over'), overlay);
-    // 並べるときは段の見出しに単位まで出す。重ねるときの名前は短く（単位は軸に出る）
-    series.forEach(function (sr) { sr.label = sr.name + sr.shift + (overlay ? '' : unitSuffix(sr)); });
+    // 並べるときの段の見出し: 記録の名前（ずらした分）と、センサーの名前（単位）
+    series.forEach(function (sr) { sr.label = (sr.recName ? sr.recName + '　' : '') + sr.sensorName + unitSuffix(sr); });
     var names = shown.map(function (u) { return u.name + unitSuffix(u); });
-    $('ov-title').textContent = (shown.length ? shown.map(function (u) { return u.name; }).join('・') + 'を' : '') + 'くらべる';
-    $('ov-desc').textContent = !series.length ? ''
-      : '横軸：時刻　縦軸：' + (overlay ? names.join('・') : '上から、端末' + (kinds ? 'とセンサー' : '') + 'ごと') + '　線の色：端末' + (kinds ? '　線の種類：センサー' : '')
-        + (series.length >= 2 && !can ? '　（単位が 4 種類以上あるので、重ねずに並べています）' : '');
+    var title = (shown.length ? (shown.length > 3 ? shown.slice(0, 3).map(function (u) { return u.name; }).join('・') + ' など' : shown.map(function (u) { return u.name; }).join('・')) + 'を' : '') + 'くらべる';
+    var groups = overlay ? unitGroups(series) : [];
+    var axisText = !overlay ? '上から、' + (one ? 'センサーごと' : ENTRY + (kinds ? 'とセンサー' : '') + 'ごと')
+      : groups.length < 2 ? names.join('・')
+      : groups.map(function (members, a) { var seen = []; members.forEach(function (n) { var t = series[n].sensorName + unitSuffix(series[n]); if (seen.indexOf(t) < 0) seen.push(t); }); return OVERLAY_SIDES[a] + ' ' + seen.join('と'); }).join('・');
+    var desc = !series.length ? ''
+      : '横軸：時刻　縦軸：' + axisText + '　線の色：' + (one ? 'センサー' : ENTRY) + (dashed ? '　線の種類：センサー' : '')
+        + (series.length >= 2 && !can ? (unitGroups(series).length > 3 ? '　（単位が 4 種類以上あるので、重ねずに並べています）' : '　（画面の幅がせまいので、重ねずに並べています）') : '');
+    $('ov-title').textContent = title;
+    $('ov-desc').textContent = desc;
     var cv = $('ov-chart'), plot = $('ov-plot'), stackN = overlay ? 1 : series.length;
     plot.dataset.panels = String(Math.min(6, Math.max(1, stackN)));   // 段の数で箱の高さが変わる（CSS）。7 段以上は、ここで高さを決める
     plot.style.minHeight = stackN > 6 ? (stackN * 165 + 30) + 'px' : '';
-    placeScroll(ovScroll, cv, overlay ? Math.max(0, unitGroups(series).length - 1) : 0);
+    placeScroll(ovScroll, cv, overlay ? Math.max(0, groups.length - 1) : 0);
     var range = ovScroll.update(extentOf(series.map(function (sr) { return sr.pts; })));
-    var geo = drawChart(cv, series, {mode: overlay ? 'overlay' : 'stack', range: range, sel: ovSel.sel, hover: ov.drag ? null : ov.hover, fine: fine, legend: 'fit', fill: series.length > 4 ? 0 : 0.1});
+    // 色と名前はグラフの上の列に出すので、枠の中には名前を書かない（legend: 'none'。かわりに、軸の上へセンサーの名前と単位を書く）
+    var opts = {mode: overlay ? 'overlay' : 'stack', range: range, fine: fine, legend: 'none', dates: true, fill: series.length > 4 ? 0 : 0.1};
+    var geo = drawChart(cv, series, Object.assign({sel: ovSel.sel, hover: ov.drag ? null : ov.hover}, opts));
+    $('ov-empty-text').textContent = series.length ? 'まだ記録がありません。' : '線が 1 本も出ていません。左の一覧でチェックを入れると、線が出ます。';
     $('ov-empty').hidden = Boolean(geo);
+    $('ov-save-image').disabled = $('ov-print').disabled = !geo;
     ov.msPerPx = geo ? geo.msPerPx : 0;
     ov.drawn = series;
+    ov.last = geo ? {series: series, opts: opts, keyItems: keyItems, title: title, desc: desc} : null;
     ovSel.place(cv, geo);
   }
   $('ov-stack').addEventListener('click', function () { ov.layout = 'stack'; overlayDraw(); });
   $('ov-over').addEventListener('click', function () { ov.layout = 'overlay'; overlayDraw(); });
-  $('ov-align-time').addEventListener('click', function () { ov.ids.forEach(function (id) { ov.offsets[id] = 0; }); overlayDraw(); });
-  $('ov-align-start').addEventListener('click', function () {
-    // それぞれの記録のはじまりを、いちばん早い端末に合わせる
+  // そろえ方を変えたら、拡大していた範囲は元にもどす（そろえる前の範囲のままだと、線が見える範囲の外へ出ることがある）
+  function alignBy(mode) {
     if (!ov.caches) return;
-    var starts = ov.ids.map(function (id, i) { var c = ov.caches[i]; return c && c.rows.length ? absTime(c, c.rows[0]) : null; });
-    var base = Math.min.apply(null, starts.filter(function (s) { return s !== null; }));
+    var starts = ovStarts(), base = Math.min.apply(null, starts.filter(function (s) { return s !== null; }));
     if (!isFinite(base)) return;
-    ov.ids.forEach(function (id, i) { if (starts[i] !== null) ov.offsets[id] = (base - starts[i]) / 1000; });
+    ov.ids.forEach(function (id, i) {
+      if (starts[i] === null) return;
+      ov.offsets[id] = mode === 'start' ? (base - starts[i]) / 1000            // はじまりを、いちばん早い記録に合わせる
+        : mode === 'day' ? (dayStart(base) - dayStart(starts[i])) / 1000       // 日付だけを、いちばん古い記録の日に合わせる（時刻はそのまま）
+        : 0;                                                                   // 記録した日と時刻のとおり
+    });
+    ov.align = mode;
+    ovScroll.reset(); ovSel.sel = null;
     overlayDraw();
-  });
+  }
+  $('ov-align-time').addEventListener('click', function () { alignBy('time'); });
+  $('ov-align-day').addEventListener('click', function () { alignBy('day'); });
+  $('ov-align-start').addEventListener('click', function () { alignBy('start'); });
   (function () {
     var cv = $('ov-chart');
     // 押した位置にある折れ線の端末。近い折れ線がいくつもあるときは、「動かす」を選んである端末を優先する
     function lineAt(e) {
       var g = cv._geo;
-      if (!g || !ov.drawn) return null;
+      if (!g || !ov.drawn || ov.ids.length < 2) return null;   // 記録が 1 つだけなら、ずらす相手がいない
       var rect = cv.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;
       var th = e.pointerType === 'touch' ? 22 : 10, best = null, bestD = Infinity;
       ov.drawn.forEach(function (s, n) {
@@ -1864,7 +2206,7 @@
       return true;
     });
     cv.addEventListener('pointermove', function (e) {
-      if (ov.drag) { ov.offsets[ov.moving] = ov.drag.start + (e.clientX - ov.drag.x) * ov.msPerPx / 1000; overlayDraw(); return; }
+      if (ov.drag) { ov.offsets[ov.moving] = ov.drag.start + (e.clientX - ov.drag.x) * ov.msPerPx / 1000; ov.align = null; overlayDraw(); return; }
       if (ovSel.sel && !ovSel.sel.done) return;   // 範囲を選んでいるとちゅう
       cv.classList.toggle('on-line', Boolean(lineAt(e)));
       var t = hoverTime(cv, e);
@@ -1875,9 +2217,281 @@
     var end = function () { if (!ov.drag) return; ov.drag = null; cv.classList.remove('dragging'); ov.offsets[ov.moving] = Math.round(ov.offsets[ov.moving] * 10) / 10; overlayDraw(); };
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
   })();
-  function closeOverlay() { showView('list'); if (room) render(); }
+  // 手元の記録をくらべているときの「一覧」は、アプリのトップページ
+  function closeOverlay() { if (LOCAL) { location.href = './'; return; } showView('list'); if (room) render(); }
   $('btn-overlay').addEventListener('click', openOverlay);
   $('ov-close').addEventListener('click', closeOverlay);
+
+  // ===== くらべる画面を、画像でのこす・印刷する =====
+  // 見出し・「どの色がどの記録か」・グラフを 1 枚にまとめる。グラフは画面の写しではなく、同じ大きさで 2 倍の細かさに描き直す
+  // （画面の細かさが低い端末でも字がぼやけない。マウスを乗せたときの線や、選びかけの範囲は入れない）
+  function ovPicture() {
+    var last = ov.last, cv = $('ov-chart');
+    if (!last) return null;
+    var scale = 2, pad = 20, w = Math.max(480, cv.clientWidth), h = cv.clientHeight;
+    var chart = document.createElement('canvas');
+    chart._fixed = {w: w, h: h, scale: scale};
+    drawChart(chart, last.series, last.opts);
+    var FONT = '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif';
+    var out = document.createElement('canvas'), ctx = out.getContext('2d');
+    var heading = (room ? room.name + '　' : '') + last.title;
+    // 色と名前を、幅に入るだけ横に並べて折り返す。draw が false のときは、高さだけ数える
+    var keyFont = 'bold 14px ' + FONT, rowH = 24;
+    var layoutKey = function (draw, top) {
+      var x = pad, y = top;
+      ctx.font = keyFont; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      last.keyItems.forEach(function (it) {
+        var mark = it.line ? 30 : 15, tw = ctx.measureText(it.text).width, iw = mark + 6 + tw;
+        if (x > pad && x + iw > pad + w) { x = pad; y += rowH; }
+        if (draw) {
+          if (it.line) {
+            ctx.save(); ctx.strokeStyle = it.color; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.setLineDash(it.dash || []);
+            ctx.beginPath(); ctx.moveTo(x + 2, y + rowH / 2); ctx.lineTo(x + mark - 2, y + rowH / 2); ctx.stroke(); ctx.restore();
+          } else { roundRect(ctx, x, y + rowH / 2 - 7, 14, 14, 4); ctx.fillStyle = it.color; ctx.fill(); }
+          ctx.fillStyle = it.kind ? KEY_GRAY : '#17324a';
+          ctx.fillText(it.text, x + mark + 6, y + rowH / 2 + 1);
+        }
+        x += iw + 18;
+      });
+      return y + rowH - top;
+    };
+    var keyTop = pad + 28 + 22, keyH = layoutKey(false, keyTop), chartTop = keyTop + keyH + 6;
+    var totalW = w + pad * 2, totalH = chartTop + h + pad - 8;
+    out.width = totalW * scale; out.height = totalH * scale;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, totalW, totalH);
+    ctx.fillStyle = '#17324a'; ctx.font = 'bold 20px ' + FONT; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    ctx.fillText(heading, pad, pad, w);
+    ctx.fillStyle = '#64788a'; ctx.font = '12px ' + FONT;
+    ctx.fillText(last.desc, pad, pad + 30, w);
+    layoutKey(true, keyTop);
+    ctx.drawImage(chart, pad, chartTop, w, h);
+    return out;
+  }
+  function localStamp() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds()); }
+  $('ov-save-image').addEventListener('click', function () {
+    var pic = ovPicture();
+    if (!pic) return;
+    pic.toBlob(function (blob) {
+      if (!blob) { toast('画像にできませんでした'); return; }
+      saveFile([blob], 'image/png', 'AkaDako_くらべる_' + localStamp() + '.png');
+      toast('画像でのこしました');
+    }, 'image/png');
+  });
+  // 印刷: 画像を作って印刷用の 1 枚に入れてから、印刷の画面を開く。ブラウザのメニューから印刷したとき（beforeprint）も同じ 1 枚にする
+  function preparePrint() {
+    var pic = $('ov-overlay').hidden ? null : ovPicture();
+    document.body.classList.toggle('print-ov', Boolean(pic));
+    if (pic) $('print-img').src = pic.toDataURL('image/png');
+    return Boolean(pic);
+  }
+  $('ov-print').addEventListener('click', async function () {
+    if (!preparePrint()) return;
+    try { await $('print-img').decode(); } catch (e) {}   // 画像が出る前に印刷の画面が開くと、白い紙になる
+    window.print();
+  });
+  window.addEventListener('beforeprint', preparePrint);
+  window.addEventListener('afterprint', function () { document.body.classList.remove('print-ov'); });
+
+  // ===== 手元の記録（この端末の IndexedDB。v2db.js） =====
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+  // 記録の名前。付けていなければ、日付と時刻で出す（同じ日の 2 回を区別できるように、時刻はいつも出す）
+  function recLabel(rec) {
+    var name = String(rec.name || '').trim();
+    if (name) return name;
+    var d = new Date(rec.startedAt || rec.createdAt || 0);
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + pad2(d.getMinutes()) + ' の記録';
+  }
+  // 小数のけた数が決まっていないセンサー（decimals が null＝「そのまま」）は、値から決める（3 けたまで）
+  function guessDecimals(values) {
+    var most = 0;
+    for (var i = 0; i < values.length && most < 3; i += Math.max(1, Math.floor(values.length / 200))) {
+      var text = String(values[i]), dot = text.indexOf('.');
+      if (dot >= 0 && text.indexOf('e') < 0) most = Math.max(most, Math.min(3, text.length - dot - 1));
+    }
+    return most;
+  }
+  // 手元の記録を、測定室の端末 1 台と同じ形（rowsCache の 1 つ）にする。見つからなければ null。
+  // 保存先の行はセンサーごとに分かれていて、センサーによって時刻がちがうことがある（記録のとちゅうでセンサーを足せる）。
+  // 時刻でまとめて 1 行にし、その時刻に値の無いセンサーは null にする（グラフは null をとばして、前後の記録を線でつなぐ）
+  async function loadLocal(recId) {
+    var rec = await window.V2DB.getRec(recId);
+    if (!rec || rec.deletedAt) return null;
+    var list = await window.V2DB.loadRows(recId);
+    var keys = (rec.keys || []).slice(), col = {}, byTime = new Map(), values = {};
+    list.forEach(function (row) { if (keys.indexOf(row.k) < 0) keys.push(row.k); });
+    keys.forEach(function (k, i) { col[k] = i; values[k] = []; });
+    list.forEach(function (row) {
+      var v = has(row.v) && row.v !== '' && isFinite(Number(row.v)) ? Number(row.v) : null;
+      if (typeof row.t !== 'number' || v === null) return;
+      var r = byTime.get(row.t);
+      if (!r) { r = keys.map(function () { return null; }); byTime.set(row.t, r); }
+      r[col[row.k]] = v;
+      values[row.k].push(v);
+    });
+    var times = Array.from(byTime.keys()).sort(function (a, b) { return a - b; });
+    var startedAt = times.length ? times[0] : rec.startedAt || rec.createdAt || 0;
+    var c = {
+      local: true, name: recLabel(rec), fine: rec.fine, startedAt: startedAt, lastSeq: times.length,
+      sensors: keys.map(function (k) {
+        var s = (rec.sensors && rec.sensors[k]) || {};
+        return {key: k, name: s.name || k, unit: s.unit || '', color: s.color || COLORS[0], decimals: has(s.decimals) ? s.decimals : guessDecimals(values[k])};
+      }),
+      rows: times.map(function (t, n) { return [n + 1, t - startedAt].concat(byTime.get(t)); })
+    };
+    rowsCache[LOCAL_PREFIX + recId] = c;
+    return c;
+  }
+  // 手元の記録をくらべる（?local=<id>,<id>,…）。API は呼ばない。一覧も 1 台の画面も無く、くらべる画面だけ
+  async function startLocal(recIds) {
+    document.title = '記録をくらべる - AkaDako Multi Cloud Logger';
+    $('room-name').textContent = '記録をくらべる';
+    $('btn-help').href = 'manual.pdf';   // 「共有しよう」のページではなく、説明書のはじめから
+    $('btn-help').title = '使い方の説明書（PDF）を開く';
+    $('tools').hidden = true;
+    var sorry = function (text) { showView('list'); showEmpty(text); $('empty-back').hidden = false; };
+    if (!window.V2DB) { sorry('記録を読みこめませんでした。一覧にもどって、もう一度ためしてください。'); return; }
+    var found = [], missing = 0;
+    for (var i = 0; i < recIds.length; i++) {
+      var id = LOCAL_PREFIX + recIds[i], c = null;
+      if (found.indexOf(id) >= 0) continue;   // 同じ記録が 2 回書いてあっても、1 つにする
+      try { c = await loadLocal(recIds[i]); } catch (e) { console.error(e); }
+      if (c) found.push(id); else missing += 1;
+    }
+    if (!found.length) { sorry('くらべる記録が見つかりませんでした。一覧にもどって、もう一度えらんでください。'); return; }
+    ov.ids = found;
+    await openOverlay();
+    if (missing) toast('見つからない記録が ' + missing + ' つありました。のこりの記録を出しています');
+  }
+
+  // ===== 測定室のくらべるに、自分の記録を足す（この画面にだけ。サーバーには送らない） =====
+  async function openAddRec() {
+    var list = $('addrec-list'), recs = [];
+    list.textContent = '';
+    try { recs = await window.V2DB.listRecs(); } catch (e) { console.error(e); }
+    recs.forEach(function (rec) {
+      var id = LOCAL_PREFIX + rec.id, added = ov.ids.indexOf(id) >= 0;
+      var btn = el('button', 'btn rec-pick'); btn.type = 'button'; btn.disabled = added;
+      btn.appendChild(el('span', '', recLabel(rec)));
+      var names = (rec.keys || []).map(function (k) { return rec.sensors && rec.sensors[k] ? rec.sensors[k].name : k; }).join('・');
+      btn.appendChild(el('small', '', added ? 'もう足してあります' : names + (rec.count ? '　' + Number(rec.count).toLocaleString('ja-JP') + ' 件' : '')));
+      btn.addEventListener('click', function () { addLocal(rec.id); });
+      list.appendChild(btn);
+    });
+    $('addrec-empty').hidden = recs.length > 0;
+    $('ov-addrec').hidden = false;
+  }
+  async function addLocal(recId) {
+    var id = LOCAL_PREFIX + recId, c = null;
+    $('ov-addrec').hidden = true;
+    try { c = await loadLocal(recId); } catch (e) { console.error(e); }
+    if (!c) { toast('この記録は読みこめませんでした'); return; }
+    if (ov.ids.indexOf(id) >= 0 || $('ov-overlay').hidden) return;
+    // 足した記録は、いま出ている線の近くに置く: 「はじまり」でそろえているなら はじまりを合わせ、そうでなければ日付だけを合わせる
+    // （きのうの自分の記録を足したとき、1 日はなれた所に出ても、くらべられない）
+    var starts = ovStarts(), shifted = [];
+    ov.ids.forEach(function (other, i) { if (starts[i] !== null) shifted.push(starts[i] + (ov.offsets[other] || 0) * 1000); });
+    var base = Math.min.apply(null, shifted), mine = c.rows.length ? absTime(c, c.rows[0]) : null;
+    ov.offsets[id] = 0;
+    if (mine !== null && isFinite(base)) {
+      if (ov.align === 'start') ov.offsets[id] = (base - mine) / 1000;
+      else { ov.offsets[id] = (dayStart(base) - dayStart(mine)) / 1000; if (ov.offsets[id] && ov.align === 'time') ov.align = 'day'; }
+    }
+    ov.extra.push(id); ov.ids.push(id);
+    ov.visFor = ov.ids.join();   // 組は変わるが、いままでのチェックは残す（足した記録だけ、はじめのチェックを決める）
+    await overlayRefresh(true);
+    toast('「' + c.name + '」を足しました。この画面にだけ出ます');
+  }
+  function removeLocal(id) {
+    ov.extra = ov.extra.filter(function (x) { return x !== id; });
+    ov.ids = ov.ids.filter(function (x) { return x !== id; });
+    delete ov.inited[id]; delete ov.offsets[id];
+    if (ov.moving === id) ov.moving = ov.ids[0] || null;
+    ov.visFor = ov.ids.join();
+    overlayRefresh(true);
+  }
+  $('ov-add').addEventListener('click', openAddRec);
+  $('addrec-close').addEventListener('click', function () { $('ov-addrec').hidden = true; });
+
+  // ===== 測定室の 1 台の記録を、自分の一覧にとりこむ =====
+  // その端末の記録を、手元の記録（source: "room"）として IndexedDB に写す。番号（seq）は測定室の行の番号のまま。
+  // メモの文は、その行のいちばんはじめのセンサー（そこに値が無ければ、値のあるはじめのセンサー）の memo に入れる。
+  // 写真は 1 枚ずつ読んで入れる（読めなかった写真は、とばす）
+  var THUMB_WIDTH = 120;   // 写真の小さな見本の幅（アプリ本体と同じ）
+  async function thumbOf(blob) {
+    var url = URL.createObjectURL(blob);
+    try {
+      var img = new Image();
+      await new Promise(function (resolve, reject) { img.onload = resolve; img.onerror = reject; img.src = url; });
+      var small = document.createElement('canvas');
+      small.width = THUMB_WIDTH; small.height = Math.max(1, Math.round(img.naturalHeight * THUMB_WIDTH / img.naturalWidth));
+      small.getContext('2d').drawImage(img, 0, 0, small.width, small.height);
+      return small.toDataURL('image/jpeg', 0.6);
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function importDetail() {
+    var id = detail.id, btn = $('detail-import'), label = $('detail-import-text');
+    if (!id || btn.disabled) return;
+    btn.disabled = true;
+    label.textContent = 'とりこんでいます…';
+    try {
+      var c = await fetchRows(id), memos = null;
+      try { memos = await fetchMemos(id); } catch (e) { /* メモが読めなくても、記録はとりこむ */ }
+      if (!c.rows.length) { toast('まだ記録がありません'); return; }
+      var d = byId(id), DB = window.V2DB, recId = DB.newId('r'), now = Date.now();
+      var rec = {id: recId, name: ((d ? d.name : c.name) + '（' + room.name + '）').slice(0, 60), createdAt: now, updatedAt: now, keys: [], sensors: {},
+        interval: null, startedAt: absTime(c, c.rows[0]), endedAt: absTime(c, c.rows[c.rows.length - 1]), count: 0, photoCount: 0, fine: isFine(c), source: 'room'};
+      c.sensors.forEach(function (s) { rec.keys.push(s.key); rec.sensors[s.key] = {name: s.name, unit: s.unit || '', decimals: has(s.decimals) ? s.decimals : null, color: s.color}; });
+      if (c.rows.length > 1) rec.interval = Math.max(100, Math.round((c.rows[c.rows.length - 1][1] - c.rows[0][1]) / (c.rows.length - 1) / 100) * 100);
+      var rows = [], counts = {}, photoRows = [];
+      c.rows.forEach(function (r) {
+        var t = absTime(c, r), first = null;
+        c.sensors.forEach(function (s, si) {
+          if (!has(r[2 + si])) return;
+          var row = {rec: recId, k: s.key, seq: r[0], t: t, v: r[2 + si]};
+          if (!first) first = row;
+          rows.push(row);
+          counts[s.key] = (counts[s.key] || 0) + 1;
+        });
+        var memo = memos && memos.bySeq[r[0]];
+        if (!memo || !first) return;
+        if (memo.text) first.memo = memo.text;
+        if (memo.photo) photoRows.push({row: first, seq: r[0]});
+      });
+      rec.count = Math.max.apply(null, [0].concat(Object.keys(counts).map(function (k) { return counts[k]; })));
+      // 写真（資格を付けて 1 枚ずつ読む。3 枚ずつ並行）
+      var headers = {}, tok = viewToken(), next = 0, got = 0;
+      if (tok) headers.authorization = 'Bearer ' + tok;
+      var worker = async function () {
+        while (next < photoRows.length) {
+          var job = photoRows[next++];
+          try {
+            var res = await fetch(API + '/rooms/' + ROOM_ID + '/devices/' + id + '/memos/' + job.seq + '/photo', {headers: headers});
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var blob = await res.blob(), photoId = DB.newId('p');
+            await DB.photoPut({id: photoId, rec: recId, blob: blob});
+            job.row.photo = photoId;
+            try { job.row.thumb = await thumbOf(blob); } catch (e) { /* 見本が作れなくても、写真は残す */ }
+            got += 1;
+          } catch (e) { /* 読めなかった写真は、とばす */ }
+          label.textContent = '写真をとりこんでいます… ' + Math.min(next, photoRows.length) + '/' + photoRows.length;
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      rec.photoCount = got;
+      await DB.putRows(rows);
+      await DB.putRec(rec);   // 見出しは最後に書く（とちゅうで失敗したとき、行の無い記録が一覧に出ないように）
+      toast('一覧にとりこみました' + (photoRows.length > got ? '（写真 ' + (photoRows.length - got) + ' 枚は、とりこめませんでした）' : ''));
+    } catch (e) {
+      console.error(e);
+      toast('とりこめませんでした。少ししてから、もう一度ためしてください');
+    } finally {
+      btn.disabled = false;
+      label.textContent = '自分の一覧にとりこむ';
+    }
+  }
+  $('detail-import').hidden = !window.V2DB;
+  $('detail-import').addEventListener('click', importDetail);
   window.addEventListener('resize', function () {
     if (!$('ov-overlay').hidden) overlayDraw();
     else if (!$('ov-detail').hidden) detailDraw();
@@ -2135,15 +2749,16 @@
   // Esc: 小さな窓が開いていればそれを閉じる。なければ一覧にもどる
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    var wins = ['ov-photo', 'ov-download', 'ov-invite', 'ov-settings'].filter(function (id) { return !$(id).hidden; });
+    var wins = ['ov-photo', 'ov-download', 'ov-invite', 'ov-settings', 'ov-addrec'].filter(function (id) { return !$(id).hidden; });
     if (wins.length) { wins.forEach(function (id) { $(id).hidden = true; }); return; }
     if (!$('memo-box').hidden) { closeMemoBox(); return; }
     if (!$('ov-detail').hidden) closeDetail();
-    else if (!$('ov-overlay').hidden) closeOverlay();
+    else if (!$('ov-overlay').hidden && !LOCAL) closeOverlay();   // 手元の記録をくらべているときは、Esc でページを移らない
   });
 
   // ===== 開始 =====
-  if (!ROOM_ID) { setStatus('stopped', '測定室が指定されていません'); $('tools').hidden = true; showEmpty('URL に ?room=測定室の内部 ID をつけて開いてください。'); }
+  if (LOCAL) startLocal(LOCAL_IDS);
+  else if (!ROOM_ID) { setStatus('stopped', '測定室が指定されていません'); $('tools').hidden = true; showEmpty('URL に ?room=測定室の内部 ID をつけて開いてください。'); }
   else { load(); pollTimer = setInterval(load, POLL_MS); }
 })();
 </script>

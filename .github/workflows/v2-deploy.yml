@@ -1,0 +1,21 @@
+name: Deploy v2 (test) to GitHub Pages
+
+# テスト版（このブランチ）を https://log.699.jp/v2/ に出す。
+# github-pages の環境は main からしかデプロイできないので、ここでは main の「Deploy to GitHub Pages」を動かすだけにする。
+# main のワークフローが、main をいちばん上に、このブランチを v2/ フォルダに入れて、いっしょに出す
+on:
+  push:
+    branches: [v2]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the Pages workflow on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "${{ github.repository }}" --ref main
