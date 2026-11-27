@@ -723,7 +723,7 @@
       font-weight: 700;
     }
 
-    .chart-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .chart-head-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .view-toggle--mini { padding: 3px; border-radius: 12px; }
     .view-toggle--mini .view-btn { min-height: 28px; padding: 0 10px; border-radius: 9px; font-size: .78rem; }
     .sample-count {
@@ -740,8 +740,8 @@
       position: relative;
       width: 100%;
       /* 下のスクロールバー（26px）と合わせて、表と同じ高さになる。
-         高さのある画面では、ページがちょうど画面に収まるところまでグラフを伸ばす（470px = グラフ以外の部品の高さ） */
-      height: max(404px, calc(100vh - 470px));
+         高さのある画面では、ページがちょうど画面に収まるところまでグラフを伸ばす（410px = グラフ以外の部品の高さ） */
+      height: max(404px, calc(100vh - 410px));
       min-height: 310px;
       overflow: hidden;
       border: 2px solid #dcebf4;
@@ -768,7 +768,7 @@
     .table-wrap {
       position: relative;
       width: 100%;
-      height: max(430px, calc(100vh - 444px));
+      height: max(430px, calc(100vh - 384px));
       min-height: 310px;
       overflow: auto;
       border: 2px solid #dcebf4;
@@ -870,33 +870,6 @@
       font-weight: 900;
       line-height: 1.7;
     }
-
-    .action-bar {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 13px;
-    }
-
-    .action-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 47px;
-      border: 2px solid var(--line);
-      border-radius: 14px;
-      color: var(--ink);
-      background: white;
-      font-weight: 900;
-      cursor: pointer;
-      transition: transform .14s ease, background .14s ease;
-    }
-
-    .action-btn:hover { transform: translateY(-1px); background: #f7fbfd; }
-    .action-btn svg { width: 20px; height: 20px; }
-    .action-btn.delete { color: #bd3e3e; border-color: #f1c2c2; }
-    .action-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
 
     .notice {
       margin: 14px 4px 0;
@@ -1260,16 +1233,33 @@
     .photo-dialog p { margin: 0; color: var(--muted); font-size: .85rem; font-weight: 800; white-space: pre-wrap; overflow-wrap: anywhere; }
 
     /* ===== 測定室ボタンの印（緑: 送っている / 橙: 送れていない） ===== */
-    .action-btn.ind { position: relative; }
-    .action-btn.ind .ind-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #c9d3db;
-      flex: 0 0 auto;
+    /* 見出しの右の小さなボタン（ダウンロード・コピー・削除） */
+    .data-tools { display: inline-flex; align-items: center; gap: 5px; }
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 32px;
+      padding: 3px 8px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: .78rem;
+      font-weight: 900;
+      white-space: nowrap;
+      cursor: pointer;
     }
-    .action-btn.ind.on .ind-dot { background: #2fd38a; box-shadow: 0 0 0 3px rgba(47,211,138,.22); }
-    .action-btn.ind.warn .ind-dot { background: #ffb347; box-shadow: 0 0 0 3px rgba(255,179,71,.22); }
+    .tool-btn:hover { background: #f3f8fb; }
+    .tool-btn svg { width: 15px; height: 15px; }
+    .tool-btn.delete { margin-left: 7px; color: #bd3e3e; border-color: #f1c2c2; }
+    .tool-btn:disabled { opacity: .42; cursor: not-allowed; }
+    /* 上の帯の「測定室」。丸い印は、送れている（緑）・送れていない（橙）・入っていない（灰） */
+    .share-toggle { gap: 7px; padding-left: 12px; padding-right: 14px; }
+    .compare-toggle.ind .ind-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.45); flex: 0 0 auto; }
+    .compare-toggle.ind.on .ind-dot { background: #56ef9d; box-shadow: 0 0 0 3px rgba(86,239,157,.28); }
+    .compare-toggle.ind.warn .ind-dot { background: #ffb347; box-shadow: 0 0 0 3px rgba(255,179,71,.28); }
 
     /* ===== 測定室ダイアログ ===== */
     dialog.room-dialog {
@@ -1452,17 +1442,14 @@
       .chart-head { margin-bottom: 6px; }
       .chart-title-group h2 { font-size: 1.1rem; }
       .chart-title-group p { margin-top: 2px; }
-      .table-wrap { height: clamp(220px, calc(100vh - 320px), 430px); min-height: 0; }
-      .canvas-wrap { height: clamp(194px, calc(100vh - 346px), 404px); min-height: 0; }
-      .action-bar { margin-top: 9px; gap: 8px; }
-      .action-btn { min-height: 40px; }
+      .table-wrap { height: clamp(220px, calc(100vh - 271px), 479px); min-height: 0; }
+      .canvas-wrap { height: clamp(194px, calc(100vh - 297px), 453px); min-height: 0; }
       .notice { margin-top: 8px; }
     }
 
     @media (max-width: 840px) {
       .hero { align-items: flex-start; flex-direction: column; }
       .connection-panel { justify-content: flex-start; }
-      .action-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .dashboard { grid-template-columns: 1fr; }
       .side-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, .7fr); gap: 14px; }
       .reading-panel { min-width: 0; }
@@ -1476,7 +1463,6 @@
       .side-card { display: block; }
       .control-stack { margin-top: 13px; }
       .canvas-wrap { height: 330px; }
-      .action-bar { grid-template-columns: 1fr; }
       .chart-head { align-items: flex-start; }
     }
 
@@ -1502,6 +1488,11 @@
         <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
         <!-- いま出ているデータから分かることを AI にきく（結果はダイアログに出て、そのまま印刷できる） -->
         <button id="askBtn" class="compare-toggle ask-btn" type="button" title="いま出ているデータから分かることを、AIにしらべてもらう"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>しらべる</button>
+        <!-- 測定室（共有）の入口。丸い印は、データを送れているか（緑）・送れていないか（橙） -->
+        <button id="shareBtn" class="compare-toggle share-toggle ind" type="button" title="測定室を作成する・測定室に参加して、みんなの測定データを見る（作成者は URL で公開できる）">
+          <span class="ind-dot" aria-hidden="true"></span>
+          <span id="shareLabel">測定室</span>
+        </button>
         <!-- センサー（S-LiNKデバイス）の接続のようす。USB でつなぐと自動で接続するので、スイッチではなく「表示」。
              となりのボタン（くらべる・しらべる・使い方）と見分けられるように、つながっている間・つなごうとしている間は枠も地も付けない平らな表示にする。
              つながっていないときだけ押せる（もう一度さがす）ので、そのときだけボタンの形にする。印の色: 灰=未接続 / 橙=接続しています… / 緑=接続中 -->
@@ -1720,6 +1711,21 @@
               <button id="layoutOverlay" class="view-btn" type="button" aria-pressed="false">重ねる</button>
             </div>
             <div id="sampleCount" class="sample-count">データ 0件</div>
+            <!-- このデータをどうするか（保存する・写す・消す）。「削除」は押しまちがえないように、少し離して赤い枠にする -->
+            <div class="data-tools">
+              <button id="downloadBtn" class="tool-btn" type="button" disabled title="記録をファイルに保存する（写真があれば ZIP）">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                ダウンロード
+              </button>
+              <button id="copyBtn" class="tool-btn" type="button" disabled title="記録をコピーする（表計算ソフトにはりつけられる）">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                コピー
+              </button>
+              <button id="deleteBtn" class="tool-btn delete" type="button" disabled title="いま出している記録を消す">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                削除
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1771,25 +1777,6 @@
           <div id="tableEmpty" class="table-empty">「記録をはじめる」を押すと、ここに数値が並びます。</div>
         </div>
 
-        <div class="action-bar">
-          <button id="downloadBtn" class="action-btn" type="button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            ダウンロード
-          </button>
-          <button id="copyBtn" class="action-btn" type="button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            コピー
-          </button>
-          <button id="deleteBtn" class="action-btn delete" type="button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            削除
-          </button>
-          <button id="shareBtn" class="action-btn ind" type="button" title="測定室を作成する・測定室に参加して、みんなの測定データを見る（作成者は URL で公開できる）">
-            <span class="ind-dot" aria-hidden="true"></span>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="18" cy="5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="2"/><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" stroke="currentColor" stroke-width="2"/></svg>
-            <span id="shareLabel">測定室</span>
-          </button>
-        </div>
       </article>
     </section>
 
