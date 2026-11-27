@@ -1556,9 +1556,14 @@
     details.choose-card > summary { cursor: pointer; font-size: 1.15rem; font-weight: 900; }
     details.choose-card[open] > summary { margin-bottom: 10px; }
     .choose-place { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 800; }
-    .choose-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    /* 下のボタンは、タイルが多くても、いつも画面の下に見えるようにする */
+    .choose-actions {
+      position: sticky; bottom: 8px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px;
+      border: 1px solid rgba(207,226,239,.95); border-radius: 20px; background: rgba(255,255,255,.96); box-shadow: var(--shadow);
+    }
     .choose-hint { color: var(--muted); font-weight: 800; }
-    .rec-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rec-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+    #chooseExt.tiles { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
     .rec-tools .tool-btn { flex: 1 1 auto; justify-content: center; }
     .compare-row .name { display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .compare-row .name input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; accent-color: var(--row-color); cursor: pointer; }
@@ -2023,6 +2028,21 @@
       <div class="dialog-actions">
         <button id="prevCancel" class="dialog-cancel" type="button">キャンセル</button>
         <button id="prevOk" class="dialog-close" type="button">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 授業用リンク: 同じセンサーの組・記録間隔・場所ではかる画面を、児童の端末でひらく -->
+  <dialog id="lessonDialog" aria-labelledby="lessonDialogTitle">
+    <div class="dialog-body ext-body">
+      <h3 id="lessonDialogTitle">授業用リンク</h3>
+      <p id="lessonLead" class="ext-lead"></p>
+      <input id="lessonUrl" class="lesson-url" type="text" readonly aria-label="授業用リンク">
+      <div id="lessonQr" class="lesson-qr" hidden></div>
+      <div class="dialog-actions">
+        <button id="lessonQrBtn" class="dialog-cancel" type="button">QR コード</button>
+        <button id="lessonCopy" class="dialog-cancel" type="button">コピー</button>
+        <button id="lessonClose" class="dialog-close" type="button">とじる</button>
       </div>
     </div>
   </dialog>
@@ -3991,7 +4011,8 @@
         els.valueBox.hidden = aiMode || compare;
         els.miniStats.hidden = aiMode || compare;
         if (!aiMode) {
-          els.currentSensorName.textContent = compare ? activeName() : sensors[selectedSensor].name;
+          // 4 つ以上は、名前を並べると見出しが折り返すので、数で出す
+          els.currentSensorName.textContent = !compare ? sensors[selectedSensor].name : activeKeys().length > 3 ? `${activeKeys().length} つ` : activeName();
           els.currentLabelSuffix.textContent = " の現在値";
         }
         if (!compare) {
@@ -7381,7 +7402,7 @@
         const own = ownPicked();
         Object.keys(tiles).forEach(key => {
           const one = tiles[key], on = choose.picked.includes(key);
-          one.name.textContent = key === "ai" ? "AI 計測" : sensors[key].name;
+          one.name.textContent = key === "ai" ? "AI 計測" : EXT_AMEDAS[key] ? `アメダス${AMEDAS_ITEMS[EXT_AMEDAS[key]].name}` : sensors[key].name;
           one.tile.setAttribute("aria-pressed", String(on));
           one.tile.classList.toggle("locked", choose.locked.has(key));
         });
@@ -7492,6 +7513,8 @@
         if (wasRecording) showToast("記録をとめて、一覧にもどりました");
       }
       function initV2() {
+        const camPanel = byId("camPanel");
+        if (camPanel) camPanel.before(v2.addSensorBtn.parentElement);
         v2.chooseOwn.replaceChildren(...CHOOSE_OWN.map(makeTile));
         v2.chooseAdd.replaceChildren(...CHOOSE_ADD.map(makeTile));
         v2.chooseExt.replaceChildren(...EXT_KEYS.map(makeTile));
@@ -7530,6 +7553,37 @@
         v2.homeClear.addEventListener("click", homeClearAll);
         v2.homeRoomBtn.addEventListener("click", openRoomDialog);
         v2.addSensorBtn.addEventListener("click", () => openChooser("add"));
+        v2.lessonBtn.addEventListener("click", openLessonDialog);
+        window.addEventListener("hashchange", () => { startLesson(); });   // アプリをひらいたままのタブで、授業用リンクをひらいたとき
+        lessonUi.close.addEventListener("click", () => lessonUi.dialog.close());
+        lessonUi.copy.addEventListener("click", async () => {
+          lessonUi.url.select();
+          try { await navigator.clipboard.writeText(lessonUi.url.value); showToast("リンクをコピーしました"); }
+          catch (error) { showToast("コピーできませんでした。リンクをえらんで、コピーしてください"); }
+        });
+        lessonUi.qrBtn.addEventListener("click", async () => {
+          if (!lessonUi.qr.hidden) { lessonUi.qr.hidden = true; return; }
+          try {
+            await loadQrLib();
+            const qr = window.qrcode(0, "M");
+            qr.addData(lessonUi.url.value);
+            qr.make();
+            lessonUi.qr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+            lessonUi.qr.hidden = false;
+          } catch (error) { console.error(error); showToast("QR コードを作れませんでした"); }
+        });
+        v2.homeExport.addEventListener("click", async () => {
+          v2.homeExport.disabled = true;
+          try { await exportRecords([...homeSel]); }
+          catch (error) { console.error(error); showToast("ファイルを作れませんでした"); }
+          finally { syncHomeTools(); }
+        });
+        v2.homeImport.addEventListener("click", () => v2.homeImportInput.click());
+        v2.homeImportInput.addEventListener("change", () => {
+          const file = v2.homeImportInput.files[0];
+          v2.homeImportInput.value = "";
+          if (file) importRecordFile(file);
+        });
         els.compareRows.addEventListener("change", event => {
           const row = event.target.closest(".compare-row");
           if (!row || !event.target.classList.contains("row-show")) return;
@@ -7544,6 +7598,209 @@
           refreshView();
         });
       }
+      // ---- 授業用リンク ----
+      // 先生が、センサーの組・記録間隔・場所を決めたリンクを作る。児童がひらくと、えらぶ画面を通らずに、はかる画面がひらく。
+      // 行き先を指定した URL なので、「ひらいたら、いつもトップページ」の決まりの例外にはしない（リンクを使わずにひらけば、トップページ）。
+      // 「前の記録」は、リンクには入れない（データが大きいので）
+      const lessonUi = { dialog: byId("lessonDialog"), lead: byId("lessonLead"), url: byId("lessonUrl"), qr: byId("lessonQr"), qrBtn: byId("lessonQrBtn"), copy: byId("lessonCopy"), close: byId("lessonClose") };
+      function b64urlEncode(text) {
+        return btoa(String.fromCharCode(...new TextEncoder().encode(text))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+      function b64urlDecode(text) {
+        const bin = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+        return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+      }
+      function lessonLink() {
+        const keys = activeKeys().filter(key => key !== "xPrev");
+        const data = { k: keys, i: Number(els.intervalSelect.value) };
+        if (keys.some(key => EXT_AMEDAS[key] || key === "xElev") && place.chosen) {
+          const station = place.station;
+          data.p = place.pref;
+          if (station) data.s = [station.id, station.name, station.pref, station.flags || "", station.lat, station.lon];
+        }
+        return `${location.origin}${location.pathname}#lesson=${b64urlEncode(JSON.stringify(data))}`;
+      }
+      function openLessonDialog() {
+        const keys = activeKeys();
+        lessonUi.url.value = lessonLink();
+        lessonUi.lead.textContent = `このリンクをひらくと、同じ組（${keys.filter(key => key !== "xPrev").map(key => sensors[key].name).join("・")}）と、記録間隔（${els.intervalSelect.selectedOptions[0].textContent}）で、はかる画面がそのままひらきます。${keys.includes("xPrev") ? "「前の記録」は、リンクには入りません。" : ""}`;
+        lessonUi.qr.hidden = true;
+        if (typeof lessonUi.dialog.showModal === "function") lessonUi.dialog.showModal();
+        else lessonUi.dialog.setAttribute("open", "");
+      }
+      // リンクでひらいたとき: その組の記録を作って、はかる画面へ（同じ日に、同じ組の空の記録があれば、それを使う）
+      async function startLesson() {
+        const match = /^#lesson=([A-Za-z0-9_-]+)$/.exec(location.hash);
+        if (!match) return false;
+        history.replaceState(null, "", location.pathname + location.search);   // 読みこみ直したら、トップページから
+        let data = null;
+        try { data = JSON.parse(b64urlDecode(match[1])); } catch (error) { /* こわれたリンク */ }
+        const keys = data && Array.isArray(data.k) ? [...new Set(data.k)].filter(key => sensors[key] && key !== "xPrev") : [];
+        const own = keys.filter(key => !isExt(key));
+        if (!own.length || own.length > SENSOR_MAX || (own.includes("ai") && keys.length > 1)) {
+          showToast("このリンクは、ひらけませんでした");
+          return false;
+        }
+        if (typeof data.p === "string" && PREFS.some(one => one[0] === data.p)) {
+          const ps = Array.isArray(data.s) ? data.s : null;   // 地点
+          setPlace({ pref: data.p, station: ps ? { id: String(ps[0]), name: String(ps[1]), pref: String(ps[2]), flags: String(ps[3] || ""), lat: Number(ps[4]), lon: Number(ps[5]) } : null });
+        }
+        const ordered = [...own, ...EXT_KEYS.filter(key => keys.includes(key))];
+        const interval = [...els.intervalSelect.options].some(option => option.value === String(data.i)) ? String(data.i) : els.intervalSelect.value;
+        const today = new Date().toDateString();
+        let empty = null;
+        try { empty = (await recList()).find(rec => !rec.count && new Date(rec.createdAt).toDateString() === today && (rec.keys || []).join("+") === ordered.join("+")); } catch (error) { /* 無ければ作る */ }
+        const ok = empty ? await openRecord(empty.id) : await createRecord(ordered, { interval });
+        if (ok) showToast("授業用リンクから、はかる画面をひらきました");
+        return ok;
+      }
+
+      // ---- ファイルにのこす・ファイルからもどす ----
+      // ほかの端末にうつす・端末が初期化される前に残す、ための受け渡し。ZIP の中に、記録ごとのフォルダ（r1/, r2/ …）を作り、
+      // record.json（もどすときに読む。記録の見出しと全部の行）、data.csv（表計算ソフトで見る用）、photos/（写真）を入れる
+      const FILE_FORMAT = "akadako-multi-record";
+      function csvOfRecord(rec, rows) {
+        const escapeCsv = value => `"${String(value).replaceAll('"', '""')}"`;
+        const keys = rec.keys || [], base = keys.find(key => rows.some(row => row.k === key)) || keys[0];
+        const by = {};
+        rows.forEach(row => { (by[row.k] = by[row.k] || new Map()).set(row.t, row); });
+        const info = key => (rec.sensors && rec.sensors[key]) || { name: key, unit: "" };
+        const lines = [["日時", "時刻", ...keys.map(key => `${info(key).name}${info(key).unit ? `（${info(key).unit}）` : ""}`), "メモ", "写真"]];
+        rows.filter(row => row.k === base).sort((a, b) => a.seq - b.seq).forEach(row => {
+          const time = new Date(row.t);
+          const memo = keys.map(key => by[key] && by[key].get(row.t)).find(one => one && one.memo), photo = keys.map(key => by[key] && by[key].get(row.t)).find(one => one && one.photo);
+          lines.push([time.toLocaleDateString("ja-JP"), timeText(time, Boolean(rec.fine)), ...keys.map(key => { const one = by[key] && by[key].get(row.t); return one ? one.v : ""; }),
+            memo ? memo.memo : "", photo ? `photos/${photo.photo}.jpg` : ""]);
+        });
+        return "﻿" + lines.map(line => line.map(escapeCsv).join(",")).join("\r\n");
+      }
+      async function exportRecords(ids) {
+        const files = [];
+        let n = 0, photoCount = 0;
+        for (const id of ids) {
+          const rec = await V2DB.getRec(id);
+          if (!rec) continue;
+          n += 1;
+          const dir = `r${n}/`, time = new Date(rec.updatedAt || Date.now());
+          const rows = (await V2DB.loadRows(id)).map(row => { const one = { ...row }; delete one.rec; return one; });
+          const head = { ...rec };
+          delete head.deletedAt;
+          files.push({ name: `${dir}record.json`, data: new Blob([JSON.stringify({ format: FILE_FORMAT, version: 1, rec: head, rows })]), time });
+          files.push({ name: `${dir}data.csv`, data: new Blob([csvOfRecord(rec, rows)]), time });
+          for (const photo of await V2DB.photosOf(id)) {
+            files.push({ name: `${dir}photos/${photo.id}.jpg`, data: photo.blob, time });
+            photoCount += 1;
+          }
+        }
+        if (!n) return;
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        saveBlob(await zipBlob(files), `AkaDako_記録_${stamp}.zip`);
+        showToast(`${n} つの記録を、ファイルにのこしました${photoCount ? `（写真 ${photoCount}まい）` : ""}`);
+      }
+      // ZIP の中のファイルを取り出す（このアプリが作る ZIP は圧縮なし。ほかのソフトで作り直した ZIP の deflate も読む）
+      async function unzipEntries(bytes) {
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), out = [];
+        let pos = 0;
+        while (pos + 30 <= bytes.length && view.getUint32(pos, true) === 0x04034b50) {
+          const flags = view.getUint16(pos + 6, true), method = view.getUint16(pos + 8, true), size = view.getUint32(pos + 18, true);
+          const nameLength = view.getUint16(pos + 26, true), extraLength = view.getUint16(pos + 28, true);
+          const name = new TextDecoder("utf-8").decode(bytes.subarray(pos + 30, pos + 30 + nameLength));
+          const start = pos + 30 + nameLength + extraLength;
+          if (flags & 8) break;   // 大きさをあとに書く形式は読まない
+          const body = bytes.subarray(start, start + size);
+          if (method === 0) out.push({ name, bytes: body });
+          else if (method === 8 && window.DecompressionStream) {
+            out.push({ name, bytes: new Uint8Array(await new Response(new Blob([body]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()) });
+          }
+          pos = start + size;
+        }
+        return out;
+      }
+      async function restoreRecord(saved, photoOf) {
+        const rec = saved.rec, rows = Array.isArray(saved.rows) ? saved.rows : [];
+        const keys = (Array.isArray(rec.keys) ? rec.keys : []).filter(key => sensors[key]);
+        if (!keys.length) throw new Error("センサーがありません");
+        const id = V2DB.newId("r"), now = Date.now(), photoIds = new Map();
+        let photoCount = 0;
+        const fresh = [];
+        for (const row of rows) {
+          if (!sensors[row.k] || !Number.isFinite(row.t) || !Number.isFinite(row.v) || !Number.isInteger(row.seq)) continue;
+          const one = { rec: id, k: row.k, seq: row.seq, t: row.t, v: row.v };
+          ["note", "memo", "thumb"].forEach(name => { if (typeof row[name] === "string") one[name] = row[name]; });
+          if (typeof row.photo === "string") {
+            const blob = photoOf(row.photo);
+            if (blob) {
+              const photoId = photoIds.get(row.photo) || V2DB.newId("p");
+              if (!photoIds.has(row.photo)) { photoIds.set(row.photo, photoId); await V2DB.photoPut({ id: photoId, rec: id, blob }); photoCount += 1; }
+              one.photo = photoId;
+            } else delete one.thumb;
+          }
+          fresh.push(one);
+        }
+        await V2DB.putRows(fresh);
+        await V2DB.putRec({ ...rec, id, keys, source: "file", updatedAt: now, photoCount, deletedAt: undefined });
+        return id;
+      }
+      // 前の版（本番）のダウンロードした CSV から、記録を作る（センサーの名前で見分ける。メモと写真は入らない）
+      async function restoreFromCsv(text, label) {
+        const series = seriesFromCsv(text);
+        const keyOf = name => Object.keys(sensors).find(key => !isExt(key) && key !== "ai" && sensors[key].name === name);
+        const found = series.map(one => ({ key: keyOf(one.name), points: one.points })).filter(one => one.key && one.points.length);
+        if (!found.length) throw new Error("センサーがありません");
+        const id = V2DB.newId("r"), now = Date.now(), rows = [], info = {};
+        let count = 0, startedAt = null, endedAt = null;
+        found.forEach(one => {
+          const sensor = sensors[one.key];
+          info[one.key] = { name: sensor.name, unit: sensor.unit, decimals: sensor.decimals, color: sensor.color };
+          one.points.forEach(([t, v], n) => rows.push({ rec: id, k: one.key, seq: n + 1, t, v }));
+          count = Math.max(count, one.points.length);
+          startedAt = startedAt === null ? one.points[0][0] : Math.min(startedAt, one.points[0][0]);
+          endedAt = endedAt === null ? one.points[one.points.length - 1][0] : Math.max(endedAt, one.points[one.points.length - 1][0]);
+        });
+        await V2DB.putRows(rows);
+        await V2DB.putRec({ id, name: "", createdAt: startedAt || now, updatedAt: now, keys: found.map(one => one.key), sensors: info, interval: count > 1 ? Math.round((endedAt - startedAt) / (count - 1)) : 1000,
+          startedAt, endedAt, count, photoCount: 0, fine: false, source: "file", ui: {}, place: null, prev: null, fileName: label });
+        return id;
+      }
+      async function importRecordFile(file) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let done = 0;
+        try {
+          if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+            const entries = await unzipEntries(bytes);
+            const jsons = entries.filter(entry => /(^|\/)record\.json$/.test(entry.name));
+            for (const entry of jsons) {
+              const dir = entry.name.replace(/record\.json$/, "");
+              const saved = JSON.parse(new TextDecoder("utf-8").decode(entry.bytes));
+              if (!saved || saved.format !== FILE_FORMAT || !saved.rec) continue;
+              const photoOf = photoId => { const hit = entries.find(one => one.name === `${dir}photos/${photoId}.jpg`); return hit ? new Blob([hit.bytes], { type: "image/jpeg" }) : null; };
+              await restoreRecord(saved, photoOf);
+              done += 1;
+            }
+            if (!jsons.length) {   // 前の版の ZIP（CSV と写真）
+              const csv = entries.find(entry => /\.csv$/i.test(entry.name));
+              if (csv) { await restoreFromCsv(new TextDecoder("utf-8").decode(csv.bytes), file.name); done += 1; }
+            }
+          } else {
+            await restoreFromCsv(new TextDecoder("utf-8").decode(bytes), file.name);
+            done += 1;
+          }
+        } catch (error) {
+          console.warn("[ファイル] 読めませんでした", error);
+        }
+        showToast(done ? `${done} つの記録を、ファイルからもどしました` : "このファイルは読めませんでした。「ファイルにのこす」か「ダウンロード」で作ったファイルをえらんでください");
+        renderHome();
+      }
+
+      // ---- 通信なしでもひらけるようにする（sw.js） ----
+      // 通信できるときは、いつも新しい版を取りに行き、取れなかったときだけ、前に取っておいたものを出す。
+      // 一度、通信できる所でひらいておく必要がある。https のときだけ（file: では動かない）
+      function registerSw() {
+        const secure = location.protocol === "https:" || location.hostname === "localhost";
+        if (!("serviceWorker" in navigator) || !secure || PAGE_PARAMS.get("sw") === "off") return;
+        navigator.serviceWorker.register("sw.js").catch(error => console.warn("[オフライン] 準備できませんでした", error));
+      }
+
       async function bootV2() {
         initV2();
         if (STORE_ON) {
@@ -7560,7 +7817,8 @@
         }
         applyExtMeta();
         initRoom();
-        showView("home");
+        registerSw();
+        if (!(await startLesson())) showView("home");
       }
 
       // ===== iPad 対策 ============================================================
