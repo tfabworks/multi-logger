@@ -215,6 +215,9 @@
   .rec-group.off .name { color: var(--muted); }
   .rec-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; padding: 0 8px 8px 36px; }
   .rec-group:not(.open) .rec-body { display: none; }
+  .kind-box { margin-bottom: 4px; padding: 4px 10px 6px; border-radius: 12px; background: #f3f8fb; }
+  .kind-title { margin: 6px 2px 3px; color: var(--muted); font-size: .78rem; font-weight: 900; }
+  .kind-title small { margin-left: 8px; font-weight: 700; }
   .rec-sensor { display: flex; align-items: center; gap: 7px; min-height: 28px; font-size: .82rem; font-weight: 800; cursor: pointer; }
   .rec-sensor input { flex: 0 0 auto; width: 17px; height: 17px; margin: 0; cursor: pointer; accent-color: var(--row-color); }
   .rec-sensor svg { flex: 0 0 auto; width: 26px; height: 8px; color: var(--line-color, var(--row-color)); }
@@ -469,6 +472,13 @@
     <div class="dashboard">
       <aside class="side-card">
         <div class="current-label" id="ov-label">出す線をえらぶ</div>
+        <!-- センサーごと: チェックを外すと、そのセンサーの線を、全部の端末（記録）でまとめて消す。センサーが 2 種類以上あるときだけ出す -->
+        <div id="ov-kinds-box" class="kind-box" hidden>
+          <div class="kind-title">センサー<small>いらないものは、チェックを外します</small></div>
+          <div id="ov-kinds"></div>
+        </div>
+        <!-- 端末（記録）ごと: 色の印のチェックで、その端末をまるごと出す・消す。▶ をひらくと、その端末のセンサーを 1 本ずつ -->
+        <div id="ov-entries-title" class="kind-title"></div>
         <div id="ov-legend" class="rec-list"></div>
         <!-- 測定室だけ: この端末にある記録を、この画面にだけ足す（サーバーには送らない） -->
         <button id="ov-add" class="btn add-btn" type="button" hidden title="この端末にある記録を、この画面にだけ足す（ほかの人には見えません）">＋ 自分の記録を足す</button>
@@ -621,6 +631,29 @@
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function fmtTime(ms) { return new Date(ms).toLocaleTimeString('ja-JP', {hour12: false}); }
+  // 時刻の目もり。t0〜t1 のあいだの、切りのよい時刻と、そのラベル。from があれば、そこからの時間（0 秒、30 秒、1 分…）で数える
+  var TICK_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400];   // 秒
+  function elapsedText(ms, stepSec) {
+    var sec = Math.round(ms / 1000), sign = sec < 0 ? '−' : ''; sec = Math.abs(sec);
+    var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    if (h) return sign + h + '時間' + (m ? m + '分' : '');
+    if (m) return sign + m + '分' + (s && (!stepSec || stepSec < 60) ? s + '秒' : '');
+    return sign + s + '秒';
+  }
+  function timeTicks(t0, t1, want, from) {
+    var span = t1 - t0, out = [];
+    if (!(span > 0)) return out;
+    var stepSec = 0;
+    for (var i = 0; i < TICK_STEPS.length; i++) { if (span / (TICK_STEPS[i] * 1000) <= want) { stepSec = TICK_STEPS[i]; break; } }
+    if (!stepSec) stepSec = Math.ceil(span / want / 86400000) * 86400;
+    var step = stepSec * 1000, elapsed = from !== null && from !== undefined;
+    var base = elapsed ? from : new Date(t0).getTimezoneOffset() * 60000;   // この端末の時計の 0 時が基準
+    for (var t = Math.ceil((t0 - base) / step) * step + base; t <= t1; t += step) {
+      var d = new Date(t), hm = d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2);
+      out.push({t: t, label: elapsed ? elapsedText(t - from, stepSec) : stepSec < 60 ? hm + ':' + ('0' + d.getSeconds()).slice(-2) : hm});
+    }
+    return out;
+  }
   // fine: 記録間隔が 1 秒より短いときは、0.1 秒の位まで出す
   function timeText(ms, fine) { return fmtTime(ms) + (fine ? '.' + Math.floor(new Date(ms).getMilliseconds() / 100) : ''); }
   function fmtDateTime(ms) { var d = new Date(ms); return d.toLocaleDateString('ja-JP') + ' ' + d.toLocaleTimeString('ja-JP', {hour12: false}); }
@@ -795,6 +828,12 @@
   // 値の範囲（lo〜hi）から、きりのいい目盛り（step）と軸の上下（yMin/yMax）を決める
   function niceScale(lo, hi, decimals, ticks) {
     var neverNegative = lo >= 0;   // 値が全部 0 以上なら、軸を 0 より下に広げない（手元の画面と同じ）
+    // 縦軸の幅は、いちばん小さくても「出している小数の 1 目もり × 20」（温度なら 2℃）。細かいゆれが、大きな上下に見えないように（手元の画面と同じ）
+    var minSpan = typeof decimals === 'number' && isFinite(decimals) ? 20 * Math.pow(10, -decimals) : 0;
+    if (hi - lo < minSpan) {
+      var mid = (lo + hi) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2;
+      if (neverNegative && lo < 0) { hi -= lo; lo = 0; }
+    }
     if (lo === hi) { var pad = Math.max(Math.abs(lo) * 0.08, decimals ? 1 : 5); lo -= pad; hi += pad; }   // 整数で記録する項目は、値が同じでも軸が潰れないよう広めに取る
     var range = hi - lo, step = niceStep(range * 1.18, ticks);
     var yMin = Math.max(neverNegative ? 0 : -Infinity, Math.floor((lo - range * 0.09) / step) * step), yMax = Math.ceil((hi + range * 0.09) / step) * step;
@@ -1024,10 +1063,12 @@
     // 縦の目盛り線と時刻は全パネル共通
     ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1'; ctx.fillStyle = '#667b8c';
     ctx.font = (small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    var xt = w < 500 ? 3 : 5;
-    var withDate = Boolean(opts.dates) && new Date(xMin).toDateString() !== new Date(xMax).toDateString();
-    for (var i = 0; i <= xt; i++) {
-      var t = xMin + (xMax - xMin) * i / xt, x = X(t), label = fmtTime(t), half = ctx.measureText(label).width / 2;
+    // 時刻の目もりは、切りのよい時刻に引く（手元の画面と同じ）。opts.elapsedFrom があれば、そこからの時間（はじめてから ○分）で数える
+    var withDate = Boolean(opts.dates) && !has(opts.elapsedFrom) && new Date(xMin).toDateString() !== new Date(xMax).toDateString();
+    var xTicks = timeTicks(xMin, xMax, w < 500 ? 4 : 6, opts.elapsedFrom);
+    if (xTicks.length < 2) xTicks = [{t: xMin, label: fmtTime(xMin)}, {t: xMax, label: fmtTime(xMax)}];
+    for (var i = 0; i < xTicks.length; i++) {
+      var t = xTicks[i].t, x = X(t), label = xTicks[i].label, half = ctx.measureText(label).width / 2;
       ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
       ctx.fillText(label, Math.max(half + 2, Math.min(w - half - 2, x)), bottom + (withDate ? 8 : 16));   // 右端の時刻が切れないように、枠の中へ寄せる。枠と時刻のあいだに「写真の帯」が入る
       if (withDate) { var day = new Date(t); ctx.fillText((day.getMonth() + 1) + '/' + day.getDate(), Math.max(half + 2, Math.min(w - half - 2, x)), bottom + 23); }
@@ -1146,7 +1187,7 @@
       ctx.fillText(text, bl + pad, by + boxH / 2 + .5);
     };
     // 時刻（線の上端。重ねたときは、上の端に書いた名前の下。右端に近いときは線の左へ）
-    var timeLabel = timeText(ref[0], fine);
+    var timeLabel = opts && has(opts.elapsedFrom) ? 'はじめてから ' + elapsedText(ref[0] - opts.elapsedFrom) : timeText(ref[0], fine);
     ctx.font = font;
     var timeW = ctx.measureText(timeLabel).width + pad * 2;
     drawBox(timeLabel, x + 8 + timeW > rightEdge ? x - 8 - timeW : x + 8, g.timeY, 'rgba(58, 69, 80, .9)', 'white');
@@ -1926,7 +1967,7 @@
     var open = ov.ids.length <= 2 || lines <= 9;
     // 使い方のひとこと（記録が 1 つだけのときは、ずらす相手がいないので、ドラッグの話はしない）
     $('ov-hint').textContent = ov.ids.length < 2 ? 'チェックを入れたセンサーの線が出ます。' + ZOOM_HINT
-      : '色の印を押すと、その' + ENTRY + 'の線をまとめて出したり消したりできます。線を左右にドラッグすると、その' + ENTRY + 'の時間がずれます。' + ZOOM_HINT;
+      : '線を左右にドラッグすると、その' + ENTRY + 'の時間がずれます。' + ZOOM_HINT;
     ov.ids.forEach(function (id, i) {
       var box = el('div', 'rec-group' + (open ? ' open' : '')); box.style.setProperty('--row-color', COLORS[i % COLORS.length]);
       var head = el('div', 'rec-head');
@@ -1995,6 +2036,14 @@
         chip.appendChild(document.createTextNode(u.name + unitSuffix(u)));
         chip.addEventListener('click', function () { toggleChip(u.key); });
         box.appendChild(chip);
+      });
+      var kinds = $('ov-kinds'); kinds.textContent = '';
+      union.forEach(function (u) {
+        var row = el('label', 'rec-sensor'), cb = el('input'); cb.type = 'checkbox'; cb.dataset.key = u.key;
+        cb.addEventListener('change', function () { toggleChip(u.key); });
+        var holder = el('span'); holder.innerHTML = LINE_SVG;
+        row.appendChild(cb); row.appendChild(holder.firstChild); row.appendChild(el('span', 'sname', u.name + unitSuffix(u)));
+        kinds.appendChild(row);
       });
     }
     ov.caches = caches;
@@ -2077,7 +2126,18 @@
       setDash(chip.firstChild, state === 'false' ? [] : dashOf(key));
       chip.firstChild.style.color = one && state !== 'false' ? u.color : '';
     });
-    $('ov-sensors').hidden = ov.union.length < 2;
+    // 左の一覧の上の、センサーごとのチェック（全部で出ている＝チェック、一部だけ＝「－」、出ていない＝空）
+    Array.prototype.forEach.call($('ov-kinds').querySelectorAll('input'), function (cb) {
+      var state = chipState(cb.dataset.key);
+      cb.checked = state === 'true';
+      cb.indeterminate = state === 'mixed';
+      var svg = cb.parentNode.querySelector('svg');
+      setDash(svg, state === 'false' ? [] : dashOf(cb.dataset.key));
+      svg.style.opacity = state === 'false' ? '.3' : '';
+    });
+    $('ov-kinds-box').hidden = ov.union.length < 2;
+    $('ov-entries-title').textContent = ov.ids.length > 1 ? ENTRY + 'ごと' : '';
+    $('ov-sensors').hidden = true;   // 見出しの右の印は出さない（同じ操作を、左の一覧の「センサー」のチェックにまとめた）
     ov.ids.forEach(function (id, i) {
       var c = ov.caches[i], d = byId(id), r = ov.rows && ov.rows[id], off = ov.offsets[id] || 0, mine = mines[i], color = COLORS[i % COLORS.length];
       var name = c ? c.name : d ? d.name : '';
@@ -2134,7 +2194,7 @@
       : groups.length < 2 ? names.join('・')
       : groups.map(function (members, a) { var seen = []; members.forEach(function (n) { var t = series[n].sensorName + unitSuffix(series[n]); if (seen.indexOf(t) < 0) seen.push(t); }); return OVERLAY_SIDES[a] + ' ' + seen.join('と'); }).join('・');
     var desc = !series.length ? ''
-      : '横軸：時刻　縦軸：' + axisText + '　線の色：' + (one ? 'センサー' : ENTRY) + (dashed ? '　線の種類：センサー' : '')
+      : '横軸：' + (ov.align === 'start' ? 'はじめてからの時間' : '時刻') + '　縦軸：' + axisText + '　線の色：' + (one ? 'センサー' : ENTRY) + (dashed ? '　線の種類：センサー' : '')
         + (series.length >= 2 && !can ? (unitGroups(series).length > 3 ? '　（単位が 4 種類以上あるので、重ねずに並べています）' : '　（画面の幅がせまいので、重ねずに並べています）') : '');
     $('ov-title').textContent = title;
     $('ov-desc').textContent = desc;
@@ -2144,7 +2204,9 @@
     placeScroll(ovScroll, cv, overlay ? Math.max(0, groups.length - 1) : 0);
     var range = ovScroll.update(extentOf(series.map(function (sr) { return sr.pts; })));
     // 色と名前はグラフの上の列に出すので、枠の中には名前を書かない（legend: 'none'。かわりに、軸の上へセンサーの名前と単位を書く）
-    var opts = {mode: overlay ? 'overlay' : 'stack', range: range, fine: fine, legend: 'none', dates: true, fill: series.length > 4 ? 0 : 0.1};
+    var elapsedFrom = null;
+    if (ov.align === 'start') series.forEach(function (sr) { if (sr.pts.length && (elapsedFrom === null || sr.pts[0][0] < elapsedFrom)) elapsedFrom = sr.pts[0][0]; });
+    var opts = {mode: overlay ? 'overlay' : 'stack', range: range, fine: fine, legend: 'none', dates: true, fill: series.length > 4 ? 0 : 0.1, elapsedFrom: elapsedFrom};
     var geo = drawChart(cv, series, Object.assign({sel: ovSel.sel, hover: ov.drag ? null : ov.hover}, opts));
     $('ov-empty-text').textContent = series.length ? 'まだ記録がありません。' : '線が 1 本も出ていません。左の一覧でチェックを入れると、線が出ます。';
     $('ov-empty').hidden = Boolean(geo);

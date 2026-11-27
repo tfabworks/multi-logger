@@ -1505,6 +1505,11 @@
     .home-resume b { color: var(--blue-dark); font-size: 1.2rem; font-weight: 900; }
     .home-resume span { font-weight: 800; }
     .home-resume .go { margin-left: auto; color: var(--blue-dark); font-weight: 900; }
+    /* つづきがあるときは、つづきがいちばん目立つ（緑）。「あたらしくはかる」は、ひかえめにする（2 時間目に、まちがえて新しい記録を作らないように） */
+    .home-resume { border-color: #0e8058; color: white; background: var(--green); box-shadow: 0 4px 0 #0e8058; padding: 18px 22px; }
+    .home-resume b { color: white; font-size: 1.35rem; }
+    .home-resume .go { color: white; font-size: 1.1rem; }
+    .home-view.has-resume .home-new { color: var(--ink); background: white; border: 2px solid var(--line); box-shadow: none; font-size: 1rem; }
     .home-cols { display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 26vw, 360px); gap: 16px; align-items: start; }
     .home-card, .choose-card { padding: 18px; min-width: 0; }
     .home-card h2, .choose-card h3 { margin: 0; font-size: 1.15rem; }
@@ -1528,6 +1533,11 @@
     .home-row .tool-btn { align-self: center; }
     .home-empty { margin: 8px 0 0; color: var(--muted); font-weight: 700; }
     .home-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .dialog-easy { margin-top: 4px; color: var(--muted); font-size: .92rem; font-weight: 800; }
+    .home-teacher { justify-self: start; color: var(--muted); font-size: .85rem; font-weight: 800; }
+    .home-teacher > summary { cursor: pointer; padding: 4px 2px; }
+    .home-teacher-body { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+    .home-teacher-body span { flex: 1 1 260px; font-weight: 700; }
     .link-btn { border: 0; padding: 4px 2px; color: #a23b3b; background: none; font: inherit; font-size: .8rem; font-weight: 800; text-decoration: underline; cursor: pointer; }
     .home-undo {
       display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 9px 14px; border-radius: 13px; color: white; background: #3a4550; font-weight: 800;
@@ -1570,6 +1580,15 @@
     .compare-row .name input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; accent-color: var(--row-color); cursor: pointer; }
     .compare-row .name span { overflow: hidden; text-overflow: ellipsis; }
     .compare-row.is-hidden .val, .compare-row.is-hidden .stats { opacity: .45; }
+    /* センサーが 4 つ以上: 最小・平均・最大はしまって、1 行ずつにつめる（読めなかったわけ＝ .warn は出す） */
+    .compare-rows.compact { gap: 4px; }
+    .compare-rows.compact .compare-row { padding-top: 4px; padding-bottom: 4px; }
+    .compare-rows.compact .stats:not(.warn) { display: none; }
+    .compare-rows.compact .val { font-size: 1.05rem; }
+    @media (min-width: 841px) {
+      /* 行が多くても、カメラの映像・写真の記録・記録ボタンが画面に残るように、行の所だけをスクロールさせる */
+      .compare-rows { max-height: max(132px, calc(100vh - 575px)); overflow-y: auto; padding-right: 2px; }
+    }
     .lesson-url { width: 100%; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; font-size: .8rem; }
     .lesson-qr { width: 190px; margin: 10px auto 0; }
     @media (max-width: 900px) {
@@ -1737,7 +1756,7 @@
         <button id="homeSame" class="home-sub" type="button" hidden>前と同じ組ではじめる<small id="homeSameText"></small></button>
         <div id="homeLive" class="home-live" aria-live="polite">センサー：まだつながっていません</div>
       </div>
-      <button id="homeResume" class="home-resume" type="button" hidden><b>さっきのつづき</b><span id="homeResumeText"></span><span class="go">ひらく →</span></button>
+      <button id="homeResume" class="home-resume" type="button" hidden><b id="homeResumeTitle">さっきのつづき</b><span id="homeResumeText"></span><span class="go">ひらく →</span></button>
       <div class="home-cols">
         <article class="home-card">
           <div class="home-card-head">
@@ -1755,7 +1774,6 @@
           </div>
           <ul id="homeList" class="home-list"></ul>
           <p id="homeEmpty" class="home-empty">まだ記録がありません。「あたらしくはかる」をおして、はじめましょう。</p>
-          <div class="home-foot"><button id="homeClear" class="link-btn" type="button">この端末の記録をぜんぶ消す</button></div>
         </article>
         <article class="home-card home-rooms">
           <h2>測定室</h2>
@@ -1764,6 +1782,14 @@
           <button id="homeRoomBtn" class="tool-btn" type="button">測定室をつくる・参加する</button>
         </article>
       </div>
+      <!-- 先生用: 児童がまちがえて押さないように、たたんでおく -->
+      <details class="home-teacher">
+        <summary>先生用</summary>
+        <div class="home-teacher-body">
+          <button id="homeClear" class="tool-btn delete" type="button">この端末の記録をぜんぶ消す</button>
+          <span>授業のあと、みんなで使う端末に記録や写真をのこさないときに使います。消したものは、もとにもどせません。</span>
+        </div>
+      </details>
     </section>
 
     <!-- ===== えらぶ画面: はかるセンサーと、自分ではかっていないデータ ===== -->
@@ -2056,6 +2082,7 @@
       <div class="dialog-icon" aria-hidden="true">!</div>
       <h3 id="camWarnTitle">写真の記録をはじめる前に</h3>
       <p>必ず顔や個人情報が撮影されないように設置してから記録をはじめてください</p>
+      <p class="dialog-easy">（人の顔や名前がうつらないように、カメラのむきをたしかめよう）</p>
       <div class="dialog-actions">
         <button id="camWarnCancel" class="dialog-cancel" type="button">やめる</button>
         <button id="camWarnOk" class="dialog-close" type="button">OK</button>
@@ -4029,6 +4056,7 @@
       function renderCompareList() {
         if (!isCompare()) return;
         const keys = activeKeys(), sig = keys.join("+");
+        els.compareRows.classList.toggle("compact", keys.length > 3);
         if (els.compareRows.dataset.keys !== sig) {
           els.compareRows.dataset.keys = sig;
           els.compareRows.replaceChildren(...keys.map(key => {
@@ -4413,6 +4441,24 @@
         return { top: 24, right: rightAxes ? rightAxisWidth(width) * rightAxes : 22, bottom: 45, left: width < 470 ? 55 : 68 };
       }
 
+      // 時刻の目もり。t0〜t1 のあいだの、切りのよい時刻（この端末の時計で、きざみの倍数）と、そのラベル
+      const TICK_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400];   // 秒
+      function timeTicks(t0, t1, want) {
+        const span = t1 - t0;
+        if (!(span > 0)) return [];
+        const stepSec = TICK_STEPS.find(sec => span / (sec * 1000) <= want) || Math.ceil(span / want / 86400000) * 86400;
+        const step = stepSec * 1000, base = new Date(t0).getTimezoneOffset() * 60000;   // この端末の時計の 0 時が基準
+        const crossesDay = new Date(t0).toDateString() !== new Date(t1).toDateString();
+        const out = [];
+        for (let t = Math.ceil((t0 - base) / step) * step + base; t <= t1; t += step) {
+          const d = new Date(t), hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+          const label = stepSec < 60 ? `${hm}:${String(d.getSeconds()).padStart(2, "0")}`
+            : crossesDay && d.getHours() === 0 && d.getMinutes() === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : hm;   // 日をまたぐ記録は、0 時の所に日付
+          out.push({ t, label });
+        }
+        return out;
+      }
+
       function niceStep(range, targetTicks = 5) {
         if (!Number.isFinite(range) || range <= 0) return 1;
         const rough = range / targetTicks;
@@ -4472,18 +4518,19 @@
         ctx.font = `${small ? 10 : 12}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        const desiredXTicks = width < 500 ? 4 : 6;
-        const xTickIndexes = new Set([0, data.length - 1]);
-        for (let i = 1; i < desiredXTicks - 1; i++) {
-          xTickIndexes.add(Math.round((i / (desiredXTicks - 1)) * (data.length - 1)));
+        // 時刻の目もりは、切りのよい時刻（10 秒ごと、1 分ごと、1 時間ごと…）に引く。ノートに写しやすく、「午後 2 時ごろが最高」と読み取れるように。
+        // 記録が 1〜2 件で切りのよい時刻が入らないときは、両はしの時刻を書く
+        let xTicks = timeTicks(times[0], times[times.length - 1], width < 500 ? 4 : 6);
+        if (xTicks.length < 2) {
+          const clock = t => new Date(t).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          xTicks = [...new Set([times[0], times[times.length - 1]])].map(t => ({ t, label: clock(t) }));
         }
-        [...xTickIndexes].sort((a, b) => a - b).forEach(index => {
-          const x = xAt(index);
+        xTicks.forEach(({ t, label }) => {
+          const x = xOfTime(t);
           ctx.beginPath();
           ctx.moveTo(x, plotTop);
           ctx.lineTo(x, plotBottom);
           ctx.stroke();
-          const label = data[index].time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
           ctx.fillText(label, x, plotBottom + 16);   // 枠と時刻のあいだに「写真の帯」が入る
         });
 
@@ -4546,6 +4593,15 @@
           const pad = Math.max(Math.abs(rawMin) * 0.08, sensor.decimals === 0 || sensor.decimals === null ? 5 : 1);
           rawMin -= pad;
           rawMax += pad;
+        }
+        // 縦軸の幅は、いちばん小さくても「出している小数の 1 目もり × 20」（温度なら 2℃、照度なら 20lx）。
+        // 幅をデータぎりぎりに合わせると、0.01℃ のゆれが大きな上下に見えて、「上がったり下がったりした」と読んでしまう
+        const minSpan = Number.isFinite(sensor.decimals) ? 20 * Math.pow(10, -sensor.decimals) : 0;
+        if (rawMax - rawMin < minSpan) {
+          const mid = (rawMin + rawMax) / 2;
+          rawMin = mid - minSpan / 2;
+          rawMax = mid + minSpan / 2;
+          if (neverNegative && rawMin < 0) { rawMax -= rawMin; rawMin = 0; }
         }
         const range = rawMax - rawMin;
         const step = niceStep(range * 1.18, ticks);
@@ -6906,7 +6962,7 @@
           roomUi.pubStart.hidden = pub;
           roomUi.pubStop.hidden = !pub;
           roomUi.pubOn.hidden = !(pub && r.isOwner);
-          roomUi.url.value = r.url || r.roomPage;
+          roomUi.url.value = roomPageBase(r.roomId);
           if (!pub) roomUi.qr.hidden = true;
         }
       }
@@ -6915,9 +6971,16 @@
         roomUi.err.hidden = !message;
       }
       // 測定室のページには、見る資格（作成者の資格か、参加中の端末の資格）を # で渡す
+      // 測定室のページは、このアプリと同じ場所にある room.html（サーバーが返す URL は使わない。版がちがうと、画面がそろわない）
+      function roomPageBase(roomId) {
+        const url = new URL("room.html", location.href);
+        url.search = `?room=${encodeURIComponent(roomId)}`;
+        url.hash = "";
+        return url.href;
+      }
       function roomPageUrl() {
         const r = st.room;
-        return r.roomPage + (r.isOwner && r.ownerToken ? `#owner=${encodeURIComponent(r.ownerToken)}` : `#member=${encodeURIComponent(`${st.streamId}.${st.token}`)}`);
+        return roomPageBase(r.roomId) + (r.isOwner && r.ownerToken ? `#owner=${encodeURIComponent(r.ownerToken)}` : `#member=${encodeURIComponent(`${st.streamId}.${st.token}`)}`);
       }
       async function setRoomPublic(on, button) {
         button.disabled = true;
@@ -7144,6 +7207,7 @@
         v2.choose.hidden = name !== "choose";
         v2.recName.textContent = name === "measure" && curRec ? recTitle(curRec) : "";
         window.scrollTo(0, 0);
+        if (name !== "home") finishUndo();   // 一覧をはなれたら、「もとにもどす」は終わり
         if (name === "home") { renderHome(); homeLoop(); }
         else if (name === "choose") chooseLoop();
         else {
@@ -7211,7 +7275,7 @@
         homeRecs = recs;
         [...homeSel].forEach(id => { if (!recs.some(rec => rec.id === id)) homeSel.delete(id); });
         v2.homeEmpty.hidden = recs.length > 0;
-        v2.homeClear.hidden = !recs.length;
+        v2.homeClear.disabled = !recs.length;
         v2.homeNote.textContent = storeReady ? "記録は、この端末にだけのこります" : "このブラウザでは記録を保存できません（ページをとじると消えます）";
         v2.homeList.replaceChildren(...recs.map(homeRow));
         let last = null, lastSet = null;
@@ -7221,7 +7285,11 @@
         // さっきのつづき: 一覧のいちばん上に大きく出す（ふたを閉じた・タブを閉じた、のあとで、記録が 2 つに割れないように）
         const lastRec = last && recs.find(rec => rec.id === last.id);
         v2.homeResume.hidden = !lastRec;
+        v2.home.classList.toggle("has-resume", Boolean(lastRec));
         if (lastRec) {
+          // 今日の記録なら「さっきのつづき」、前の日の記録なら「前のつづき」
+          const sameDay = new Date(lastRec.updatedAt || lastRec.createdAt).toDateString() === new Date().toDateString();
+          byId("homeResumeTitle").textContent = sameDay ? "さっきのつづき" : "前のつづき";
           v2.homeResume.dataset.id = lastRec.id;
           v2.homeResumeText.textContent = `${recTitle(lastRec)}　${recSubText(lastRec)}`;
         }
@@ -7261,7 +7329,7 @@
         }
       }
       // 消す: すぐには消さず、しばらく「もとにもどす」を出す（一覧からは、すぐ消える）
-      let undoIds = [], undoTimer = null;
+      let undoIds = [];
       async function purgeDeleted(ids) {
         for (const id of ids) {
           try { if (storeReady) await V2DB.deleteRec(id); else memRecs.delete(id); } catch (error) { console.warn("[保存] 消せませんでした", error); }
@@ -7270,7 +7338,7 @@
       async function homeDelete() {
         const ids = [...homeSel];
         if (!ids.length) return;
-        if (undoIds.length) { clearTimeout(undoTimer); await purgeDeleted(undoIds); }   // 前に消した分は、もう戻せない
+        await finishUndo();   // 前に消した分は、もう戻せない
         const now = Date.now();
         for (const id of ids) {
           const rec = await recGet(id);
@@ -7280,11 +7348,17 @@
         homeSel.clear();
         v2.homeUndoText.textContent = `${ids.length} つの記録を消しました`;
         v2.homeUndo.hidden = false;
-        undoTimer = setTimeout(async () => { const gone = undoIds; undoIds = []; v2.homeUndo.hidden = true; await purgeDeleted(gone); }, 12000);
-        renderHome();
+        renderHome();   // 「もとにもどす」は、時間では消さない（先生を呼んでいるあいだに消えないように）。次の操作（finishUndo）で片づける
+      }
+      // 消した記録を、ほんとうに消す（「もとにもどす」を出したまま、ほかの操作に進んだとき）
+      async function finishUndo() {
+        if (!undoIds.length) return;
+        const gone = undoIds;
+        undoIds = [];
+        v2.homeUndo.hidden = true;
+        await purgeDeleted(gone);
       }
       async function homeUndo() {
-        clearTimeout(undoTimer);
         for (const id of undoIds) {
           const rec = await recGet(id);
           if (rec) { delete rec.deletedAt; await recPut(rec); }
@@ -7308,7 +7382,6 @@
       async function homeClearAll() {
         if (!window.confirm("この端末にある記録を、写真もふくめて、ぜんぶ消します。もとにもどせません。よろしいですか？")) return;
         try {
-          clearTimeout(undoTimer);
           undoIds = [];
           v2.homeUndo.hidden = true;
           if (storeReady) { await V2DB.clearAll(); await V2DB.metaPut("last", null); } else memRecs.clear();
@@ -7677,11 +7750,12 @@
         }
         const ordered = [...own, ...EXT_KEYS.filter(key => keys.includes(key))];
         const interval = [...els.intervalSelect.options].some(option => option.value === String(data.i)) ? String(data.i) : els.intervalSelect.value;
+        // 今日、同じ組ではじめた記録があれば、そのつづきをひらく（2 時間目にリンクをひらき直しても、記録が 2 つに割れない）。日が変われば、新しい記録
         const today = new Date().toDateString();
-        let empty = null;
-        try { empty = (await recList()).find(rec => !rec.count && new Date(rec.createdAt).toDateString() === today && (rec.keys || []).join("+") === ordered.join("+")); } catch (error) { /* 無ければ作る */ }
-        const ok = empty ? await openRecord(empty.id) : await createRecord(ordered, { interval });
-        if (ok) showToast("授業用リンクから、はかる画面をひらきました");
+        let same = null;
+        try { same = (await recList()).find(rec => new Date(rec.createdAt).toDateString() === today && (rec.keys || []).join("+") === ordered.join("+")); } catch (error) { /* 無ければ作る */ }
+        const ok = same ? await openRecord(same.id) : await createRecord(ordered, { interval });
+        if (ok) showToast(same && same.count ? "授業用リンクから、今日の記録のつづきをひらきました" : "授業用リンクから、はかる画面をひらきました");
         return ok;
       }
 
