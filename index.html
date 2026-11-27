@@ -9,6 +9,7 @@
        デバイスとつなぐライブラリ（akadako.js）は、本家の https://699.jp/src/js/akadako.js をそのまま読む（本家が更新されると、ここも新しくなる）。
        書体は Google Fonts の Inter の複製を、このページと同じ場所から読む -->
   <script src="https://699.jp/src/js/akadako.js"></script>
+  <script src="v2db.js"></script>
   <style>
     /* 見出しだけ Inter（β も同じ書体で出る）。読めなければ下の font-family の順に落ちる */
     @font-face {
@@ -286,7 +287,7 @@
       align-items: stretch;
     }
 
-    .side-card, .chart-card {
+    .side-card, .chart-card, .home-card, .choose-card {
       border: 1px solid rgba(207,226,239,.95);
       border-radius: 24px;
       background: rgba(255,255,255,.94);
@@ -1472,6 +1473,104 @@
       .sensor-name { font-size: .74rem; }
     }
 
+    /* ===== v2: 画面の切りかえ（一覧／えらぶ／はかる） ===== */
+    .v2-off { display: none !important; }
+    body[data-view="home"] .measure-only, body[data-view="choose"] .measure-only { display: none !important; }
+    .title-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .rec-name { color: white; font-size: .95rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .95; }
+    .home-view, .choose-view { display: grid; gap: 16px; }
+    .home-view[hidden], .choose-view[hidden] { display: none; }
+    .home-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .home-new {
+      min-height: 58px; padding: 0 30px; border: 0; border-radius: 17px; color: white; background: var(--green);
+      box-shadow: 0 4px 0 #0e8058; font: inherit; font-size: 1.15rem; font-weight: 900; cursor: pointer;
+    }
+    .home-new:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    .home-sub {
+      display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 58px; padding: 6px 18px;
+      border: 2px solid var(--line); border-radius: 17px; color: var(--ink); background: white; font: inherit; font-weight: 900; cursor: pointer; text-align: left;
+    }
+    .home-sub small { color: var(--muted); font-size: .76rem; font-weight: 700; }
+    .home-live {
+      margin-left: auto; padding: 9px 16px; border-radius: 999px; color: var(--muted); background: white; border: 2px solid var(--line);
+      font-size: .9rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .home-live.on { color: #0e7a55; border-color: #9fdcc4; background: #effaf5; }
+    .home-resume {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; width: 100%; padding: 16px 20px; border: 2px solid var(--blue); border-radius: 20px;
+      color: var(--ink); background: var(--sky); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow);
+    }
+    .home-resume[hidden] { display: none; }
+    .home-resume b { color: var(--blue-dark); font-size: 1.2rem; font-weight: 900; }
+    .home-resume span { font-weight: 800; }
+    .home-resume .go { margin-left: auto; color: var(--blue-dark); font-weight: 900; }
+    .home-cols { display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 26vw, 360px); gap: 16px; align-items: start; }
+    .home-card, .choose-card { padding: 18px; min-width: 0; }
+    .home-card h2, .choose-card h3 { margin: 0; font-size: 1.15rem; }
+    .home-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+    .home-note { color: #9a5b00; background: #fff5dc; border-radius: 999px; padding: 3px 12px; font-size: .78rem; font-weight: 800; }
+    .home-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .home-tools .tool-btn.delete { margin-left: auto; }
+    .home-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .home-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: stretch; gap: 8px; }
+    .home-check { display: grid; place-items: center; width: 40px; border-radius: 12px; background: #f3f8fb; cursor: pointer; }
+    .home-check input { width: 20px; height: 20px; accent-color: var(--blue); cursor: pointer; }
+    .home-open {
+      display: grid; gap: 2px; min-width: 0; padding: 9px 14px; border: 2px solid var(--line); border-radius: 13px; color: var(--ink); background: white;
+      font: inherit; text-align: left; text-decoration: none; cursor: pointer;
+    }
+    .home-open:hover { border-color: var(--blue); background: #f7fbfd; }
+    .home-open .t { font-weight: 900; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .home-open .s { color: var(--muted); font-size: .8rem; font-weight: 700; }
+    .home-open .badge { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; color: #5a4a00; background: #ffe9a6; font-size: .72rem; font-weight: 900; vertical-align: 1px; }
+    .home-open .badge.src { color: var(--blue-dark); background: var(--sky); }
+    .home-row .tool-btn { align-self: center; }
+    .home-empty { margin: 8px 0 0; color: var(--muted); font-weight: 700; }
+    .home-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .link-btn { border: 0; padding: 4px 2px; color: #a23b3b; background: none; font: inherit; font-size: .8rem; font-weight: 800; text-decoration: underline; cursor: pointer; }
+    .home-undo {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 9px 14px; border-radius: 13px; color: white; background: #3a4550; font-weight: 800;
+    }
+    .home-undo[hidden] { display: none; }
+    .home-undo button { margin-left: auto; border: 0; border-radius: 9px; padding: 5px 14px; color: #3a4550; background: white; font: inherit; font-weight: 900; cursor: pointer; }
+    .home-rooms { display: grid; gap: 10px; }
+    .home-rooms .home-open { border-color: #f0d2b2; }
+    .choose-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+    .choose-head h2 { margin: 0; font-size: 1.3rem; }
+    .choose-count { padding: 5px 14px; border-radius: 999px; color: var(--blue-dark); background: var(--sky); font-weight: 900; font-variant-numeric: tabular-nums; }
+    .choose-card h3 { margin-bottom: 10px; }
+    .choose-card h3 small { margin-left: 8px; color: var(--muted); font-size: .8rem; font-weight: 700; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
+    .tile {
+      position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center;
+      min-height: 66px; padding: 9px 12px; border: 2px solid var(--line); border-radius: 15px; color: var(--ink); background: white; font: inherit; text-align: left; cursor: pointer;
+    }
+    .tile .sensor-icon { grid-row: 1 / 3; width: 40px; height: 40px; margin: 0; border-radius: 12px; }
+    .tile-name { font-weight: 900; font-size: .95rem; line-height: 1.25; }
+    .tile-value { color: var(--muted); font-size: .8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.3; }
+    .tile-value.live { color: var(--sensor-color); font-size: 1rem; }
+    .tile-check { position: absolute; top: -8px; right: -8px; display: none; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: white; background: var(--sensor-color); font-size: .85rem; font-weight: 900; box-shadow: 0 0 0 2px white; }
+    .tile[aria-pressed="true"] { border-color: var(--sensor-color); background: color-mix(in srgb, var(--sensor-color) 9%, white); }
+    .tile[aria-pressed="true"] .tile-check { display: grid; }
+    .tile.locked { cursor: default; opacity: .78; }
+    details.choose-card > summary { cursor: pointer; font-size: 1.15rem; font-weight: 900; }
+    details.choose-card[open] > summary { margin-bottom: 10px; }
+    .choose-place { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 800; }
+    .choose-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .choose-hint { color: var(--muted); font-weight: 800; }
+    .rec-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rec-tools .tool-btn { flex: 1 1 auto; justify-content: center; }
+    .compare-row .name { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .compare-row .name input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; accent-color: var(--row-color); cursor: pointer; }
+    .compare-row .name span { overflow: hidden; text-overflow: ellipsis; }
+    .compare-row.is-hidden .val, .compare-row.is-hidden .stats { opacity: .45; }
+    .lesson-url { width: 100%; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; font-size: .8rem; }
+    .lesson-qr { width: 190px; margin: 10px auto 0; }
+    @media (max-width: 900px) {
+      .home-cols { grid-template-columns: 1fr; }
+      .home-live { margin-left: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
     }
@@ -1481,15 +1580,18 @@
   <main class="page">
     <header class="hero">
       <div class="title-wrap">
+        <!-- はかる画面・えらぶ画面から、トップページ（一覧）にもどる -->
+        <button id="homeBtn" class="compare-toggle home-btn measure-only" type="button" title="記録をとめて、一覧にもどる">← 一覧</button>
         <h1>AkaDako Multi Cloud Logger(β)</h1>
+        <span id="recName" class="rec-name measure-only"></span>
       </div>
       <div class="connection-panel">
         <!-- くらべる ON のあいだは、センサーのタブを押すと切り替えではなく「追加」になる（上限3つ。古いほうから外れる）。チェックの付いたタブを押すと外れる -->
-        <button id="compareToggle" class="compare-toggle" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
+        <button id="compareToggle" class="compare-toggle v2-off" type="button" aria-pressed="false">くらべる<span id="compareToggleState" class="state">OFF</span></button>
         <!-- いま出ているデータから分かることを AI にきく（結果はダイアログに出て、そのまま印刷できる） -->
-        <button id="askBtn" class="compare-toggle ask-btn" type="button" title="いま出ているデータから分かることを、AIにしらべてもらう"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>しらべる</button>
+        <button id="askBtn" class="compare-toggle ask-btn measure-only" type="button" title="いま出ているデータから分かることを、AIにしらべてもらう"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>しらべる</button>
         <!-- 測定室（共有）の入口。丸い印は、データを送れているか（緑）・送れていないか（橙） -->
-        <button id="shareBtn" class="compare-toggle share-toggle ind" type="button" title="測定室を作成する・測定室に参加して、みんなの測定データを見る（作成者は URL で公開できる）">
+        <button id="shareBtn" class="compare-toggle share-toggle ind measure-only" type="button" title="測定室を作成する・測定室に参加して、みんなの測定データを見る（作成者は URL で公開できる）">
           <span class="ind-dot" aria-hidden="true"></span>
           <span id="shareLabel">測定室</span>
         </button>
@@ -1507,7 +1609,7 @@
       </div>
     </header>
 
-    <div class="sensor-tabs-wrap">
+    <div class="sensor-tabs-wrap v2-off">
       <nav id="sensorTabs" class="sensor-tabs" aria-label="表示するセンサー">
       <button class="sensor-btn sensor-btn--ai" data-sensor="ai" aria-selected="false" type="button">
         <span class="sensor-icon" aria-hidden="true">
@@ -1615,18 +1717,74 @@
       </button>
 
       <!-- 自分で測っていないデータ（太陽の高さ・前に保存した記録）。押すと、どれを出すかをえらぶ画面が出る -->
-      <button class="sensor-btn" style="--sensor-color:#5b6b7a" data-sensor="external" aria-selected="false" type="button">
-        <span class="sensor-icon" aria-hidden="true">
-          <svg viewBox="0 0 32 32"><text x="16" y="17" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="system-ui, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" font-size="21" font-weight="900">外</text></svg>
-        </span>
-        <span class="sensor-name">外部</span>
-      </button>
       </nav>
       <button id="tabsScrollLeft" class="tabs-arrow tabs-arrow--left" type="button" aria-label="左のセンサーを表示する" hidden>◀</button>
       <button id="tabsScrollRight" class="tabs-arrow tabs-arrow--right" type="button" aria-label="右のセンサーを表示する" hidden>▶</button>
     </div>
 
-    <section class="dashboard">
+    <!-- ===== トップページ: これまでの記録と測定室。いつも、ここから始まる ===== -->
+    <section id="homeView" class="home-view">
+      <div class="home-top">
+        <button id="homeNew" class="home-new" type="button">＋ あたらしくはかる</button>
+        <button id="homeSame" class="home-sub" type="button" hidden>前と同じ組ではじめる<small id="homeSameText"></small></button>
+        <div id="homeLive" class="home-live" aria-live="polite">センサー：まだつながっていません</div>
+      </div>
+      <button id="homeResume" class="home-resume" type="button" hidden><b>さっきのつづき</b><span id="homeResumeText"></span><span class="go">ひらく →</span></button>
+      <div class="home-cols">
+        <article class="home-card">
+          <div class="home-card-head">
+            <h2>これまでの記録</h2>
+            <span id="homeNote" class="home-note">記録は、この端末にだけのこります</span>
+          </div>
+          <div id="homeUndo" class="home-undo" hidden><span id="homeUndoText"></span><button id="homeUndoBtn" type="button">もとにもどす</button></div>
+          <div class="home-tools">
+            <button id="homeCompare" class="tool-btn" type="button" disabled title="チェックを付けた記録を、ならべたり重ねたりして、くらべる">くらべる</button>
+            <button id="homeExport" class="tool-btn" type="button" disabled title="チェックを付けた記録を、ファイルにして残す（ほかの端末にうつせる）">ファイルにのこす</button>
+            <button id="homeImport" class="tool-btn" type="button" title="「ファイルにのこす」で作ったファイルから、記録をもどす">ファイルからもどす</button>
+            <input id="homeImportInput" type="file" accept=".zip,.csv,application/zip,text/csv" hidden>
+            <button id="homeDelPhotos" class="tool-btn" type="button" disabled title="チェックを付けた記録の、写真だけを消す（記録とメモの文は残る）">写真だけ消す</button>
+            <button id="homeDelete" class="tool-btn delete" type="button" disabled title="チェックを付けた記録を消す">消す</button>
+          </div>
+          <ul id="homeList" class="home-list"></ul>
+          <p id="homeEmpty" class="home-empty">まだ記録がありません。「あたらしくはかる」をおして、はじめましょう。</p>
+          <div class="home-foot"><button id="homeClear" class="link-btn" type="button">この端末の記録をぜんぶ消す</button></div>
+        </article>
+        <article class="home-card home-rooms">
+          <h2>測定室</h2>
+          <ul id="homeRooms" class="home-list"></ul>
+          <p id="homeRoomsEmpty" class="home-empty">みんなの記録を 1 つの画面にあつめます。先生に ID を聞いて参加します。</p>
+          <button id="homeRoomBtn" class="tool-btn" type="button">測定室をつくる・参加する</button>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===== えらぶ画面: はかるセンサーと、自分ではかっていないデータ ===== -->
+    <section id="chooseView" class="choose-view" hidden>
+      <div class="choose-head">
+        <button id="chooseBack" class="tool-btn" type="button">← もどる</button>
+        <h2 id="chooseTitle">はかるものをえらぶ</h2>
+        <span id="chooseCount" class="choose-count">センサー 0 / 6</span>
+      </div>
+      <article class="choose-card">
+        <h3>本体のセンサー</h3>
+        <div id="chooseOwn" class="tiles"></div>
+      </article>
+      <article class="choose-card">
+        <h3>べつのセンサー<small>つないで使うもの・AI</small></h3>
+        <div id="chooseAdd" class="tiles"></div>
+      </article>
+      <details id="chooseExtBox" class="choose-card">
+        <summary>自分ではかっていないデータ（天気・太陽の高さ・前の記録）</summary>
+        <div class="choose-place">場所：<b id="choosePlace">まだえらんでいません</b><button id="choosePlaceBtn" class="tool-btn" type="button">場所をえらぶ</button></div>
+        <div id="chooseExt" class="tiles"></div>
+      </details>
+      <div class="choose-actions">
+        <button id="chooseGo" class="home-new" type="button" disabled>この組ではじめる</button>
+        <span id="chooseHint" class="choose-hint"></span>
+      </div>
+    </section>
+
+    <section class="dashboard measure-only">
       <aside id="sideCard" class="side-card" style="--active-color:#ef5b5b">
         <div class="reading-panel">
           <div class="current-label"><span id="currentSensorName">温度</span><span id="currentLabelSuffix"> の現在値</span></div>
@@ -1694,6 +1852,11 @@
           <div id="oxygenPanel" class="oxygen-panel" hidden>
             <p id="oxygenStatus" class="oxygen-status">未校正です</p>
             <button id="calibrateBtn" class="calibrate-btn" type="button">大気で再校正（20.9%）</button>
+          </div>
+          <!-- 記録のとちゅうでも、センサーを足せる。授業用リンク: 同じ組・間隔・場所ではかる画面を、児童の端末でひらく -->
+          <div class="rec-tools">
+            <button id="addSensorBtn" class="tool-btn" type="button">＋ センサーを足す</button>
+            <button id="lessonBtn" class="tool-btn" type="button" title="同じセンサーの組・記録間隔・場所ではかる画面をひらくリンクを作る">授業用リンク</button>
           </div>
         </div>
       </aside>
@@ -1824,28 +1987,11 @@
   <!-- 「外部」タブ: 自分で測っていないデータを 1 つえらぶ -->
   <dialog id="extDialog" aria-labelledby="extDialogTitle">
     <div class="dialog-body ext-body">
-      <h3 id="extDialogTitle">外部のデータをえらぶ</h3>
-      <p class="ext-lead">自分ではかっていないデータを 1 つえらんで、グラフや表にならべます</p>
-      <label class="ext-choice"><input type="radio" name="extType" value="sun" checked><span><b>太陽の高さ</b><small>場所と時刻から計算します（夜は 0°）</small></span></label>
-      <div id="extSunBox" class="ext-detail">
-        <label>場所<select id="extPref"></select></label>
-      </div>
-      <label class="ext-choice"><input type="radio" name="extType" value="file"><span><b>前の記録</b><small>このアプリで保存した CSV か ZIP をえらびます</small></span></label>
-      <div id="extFileBox" class="ext-detail" hidden>
-        <button id="extFileBtn" class="ext-btn" type="button">ファイルをえらぶ</button>
-        <input id="extFileInput" type="file" accept=".csv,.zip,text/csv,application/zip" hidden>
-        <span id="extFileName" class="ext-file-name">まだえらんでいません</span>
-        <label id="extColBox" hidden>項目<select id="extCol"></select></label>
-        <label>そろえ方<select id="extAlign">
-          <option value="start">はじまりをそろえる</option>
-          <option value="clock">時刻をそろえる</option>
-        </select></label>
-      </div>
-      <label class="ext-choice"><input type="radio" name="extType" value="amedas"><span><b>アメダス</b><small>気象庁が全国ではかっている、雨・風・日照（10 分ごと）</small></span></label>
-      <div id="extAmedasBox" class="ext-detail" hidden>
+      <h3 id="extDialogTitle">場所をえらぶ</h3>
+      <p class="ext-lead">アメダス（気象庁の雨・風・日照）と太陽の高さは、ここでえらんだ場所のものを出します</p>
+      <div class="ext-detail">
         <label>都道府県<select id="extAmPref"></select></label>
         <label>地点<select id="extAmStation"></select></label>
-        <label>項目<select id="extAmItem"></select></label>
         <span id="extAmNote" class="ext-file-name"></span>
         <span>出典：気象庁</span>
       </div>
@@ -1853,6 +1999,30 @@
       <div class="dialog-actions">
         <button id="extCancel" class="dialog-cancel" type="button">キャンセル</button>
         <button id="extOk" class="dialog-close" type="button">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 前の記録をえらぶ（一覧にある記録から。ファイルからもえらべる） -->
+  <dialog id="prevDialog" aria-labelledby="prevDialogTitle">
+    <div class="dialog-body ext-body">
+      <h3 id="prevDialogTitle">前の記録をえらぶ</h3>
+      <p class="ext-lead">前にはかった記録を 1 つえらぶと、これからはかる記録といっしょにならべられます</p>
+      <div class="ext-detail">
+        <label>記録<select id="prevRec"></select></label>
+        <label id="extColBox" hidden>センサー<select id="extCol"></select></label>
+        <label>そろえ方<select id="extAlign">
+          <option value="start">はじまりをそろえる</option>
+          <option value="clock">同じ時刻でそろえる</option>
+        </select></label>
+        <button id="extFileBtn" class="ext-btn" type="button">ファイルからえらぶ</button>
+        <input id="extFileInput" type="file" accept=".csv,.zip,text/csv,application/zip" hidden>
+        <span id="extFileName" class="ext-file-name"></span>
+      </div>
+      <p id="prevErr" class="ext-err" hidden></p>
+      <div class="dialog-actions">
+        <button id="prevCancel" class="dialog-cancel" type="button">キャンセル</button>
+        <button id="prevOk" class="dialog-close" type="button">OK</button>
       </div>
     </div>
   </dialog>
@@ -2887,16 +3057,15 @@
           fetch: () => readPowerLevels().power
         },
         // 「外部」タブ。自分で測っていないデータ（下の「外部のデータ」の節）。名前・単位・小数の桁は、えらんだデータに合わせて入れかえる。
-        // 記録としては持たない（dataStore.external は、時刻から値を出して作り直したもの）
-        external: {
-          name: "外部",
-          unit: "",
-          csvUnit: "",
-          color: "#5b6b7a",
-          decimals: 1,
-          needsBoard: false,
-          fetch: () => extNow()
-        },
+        // 値は、時刻から出して作り直す（syncExternal）
+        // 自分ではかっていないデータ（EXT_KEYS）。値は時刻から決まる（アメダスは気象庁の値、太陽の高さは計算、前の記録は前の値を時刻に合わせて引く）。
+        // axis: 重ねるときの縦軸をまとめる単位（風向と太陽の高さは、どちらも「°」だが別の軸にする）
+        xRain: { name: "アメダス降水量", unit: "mm", csvUnit: "mm", color: "#3f7fd9", decimals: 1, needsBoard: false, fetch: () => extNow("xRain") },
+        xWind: { name: "アメダス風速", unit: "m/s", csvUnit: "m/s", color: "#00a3a3", decimals: 1, needsBoard: false, fetch: () => extNow("xWind") },
+        xWindDir: { name: "アメダス風向", unit: "°", csvUnit: "°", axis: "方位", color: "#8a6fd1", decimals: 0, needsBoard: false, fetch: () => extNow("xWindDir") },
+        xSun: { name: "アメダス日照時間", unit: "分", csvUnit: "分", color: "#d99a00", decimals: 0, needsBoard: false, fetch: () => extNow("xSun") },
+        xElev: { name: "太陽の高さ", unit: "°", csvUnit: "°", color: "#f08a24", decimals: 1, needsBoard: false, fetch: () => extNow("xElev") },
+        xPrev: { name: "前の記録", unit: "", csvUnit: "", color: "#5b6b7a", decimals: 1, needsBoard: false, fetch: () => extNow("xPrev") },
         // 「AI」タブ。switchSensor では選べず、enterAiMode() からだけ選ばれる。
         // saveOnly: 毎秒のライブ測定ではAIを呼ばず、記録のタイミングだけ問い合わせる（API利用を増やさない）
         // noteLabel: 表・CSVに回答文の列を足す / decimals: null は小数を省略せずそのまま出す
@@ -3094,12 +3263,25 @@
       let compareOn = false;
       let compareKeys = [];
       const compareErrors = {};   // 相手のセンサーが読めなかった理由（行に出す）
-      function activeKeys() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }   // 古い → 新しい（主）
+      // v2: 記録の組は「あたらしくはかる」でえらぶ。主センサー（selectedSensor。行の基準）が先頭で、そのあとに、ほかのセンサー → 自分ではかっていないデータ
+      function activeKeys() { return aiMode ? ["ai"] : [selectedSensor, ...compareKeys]; }
+      // 画面に出す線（左の一覧のチェックを外したものは出さない。記録はつづける）
+      const hiddenKeys = new Set();
+      function viewKeys() {
+        const keys = activeKeys(), shown = keys.filter(key => !hiddenKeys.has(key));
+        return shown.length ? shown : keys.slice(0, 1);
+      }
+      function setRecKeys(keys) {
+        const own = keys.filter(key => sensors[key] && !isExt(key) && key !== "ai");
+        selectedSensor = own[0] || "temperature";
+        compareKeys = [...new Set([...own.slice(1), ...EXT_KEYS.filter(key => keys.includes(key))])];
+        [...hiddenKeys].forEach(key => { if (key !== selectedSensor && !compareKeys.includes(key)) hiddenKeys.delete(key); });
+      }
       // くらべているグラフの出し方。false: 上下に並べる / true: 1枚に重ねる。
       // 前に開いていたときの出し方は、ほかの画面のようすと一緒に IndexedDB から戻す（restoreSession）
       let overlay = false;
       try { localStorage.removeItem("akadako-multi:layout"); } catch (error) { /* 以前の版が覚えた選択を消す */ }
-      function isOverlay() { return isCompare() && overlay && overlayFits(); }
+      function isOverlay() { return !aiMode && viewKeys().length > 1 && overlay && overlayFits(); }
       function setOverlay(on) {
         overlay = Boolean(on);
         store.touchUi();
@@ -3108,7 +3290,7 @@
         if (viewMode === "chart") drawChart();
       }
       function renderLayoutToggle() {
-        els.layoutToggle.hidden = !(isCompare() && viewMode === "chart" && overlayFits());
+        els.layoutToggle.hidden = !(!aiMode && viewKeys().length > 1 && viewMode === "chart" && overlayFits());
         els.layoutStack.classList.toggle("is-active", !overlay);
         els.layoutOverlay.classList.toggle("is-active", overlay);
         els.layoutStack.setAttribute("aria-pressed", String(!overlay));
@@ -3120,7 +3302,8 @@
       function overlayAxes(keys) {
         const axes = [];
         keys.forEach((key, n) => {
-          const axis = axes.find(members => sensors[keys[members[0]]].unit === sensors[key].unit);
+          const unitOf = one => sensors[one].axis || sensors[one].unit;
+          const axis = axes.find(members => unitOf(keys[members[0]]) === unitOf(key));
           if (axis) axis.push(n); else axes.push([n]);
         });
         return axes;
@@ -3129,7 +3312,8 @@
       // （グラフの幅でおよそ 395px 未満）。表を出している間はグラフの箱の幅が 0 なので、同じ幅の表の箱で測る
       const OVERLAY_MIN_PLOT = 240;
       function overlayFits() {
-        const axes = overlayAxes(activeKeys()).length;
+        const axes = overlayAxes(viewKeys()).length;
+        if (axes > 3) return false;   // 縦軸は 3 本まで（単位の種類が 4 つ以上なら、重ねない）
         if (axes < 3) return true;
         const box = els.canvasWrap.hidden ? els.tableWrap : els.canvasWrap;
         const width = Math.max(320, Math.floor(box.getBoundingClientRect().width));   // resizeCanvas と同じ幅
@@ -3149,9 +3333,8 @@
       function isCompare() { return !aiMode && compareKeys.length > 0; }
       function canReadAny() { return activeKeys().some(key => canRead(key)); }
       // 見出しなどに出す名前。自分で測ったセンサーを先に、外部のデータをあとに並べる（例: 湿度・アメダス風速（古河））
-      function activeName() {
-        const keys = activeKeys();
-        return [...keys.filter(key => key !== "external"), ...keys.filter(key => key === "external")].map(key => sensors[key].name).join("・");
+      function activeName(keys = activeKeys()) {
+        return keys.map(key => sensors[key].name).join("・");
       }
 
       // タブが右に続いていることに気づけるよう、端でないほうの矢印だけを出す
@@ -3386,7 +3569,7 @@
           });
           setConnectionUI(true);
           hideMidiDiag();
-          showToast(performance.now() - restoredAt < 4000 ? "センサーに接続しました（前の記録のつづきから表示しています）" : "センサーに接続しました");
+          showToast("センサーに接続しました");
           ensureReadingLoop();
           if (!midiAccess) startAutoConnect();   // 開いたときに許可が無く、手で押してつながった場合はここから見張りを始める
           return true;
@@ -3537,7 +3720,7 @@
       async function enterAiMode() {
         if (aiMode) return;
         stopRecording();   // センサーの記録をAIの問い合わせに引き継がない
-        setCompareOn(false);   // AI を押したら「くらべる」は OFF に戻す（aiMode を立てる前に。記録間隔の選択肢を AI 用に変えないため）
+        compareKeys = [];   // AI は、ほかのセンサーと組み合わせない
         aiMode = true;
         savedSensor = selectedSensor;
         selectedSensor = "ai";
@@ -3644,10 +3827,7 @@
         }
         const sensor = sensors[sensorKey];
         if (!sensor) return;
-        if (sensorKey === "external" && !(aiMode && savedSensor === "external")) {
-          openExtDialog();   // どのデータを出すかをえらぶ（「外部」だけを出しているときに押したら、えらび直し）
-          return;
-        }
+        if (isExt(sensorKey)) return;   // v2: 自分ではかっていないデータは、えらぶ画面から
         if (activeKeys().includes(sensorKey) || (aiMode && sensorKey === savedSensor)) {
           exitAiMode();   // AI表示から、選んでいたセンサーの表示へ戻すだけ。くらべる OFF で選んでいるタブを押しても何もしない
           return;
@@ -3673,7 +3853,22 @@
         else els.sensorDialog.setAttribute("open", "");
       }
 
+      let guideDone = null;   // v2: えらぶ画面から案内を出したとき、OK で呼ぶ
+      function showSensorGuide(sensorKey, done) {
+        const sensor = sensors[sensorKey], guide = sensor.connectGuide;
+        guideDone = done;
+        const link = document.createElement("a");
+        link.href = guide.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = guide.product;
+        els.sensorDialogTitle.textContent = `${sensor.name}をはかる準備`;
+        els.sensorDialogText.replaceChildren(document.createTextNode(`${guide.lead}(`), link, document.createTextNode(`)${guide.tail}`));
+        if (typeof els.sensorDialog.showModal === "function") els.sensorDialog.showModal();
+        else els.sensorDialog.setAttribute("open", "");
+      }
       function closeSensorDialog() {
+        guideDone = null;
         pendingSensor = null;
         if (typeof els.sensorDialog.close === "function") els.sensorDialog.close();
         else els.sensorDialog.removeAttribute("open");
@@ -3731,15 +3926,15 @@
 
       function updateHeadings() {
         if (aiMode) return;   // AI表示の見出しは enterAiMode が入れる
-        const keys = activeKeys();
-        els.chartTitle.textContent = `${activeName()}の変化`;
+        const keys = viewKeys();
+        els.chartTitle.textContent = `${activeName(keys)}の変化`;
         const label = key => `${sensors[key].name}${unitSuffix(sensors[key])}`;
-        els.chartDescription.textContent = !isCompare()
-          ? `横軸：時刻　縦軸：${label(selectedSensor)}`
+        els.chartDescription.textContent = keys.length < 2
+          ? `横軸：時刻　縦軸：${label(keys[0])}`
           : !isOverlay() ? `横軸：時刻（共通）　縦軸：上から ${keys.map(label).join("・")}`
           : overlayAxes(keys).length === 1 ? `横軸：時刻　縦軸：${keys.map(label).join("・")}（共通の軸）`
           : `横軸：時刻　縦軸：${overlayAxes(keys).map((members, a) => `${OVERLAY_SIDES[a]} ${members.map(n => label(keys[n])).join("と")}`).join("・")}`;
-        if (keys.includes("external") && ext.type === "amedas") els.chartDescription.textContent += "　出典：気象庁（アメダス）";
+        if (keys.some(key => EXT_AMEDAS[key])) els.chartDescription.textContent += "　出典：気象庁（アメダス）";
       }
 
       // タブを押したとき: 「くらべる」が OFF なら切り替え、ON なら追加する
@@ -3753,7 +3948,7 @@
         exitAiMode();
         if (!sensors[sensorKey] || activeKeys().includes(sensorKey)) return;
         // 外部は主センサーにしない（行の基準は、自分で測ったセンサー）。いまの主センサーはそのままで、相手に足す
-        const asPartner = sensorKey === "external";
+        const asPartner = isExt(sensorKey);
         const others = asPartner ? [...compareKeys, sensorKey] : [...compareKeys, selectedSensor];
         const dropped = others.splice(0, Math.max(0, others.length - (COMPARE_MAX - 1)));
         compareKeys = others;
@@ -3769,7 +3964,7 @@
         if (!compareKeys.length || !activeKeys().includes(sensorKey)) return;
         if (sensorKey === selectedSensor) {
           // 次の主センサーは、いちばん新しい「自分で測ったセンサー」（外部しか残らなければ外部）
-          const next = compareKeys.reduce((found, key, i) => key !== "external" ? i : found, -1);
+          const next = compareKeys.reduce((found, key, i) => !isExt(key) ? i : found, -1);
           selectedSensor = next < 0 ? compareKeys.pop() : compareKeys.splice(next, 1)[0];
         } else {
           compareKeys = compareKeys.filter(key => key !== sensorKey);
@@ -3818,8 +4013,10 @@
             row.className = "compare-row";
             row.dataset.sensor = key;
             row.style.setProperty("--row-color", sensor.color);
-            row.innerHTML = '<span class="name"></span><span class="val"><strong>--</strong><small></small></span><span class="stats"></span>';
-            row.querySelector(".name").textContent = sensor.name;
+            // チェックを外すと、その線を画面から消す（記録はつづける）
+            row.innerHTML = '<label class="name"><input type="checkbox" class="row-show" checked><span></span></label><span class="val"><strong>--</strong><small></small></span><span class="stats"></span>';
+            row.querySelector(".name span").textContent = sensor.name;
+            row.querySelector(".row-show").setAttribute("aria-label", `${sensor.name}をグラフに出す`);
             row.querySelector("small").textContent = sensor.unit || "";
             return row;
           }));
@@ -3828,6 +4025,9 @@
         keys.forEach(key => {
           const row = els.compareRows.querySelector(`[data-sensor="${key}"]`);
           const sensor = sensors[key], data = dataStore[key], value = latestValues[key];
+          row.querySelector(".row-show").checked = !hiddenKeys.has(key);
+          row.classList.toggle("is-hidden", hiddenKeys.has(key));
+          row.querySelector(".name span").textContent = sensor.name;
           row.querySelector("strong").textContent = typeof value === "number" ? formatValue(value, sensor) : "--";
           const stats = row.querySelector(".stats");
           if (compareErrors[key]) {
@@ -3847,7 +4047,7 @@
 
       function startRecording() {
         if (!canReadAny() || isRecording) return;
-        if (activeKeys().every(key => key === "external")) {
+        if (activeKeys().every(isExt)) {
           showToast("外部のデータは見るだけです。「くらべる」でセンサーといっしょにえらぶと、記録にならびます");
           return;
         }
@@ -3881,13 +4081,13 @@
       // 記録中かどうかに関わらず走らせる1本のループ。
       // 現在値は1秒ごと（記録間隔が1秒より短いならその周期）に更新し、記録は記録間隔ごとに行う。
       function ensureReadingLoop() {
-        if (loopRunning || !canReadAny()) return;
+        if (loopRunning || !canReadAny() || !measuring()) return;
         loopRunning = true;
         runReadingLoop().finally(() => { loopRunning = false; });
       }
 
       async function runReadingLoop() {
-        while (canReadAny()) {
+        while (canReadAny() && measuring()) {   // 一覧・えらぶ画面にいるあいだは読まない（センサーを足すあいだは、記録をつづける）
           const startedAt = performance.now();
           const recordInterval = Number(els.intervalSelect.value);
           const save = isRecording && startedAt >= nextSaveAt;
@@ -3935,7 +4135,7 @@
         if (sensor.saveOnly && !save) return false;   // AIは記録のときだけ問い合わせる
         try {
           // fetch は数値か、{ value, note } （note は表・CSVに添える文。AIの回答文）を返す
-          const result = DEMO && key !== "external" ? demoRead(key) : await sensor.fetch(board);
+          const result = DEMO && !isExt(key) ? demoRead(key) : await sensor.fetch(board);
           const isDetailed = result !== null && typeof result === "object";
           const value = Number(isDetailed ? result.value : result);
           const note = isDetailed && result.note !== undefined ? String(result.note) : undefined;
@@ -3943,7 +4143,7 @@
           latestValues[key] = value;   // 測定室に送る「現在値」
           delete compareErrors[key];
 
-          if (save && key !== "external") {   // 外部は記録として持たない（syncExternal が時刻から作る）
+          if (save && !isExt(key)) {   // 自分ではかっていないデータは、ここでは足さない（syncExternal が時刻から作る）
             seqCounters[key] += 1;
             const item = { time, value, seq: seqCounters[key] };
             if (note !== undefined) item.note = note;
@@ -3978,7 +4178,7 @@
             if (key === "ai") reportAiError(error);
           } else if (activeKeys().includes(key)) {
             compareErrors[key] = message;   // 相手のセンサーの行に出す
-            if (key === "external") delete latestValues[key];   // 前の記録の範囲を過ぎたら、古い値を出しつづけない
+            if (isExt(key)) delete latestValues[key];   // 前の記録の範囲を過ぎたら、古い値を出しつづけない
           }
           return false;
         }
@@ -4199,10 +4399,12 @@
       }
 
       function drawChart() {
-        const keys = activeKeys();
+        const keys = viewKeys();
         syncOverlayFit();
         const overlayMode = isOverlay();
-        els.canvasWrap.dataset.panels = String(overlayMode ? 1 : keys.length);   // パネルの数で箱の高さが変わる（CSS）
+        const panelCount = overlayMode ? 1 : keys.length;
+        els.canvasWrap.dataset.panels = String(panelCount);   // パネルの数で箱の高さが変わる（CSS）
+        els.canvasWrap.style.minHeight = panelCount > 3 ? `${panelCount * 170 + 40}px` : "";   // 4 段以上は、段の数だけ縦に伸ばす（ページをスクロールして見る）
         const { width, height } = resizeCanvas();
         ctx.clearRect(0, 0, width, height);
         chartGeo = null;
@@ -4794,7 +4996,7 @@
       }
       function openMemoEditor(index) {
         const item = dataStore[selectedSensor][index];
-        if (!item || selectedSensor === "external") return;   // 外部だけを見ているときは、メモを付ける記録が無い
+        if (!item) return;
         memoEdit = { key: selectedSensor, seq: item.seq, shot: undefined };   // shot: とったばかりの写真（保存を押すまでは仮）。null は「写真を消す」
         hover = index;
         const sensor = sensors[selectedSensor];
@@ -5071,7 +5273,7 @@
       }
 
       function deleteCurrentData() {
-        const keys = activeKeys().filter(key => key !== "external" && dataStore[key].length);   // 外部は記録ではないので、消すものが無い
+        const keys = activeKeys().filter(key => !isExt(key) && dataStore[key].length);   // 自分ではかっていないデータは、消すものが無い
         if (!keys.length) return;
         const names = keys.map(key => sensors[key].name).join("・");
         if (!window.confirm(`${names}の記録データをすべて削除しますか？`)) return;
@@ -5173,7 +5375,7 @@
 
       function resetChartView() {
         // 「外部」だけを見ているとき（太陽の高さの 1 日ぶん・前の記録のファイル）は、はじめから全部を見せる
-        view = { count: selectedSensor === "external" ? 100000 : CHART_POINTS, end: null };
+        view = { count: CHART_POINTS, end: null };
         sel = null;
         hover = null;
         memoEdit = null;
@@ -5653,7 +5855,7 @@
         syncExternal();
         const keys = activeKeys(), last = data[data.length - 1];
         const memoCount = data.reduce((n, item) => n + (memoAt(item, item.time.getTime()) ? 1 : 0), 0);
-        const sig = `${keys.join("+")}|${data.length}|${data[0].seq}-${last.seq}|${memoCount}|${ext.type}|${extVersion}`;
+        const sig = `${keys.join("+")}|${data.length}|${data[0].seq}-${last.seq}|${memoCount}|${extVersion}`;
         if (sig !== ask.sig) {   // 記録が変わっていたら、はじめからやり直す（同じなら、前のやりとりをそのまま出す）
           const image = askChartImage();
           Object.assign(ask, {
@@ -5674,13 +5876,15 @@
         document.body.classList.remove("ask-open");
       }
 
-      // ===== 外部のデータ（自分で測っていないデータ） =================================
-      // 「外部」タブで 1 つえらぶ。値は時刻から決まる（太陽の高さは計算、前の記録はファイルの値を時刻に合わせて引く）ので、
-      // 記録としては持たず、そのつど作り直す（dataStore.external。保存もしない）:
-      //   ・センサーとくらべているとき … 主センサーの記録の時刻ごとに値を出す（あとから「外部」を足しても、それまでの記録の分まで線が出る）
-      //   ・「外部」だけのとき … 見るだけ（記録はできない）。太陽の高さは今日 1 日ぶん（10 分ごと）、前の記録はファイルの中身をそのまま出す
-      // くらべているとき、外部は主センサーにしない（表・CSV・測定室の行の基準は、自分で測ったセンサーの記録）
-      // 場所は都道府県（県庁のある市）でえらぶ。[名前, 北緯, 東経]
+      // ===== 自分ではかっていないデータ ================================================
+      // 「あたらしくはかる」で、センサーと同じように 1 つずつえらぶ（いくつでも。センサーの 6 つには数えない）。
+      // 値は時刻から決まるので、主センサーの記録の時刻ごとに、そのつど作り直す（dataStore[キー]）。
+      // あとから足しても、それまでの記録の分まで線が出る。行の基準（主センサー）にはしない。
+      // 記録を閉じるときに、そのときの値を保存する（アメダスは 10 日より前を取り直せないので、ひらき直したときは保存した値を使う）
+      const EXT_KEYS = ["xRain", "xWind", "xWindDir", "xSun", "xElev", "xPrev"];
+      const EXT_AMEDAS = { xRain: "rain", xWind: "wind", xWindDir: "windDir", xSun: "sun" };   // キー → アメダスの項目
+      function isExt(key) { return EXT_KEYS.includes(key); }
+      // 都道府県（県庁のある市）。[名前, 北緯, 東経]
       const PREFS = [
         ["北海道", 43.06, 141.35], ["青森県", 40.82, 140.74], ["岩手県", 39.70, 141.15], ["宮城県", 38.27, 140.87], ["秋田県", 39.72, 140.10],
         ["山形県", 38.24, 140.36], ["福島県", 37.75, 140.47], ["茨城県", 36.34, 140.45], ["栃木県", 36.57, 139.88], ["群馬県", 36.39, 139.06],
@@ -5693,14 +5897,29 @@
         ["佐賀県", 33.25, 130.30], ["長崎県", 32.74, 129.87], ["熊本県", 32.79, 130.74], ["大分県", 33.24, 131.61], ["宮崎県", 31.91, 131.42],
         ["鹿児島県", 31.56, 130.56], ["沖縄県", 26.21, 127.68]
       ];
-      // type: null（まだえらんでいない）/ "sun" / "file"。file: { name, series: [{ name, unit, points: [[時刻ms, 値], ...] }] }
-      //       "amedas" のとき station: { id, name, pref }, item: 項目（AMEDAS_ITEMS のキー）
-      const ext = { type: null, pref: "東京都", align: "start", col: 0, file: null, station: null, item: "rain" };
-      let extVersion = 0;   // えらび直すたびに 1 ふやす（作り直しの合図）
-      let extSig = "";      // いまの dataStore.external を作ったときの条件
-      function extReady() {
-        return ext.type === "sun" || (ext.type === "file" && Boolean(ext.file && ext.file.series[ext.col]))
-          || (ext.type === "amedas" && Boolean(ext.station && AMEDAS_ITEMS[ext.item]));
+      // 場所は 1 回だけえらぶ。アメダスはその地点の値、太陽の高さもその地点で計算する（地点の緯度・経度が無ければ、県庁のある市）。
+      // chosen: 自分でえらんだか（まだなら、えらぶ画面で聞く）。station: { id, name, pref, flags（はかっている項目の印）, lat, lon } | null
+      const place = { pref: "東京都", station: null, chosen: false };
+      // 前の記録: { label（記録の名前）, name（センサーの名前）, unit, points: [[時刻ms, 値], ...], align: "start" | "clock" } | null
+      let prev = null;
+      let extVersion = 0;      // えらび直すたびに 1 ふやす（作り直しの合図）
+      const extSig = {};       // キーごと: いまの dataStore[キー] を作ったときの条件
+      const extKept = {};      // キーごと: 番号 → 値。読みこんだ記録にあった値と、これまでに出せた値
+      function placeLatLon() {
+        const station = place.station;
+        if (station && Number.isFinite(station.lat) && Number.isFinite(station.lon)) return [station.lat, station.lon];
+        const pref = PREFS.find(one => one[0] === (station ? station.pref : place.pref)) || PREFS[12];
+        return [pref[1], pref[2]];
+      }
+      function placeText() {
+        if (!place.chosen) return "まだえらんでいません";
+        return place.station ? `${place.station.pref} ${place.station.name}` : place.pref;
+      }
+      function extReady(key) {
+        if (key === "xElev") return true;
+        if (key === "xPrev") return Boolean(prev && prev.points && prev.points.length);
+        const item = AMEDAS_ITEMS[EXT_AMEDAS[key]];
+        return Boolean(item && place.station && (!place.station.flags || place.station.flags[item.flag] === "1"));
       }
       // ---- アメダス（気象庁） ----
       // 値は logdb.699.jp が気象庁から取ってきたものを受け取る（*.699.jp だけで動かすため）。10 分ごとの値で、新しい値は観測から 10〜20 分おくれて出る。
@@ -5715,12 +5934,12 @@
         北海道: "札幌", 岩手県: "盛岡", 宮城県: "仙台", 茨城県: "水戸", 栃木県: "宇都宮", 群馬県: "前橋", 埼玉県: "さいたま", 東京都: "東京", 神奈川県: "横浜",
         石川県: "金沢", 山梨県: "甲府", 愛知県: "名古屋", 三重県: "津", 滋賀県: "大津", 兵庫県: "神戸", 島根県: "松江", 香川県: "高松", 愛媛県: "松山", 沖縄県: "那覇"
       };
-      const AMEDAS_ALONE_MS = 24 * 3600000;   // 「外部」だけのときに出す長さ（直近 24 時間。「今日の 0 時から」にすると、日付が変わった直後に空になる）
       const amedas = { key: "", rows: [], from: 0, at: 0, loading: false, error: "" };
-      let amedasStations = null;   // [[番号, 名前, 都道府県, 項目の印], ...]。えらぶ画面で「アメダス」をえらんだときに読む
+      let amedasStations = null;   // [[番号, 名前, 都道府県, 項目の印, 北緯, 東経], ...]。場所をえらぶときに読む
+      function amedasRows() { return place.station && amedas.key === place.station.id ? amedas.rows : []; }
       // 時刻 ms の値。降水量・日照時間・風向は、その時刻をふくむ 10 分間の値（まだ出ていなければ null）。風速は前後の値のあいだをまっすぐ結ぶ
-      function amedasValue(ms) {
-        const item = AMEDAS_ITEMS[ext.item], rows = ext.station && amedas.key === ext.station.id ? amedas.rows : [];
+      function amedasValue(itemKey, ms) {
+        const item = AMEDAS_ITEMS[itemKey], rows = amedasRows();
         if (!item || !rows.length || ms > rows[rows.length - 1][0] || ms < rows[0][0] - 600000) return null;
         let lo = 0, hi = rows.length - 1;
         while (lo < hi) {   // ms 以上で、いちばん早い行
@@ -5729,38 +5948,41 @@
         }
         const raw = rows[lo][item.col];
         if (raw === null || raw === undefined) return null;
-        if (ext.item === "windDir") return raw === 0 ? null : (raw % 16) * 22.5;   // 16 方位の番号（16 が北）→ 角度。風が無いとき（0）は値なし
+        if (itemKey === "windDir") return raw === 0 ? null : (raw % 16) * 22.5;   // 16 方位の番号（16 が北）→ 角度。風が無いとき（0）は値なし
         if (item.step) return raw;
-        const prev = lo > 0 ? rows[lo - 1] : null;
-        if (!prev || prev[item.col] === null || prev[item.col] === undefined) return raw;
-        return prev[item.col] + (raw - prev[item.col]) * (ms - prev[0]) / (rows[lo][0] - prev[0]);
+        const before = lo > 0 ? rows[lo - 1] : null;
+        if (!before || before[item.col] === null || before[item.col] === undefined) return raw;
+        return before[item.col] + (raw - before[item.col]) * (ms - before[0]) / (rows[lo][0] - before[0]);
       }
-      function amedasLatest() {
-        const rows = ext.station && amedas.key === ext.station.id ? amedas.rows : [];
+      function amedasLatest(itemKey) {
+        const rows = amedasRows();
         for (let i = rows.length - 1; i >= 0; i--) {
-          const value = amedasValue(rows[i][0]);
+          const value = amedasValue(itemKey, rows[i][0]);
           if (value !== null) return value;
         }
         return null;
       }
-      // 要る時間帯（24 時間前か、主センサーの記録のはじめの、早いほうから）を取りに行く。5 分たつまでは取り直さない
+      // 要る時間帯（1 時間前か、主センサーの記録のはじめの、早いほうから）を取りに行く。5 分たつまでは取り直さない
+      let amedasWanted = false;   // えらぶ画面で、アメダスのタイルに今の値を出したいとき
       async function loadAmedas(force = false) {
-        if (ext.type !== "amedas" || !ext.station || amedas.loading || !activeKeys().includes("external")) return;
-        const key = ext.station.id, now = Date.now();
-        const base = selectedSensor !== "external" ? dataStore[selectedSensor] : [];
-        const from = Math.max(now - 10 * 86400000, Math.min(now - AMEDAS_ALONE_MS, base.length ? base[0].time.getTime() : now));
+        if (!place.station || amedas.loading || !(amedasWanted || activeKeys().some(key => EXT_AMEDAS[key]))) return;
+        const key = place.station.id, now = Date.now();
+        const base = dataStore[selectedSensor] || [];
+        const from = Math.max(now - 10 * 86400000, Math.min(now - 3600000, base.length ? base[0].time.getTime() : now));
         if (!force && amedas.key === key && amedas.from <= from && now - amedas.at < 5 * 60000) return;
         amedas.loading = true;
         try {
           const res = await shareApi("GET", `/amedas/${key}?from=${Math.floor(from)}&to=${now}`);
-          if (!ext.station || ext.station.id !== key) return;
+          if (!place.station || place.station.id !== key) return;
           Object.assign(amedas, { key, rows: Array.isArray(res.rows) ? res.rows : [], from, at: Date.now(), error: "" });
           extVersion += 1;   // 線を作り直す（空だったところが、届いた値で埋まる）
-          resetTable();
-          updateSummary();
-          refreshView();
+          if (curRec) {
+            resetTable();
+            updateSummary();
+            refreshView();
+          }
         } catch (error) {
-          console.warn("[外部] アメダスを取れませんでした", error);
+          console.warn("[アメダス] データを取れませんでした", error);
           Object.assign(amedas, { key, from, error: "アメダスのデータを取れませんでした", at: Date.now() - 4 * 60000 });   // 1 分後にもう一度
         } finally {
           amedas.loading = false;
@@ -5791,97 +6013,96 @@
         return t1 === t0 ? v0 : v0 + (v1 - v0) * (t - t0) / (t1 - t0);
       }
       // 時刻 ms の値。baseT0 は、いまの記録のはじまりの時刻（前の記録をそろえる基準）
-      function extValueAt(ms, baseT0) {
-        if (ext.type === "amedas") return amedasValue(ms);
-        if (ext.type === "sun") {
-          const place = PREFS.find(pref => pref[0] === ext.pref) || PREFS[12];
-          return Math.max(0, sunElevation(ms, place[1], place[2]));   // しずんでいる間（マイナス）は 0° にする（「太陽が出ていない＝0」。昼の山も大きく見える）
+      function extValueAt(key, ms, baseT0) {
+        if (EXT_AMEDAS[key]) return amedasValue(EXT_AMEDAS[key], ms);
+        if (key === "xElev") {
+          const [lat, lon] = placeLatLon();
+          return Math.max(0, sunElevation(ms, lat, lon));   // しずんでいる間（マイナス）は 0° にする（「太陽が出ていない＝0」。昼の山も大きく見える）
         }
-        const points = ext.file.series[ext.col].points;
+        if (!prev || !prev.points.length) return null;
+        const points = prev.points;
         const dayStart = t => { const day = new Date(t); day.setHours(0, 0, 0, 0); return day.getTime(); };
-        // はじまりをそろえる: 記録をはじめてからの時間で合わせる / 時刻をそろえる: 日付だけずらして、同じ時刻どうしを合わせる
-        const shifted = ext.align === "clock" ? ms - dayStart(baseT0) + dayStart(points[0][0]) : ms - baseT0 + points[0][0];
+        // はじまりをそろえる: 記録をはじめてからの時間で合わせる / 同じ時刻でそろえる: 日付だけずらして、同じ時刻どうしを合わせる
+        const shifted = prev.align === "clock" ? ms - dayStart(baseT0) + dayStart(points[0][0]) : ms - baseT0 + points[0][0];
         return extFileValue(points, shifted);
       }
-      // えらんだデータに合わせて、名前・単位・小数の桁を入れかえる
+      // えらんだ内容に合わせて、名前・単位・小数の桁を入れかえる
       function applyExtMeta() {
-        const def = sensors.external;
-        if (ext.type === "sun") {
-          Object.assign(def, { name: "太陽の高さ", unit: "°", csvUnit: "°", decimals: 1 });
-        } else if (ext.type === "amedas" && extReady()) {
-          const item = AMEDAS_ITEMS[ext.item];
+        Object.keys(EXT_AMEDAS).forEach(key => {
           // 名前は「アメダス風速（古河）」の形。「古河の風速・湿度」と並ぶと、湿度まで古河のものに見えるため
-          Object.assign(def, { name: `アメダス${item.name}（${ext.station.name}）`, unit: item.unit, csvUnit: item.unit, decimals: item.decimals });
-        } else if (extReady()) {
-          const series = ext.file.series[ext.col];
-          const same = Object.keys(sensors).map(key => sensors[key]).find(sensor => sensor !== def && sensor.name === series.name);   // 同じ名前のセンサーがあれば、単位と桁を合わせる（軸を共通にできる）
-          Object.assign(def, { name: `前の${series.name}`, unit: same ? same.unit : series.unit, csvUnit: same ? same.csvUnit : series.unit, decimals: same && same.decimals !== null ? same.decimals : 2 });
+          sensors[key].name = `アメダス${AMEDAS_ITEMS[EXT_AMEDAS[key]].name}${place.station ? `（${place.station.name}）` : ""}`;
+        });
+        const def = sensors.xPrev;
+        if (prev) {
+          const same = Object.keys(sensors).map(key => sensors[key]).find(sensor => sensor !== def && sensor.name === prev.name);   // 同じ名前のセンサーがあれば、単位と桁を合わせる（軸を共通にできる）
+          Object.assign(def, { name: `前の${prev.name}`, unit: same ? same.unit : prev.unit, csvUnit: same ? same.csvUnit : prev.unit, decimals: same && same.decimals !== null ? same.decimals : 2 });
         } else {
-          Object.assign(def, { name: "外部", unit: "", csvUnit: "", decimals: 1 });
+          Object.assign(def, { name: "前の記録", unit: "", csvUnit: "", decimals: 1 });
         }
       }
-      // いまの値（左のカードに出す）
-      function extNow() {
-        if (!extReady()) throw new SensorNoticeError("「外部」のタブを押して、データをえらんでください");
-        const alone = selectedSensor === "external";
-        if (ext.type === "amedas") {   // いま出ている、いちばん新しい値（観測から 10〜20 分おくれる）
-          const latest = amedasLatest();
+      // いまの値（左のカードと、えらぶ画面のタイルに出す）
+      function extNow(key) {
+        if (key === "xPrev" && !extReady(key)) throw new SensorNoticeError("前の記録をえらんでください");
+        if (EXT_AMEDAS[key]) {   // いま出ている、いちばん新しい値（観測から 10〜20 分おくれる）
+          if (!place.station) throw new SensorNoticeError("場所をえらんでください");
+          if (!extReady(key)) throw new SensorNoticeError("この地点では、はかっていません");
+          const latest = amedasLatest(EXT_AMEDAS[key]);
           if (latest === null) throw new SensorNoticeError(amedas.error || (amedas.at ? "この項目の値が、まだ出ていません" : "アメダスのデータを読みこんでいます…"));
           return latest;
         }
-        if (ext.type === "file" && alone) throw new SensorNoticeError(`${ext.file.name} の記録を表示しています`);
-        const base = alone ? [] : dataStore[selectedSensor];
+        const base = dataStore[selectedSensor] || [];
         const now = Date.now();
-        const value = extValueAt(now, base.length ? base[0].time.getTime() : now);
+        const value = extValueAt(key, now, base.length ? base[0].time.getTime() : now);
         if (value === null) throw new SensorNoticeError("前の記録に、この時刻の値はありません");
         return value;
       }
-      // dataStore.external を作り直す（条件が変わっていなければ何もしない）。グラフ・表・集計の前に呼ぶ
+      // dataStore[キー] を作り直す（条件が変わっていなければ何もしない）。グラフ・表・集計の前に呼ぶ
       function syncExternal() {
-        const list = dataStore.external;
-        const clear = () => { if (list.length) { list.length = 0; timeIndex.external = null; } extSig = ""; };
-        if (!activeKeys().includes("external") || !extReady()) { clear(); return; }
-        if (ext.type === "amedas") loadAmedas();   // 足りなければ取りに行く（届いたら作り直す）
-        const alone = selectedSensor === "external";
-        const base = alone ? null : dataStore[selectedSensor];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const sig = alone ? `alone|${extVersion}|${ext.type === "sun" ? today.getTime() : ""}`
-          : `with|${extVersion}|${selectedSensor}|${base.length}|${base.length ? `${base[0].seq}-${base[base.length - 1].seq}` : ""}`;
-        if (sig === extSig) return;
-        list.length = 0;
-        timeIndex.external = null;   // 時刻で引くための索引も作り直す
-        if (!alone) {
+        const keys = activeKeys();
+        EXT_KEYS.forEach(key => {
+          const list = dataStore[key];
+          if (!keys.includes(key)) {
+            if (list.length) { list.length = 0; timeIndex[key] = null; }
+            extSig[key] = "";
+            return;
+          }
+          if (EXT_AMEDAS[key]) loadAmedas();   // 足りなければ取りに行く（届いたら作り直す）
+          const base = dataStore[selectedSensor];
+          const sig = `${extVersion}|${selectedSensor}|${base.length}|${base.length ? `${base[0].seq}-${base[base.length - 1].seq}` : ""}`;
+          if (sig === extSig[key]) return;
+          list.length = 0;
+          timeIndex[key] = null;   // 時刻で引くための索引も作り直す
+          const kept = extKept[key] || (extKept[key] = new Map());
+          const ready = extReady(key);
           const baseT0 = base.length ? base[0].time.getTime() : 0;
           base.forEach(item => {
-            const value = extValueAt(item.time.getTime(), baseT0);
+            let value = ready ? extValueAt(key, item.time.getTime(), baseT0) : null;
+            if (value === null || value === undefined) value = kept.has(item.seq) ? kept.get(item.seq) : null;   // 取り直せないときは、前に出せた値
+            else kept.set(item.seq, value);
             if (value !== null) list.push({ time: item.time, value, seq: item.seq });
           });
-        } else if (ext.type === "sun") {
-          for (let n = 0; n <= 144; n++) {   // 今日の 0 時から 24 時まで、10 分ごと
-            const t = today.getTime() + n * 600000;
-            list.push({ time: new Date(t), value: extValueAt(t, t), seq: n + 1 });
-          }
-        } else if (ext.type === "amedas") {
-          const since = Date.now() - AMEDAS_ALONE_MS;
-          amedas.rows.forEach(row => {   // 直近 24 時間（いま出ているところまで）
-            const value = row[0] >= since ? amedasValue(row[0]) : null;
-            if (value !== null) list.push({ time: new Date(row[0]), value, seq: list.length + 1 });
-          });
-        } else {
-          ext.file.series[ext.col].points.forEach(([t, value], n) => list.push({ time: new Date(t), value, seq: n + 1 }));
-        }
-        extSig = sig;
+          extSig[key] = sig;
+        });
       }
-      // えらんだ内容を反映する
-      function applyExternal(next) {
-        Object.assign(ext, next);
+      // 記録を閉じるとき・ページを閉じるときに、いまの値を保存する
+      function persistExternal() {
+        if (!curRec) return;
+        syncExternal();
+        activeKeys().filter(isExt).forEach(key => store.replace(key));
+      }
+      function setPlace(next) {
+        Object.assign(place, next, { chosen: true });
         extVersion += 1;
         applyExtMeta();
-        resetTable();
-        store.metaPut("extFile", ext.file);
-        store.touchUi();
-        if (ext.type === "amedas") loadAmedas(true);
+        V2DB.metaPut("place", { pref: place.pref, station: place.station }).catch(() => {});
+        if (curRec) { resetTable(); store.touchUi(); }
+        loadAmedas(true);
+      }
+      function setPrev(next) {
+        prev = next;
+        extVersion += 1;
+        applyExtMeta();
+        if (curRec) { resetTable(); store.touchUi(); }
       }
 
       // ---- ファイル（このアプリで保存した CSV・ZIP）を読む ----
@@ -5957,29 +6178,8 @@
         throw new Error("zip");
       }
 
-      // ---- えらぶ画面 ----
-      let extPicked = null;   // えらぶ画面で読みこんだファイル（OK を押すまでは仮）
-      function extDialogType() { return els.extDialog.querySelector('input[name="extType"]:checked').value; }
-      function renderExtDialog() {
-        const type = extDialogType();
-        els.extSunBox.hidden = type !== "sun";
-        els.extFileBox.hidden = type !== "file";
-        els.extAmedasBox.hidden = type !== "amedas";
-        if (type === "amedas") loadAmedasStations();
-        els.extFileName.textContent = extPicked ? extPicked.name : "まだえらんでいません";
-        const series = extPicked ? extPicked.series : [];
-        els.extColBox.hidden = series.length < 2;
-        const current = els.extCol.value;
-        els.extCol.replaceChildren(...series.map((one, n) => {
-          const option = document.createElement("option");
-          option.value = String(n);
-          option.textContent = `${one.name}${one.unit ? `（${one.unit}）` : ""}`;
-          return option;
-        }));
-        if (series[Number(current)]) els.extCol.value = current;
-      }
-      // アメダスの地点の一覧（はじめて「アメダス」をえらんだときに読む）と、都道府県 → 地点 → 項目のえらぶ欄
-      let amedasWant = null;   // えらぶ欄にはじめに出しておく内容 { pref, id, item }
+      // ---- 場所をえらぶ（アメダスの地点。太陽の高さも、この場所で計算する） ----
+      let placeDone = null;    // 閉じたときに呼ぶ（えらんだら true）
       async function loadAmedasStations() {
         if (!amedasStations) {
           els.extAmNote.textContent = "地点を読みこんでいます…";
@@ -5987,12 +6187,11 @@
             amedasStations = (await shareApi("GET", "/amedas/stations")).stations;
             els.extAmNote.textContent = "";
           } catch (error) {
-            console.warn("[外部] アメダスの地点を読めませんでした", error);
-            els.extAmNote.textContent = "地点の一覧を読めませんでした。少ししてから、もう一度えらんでください";
+            console.warn("[アメダス] 地点を読めませんでした", error);
+            els.extAmNote.textContent = "地点の一覧を読めませんでした。都道府県だけをえらべます（アメダスは、通信できる所でえらび直してください）";
           }
         }
-        renderAmedasPicker(amedasWant);
-        amedasWant = null;
+        renderAmedasPicker({ pref: els.extAmPref.value, id: place.station && place.station.pref === els.extAmPref.value ? place.station.id : "" });
       }
       function fillSelect(select, pairs, value) {
         select.replaceChildren(...pairs.map(([key, label]) => {
@@ -6005,133 +6204,193 @@
       }
       function renderAmedasPicker(want) {
         const list = amedasStations || [];
-        fillSelect(els.extAmPref, PREFS.map(([name]) => [name, name]), (want && want.pref) || els.extAmPref.value || ext.pref);
+        fillSelect(els.extAmPref, PREFS.map(([name]) => [name, name]), (want && want.pref) || els.extAmPref.value || place.pref);
         const pref = els.extAmPref.value, inPref = list.filter(station => station[2] === pref);
         const capital = inPref.find(station => station[1] === (CAPITALS[pref] || pref.replace(/[都府県]$/, "")));
         fillSelect(els.extAmStation, inPref.map(station => [station[0], station[1]]), (want && want.id) || (capital ? capital[0] : ""));
-        const station = list.find(one => one[0] === els.extAmStation.value);
-        const items = Object.keys(AMEDAS_ITEMS).filter(key => station && station[3][AMEDAS_ITEMS[key].flag] === "1");   // その地点ではかっている項目だけ
-        fillSelect(els.extAmItem, items.map(key => [key, AMEDAS_ITEMS[key].name]), (want && want.item) || els.extAmItem.value);
+        els.extAmStation.disabled = !inPref.length;
       }
-      function openExtDialog() {
-        extPicked = ext.file;
-        amedasWant = ext.station ? { pref: ext.station.pref, id: ext.station.id, item: ext.item } : null;
-        els.extDialog.querySelector(`input[name="extType"][value="${["file", "amedas"].includes(ext.type) ? ext.type : "sun"}"]`).checked = true;
-        els.extPref.value = ext.pref;
-        els.extAlign.value = ext.align;
+      function openPlaceDialog(done) {
+        placeDone = done || null;
         els.extErr.hidden = true;
-        renderExtDialog();
-        if (extPicked && extPicked.series[ext.col]) els.extCol.value = String(ext.col);
+        renderAmedasPicker({ pref: place.station ? place.station.pref : place.pref, id: place.station ? place.station.id : "" });
+        loadAmedasStations();
         if (typeof els.extDialog.showModal === "function") els.extDialog.showModal();
         else els.extDialog.setAttribute("open", "");
       }
-      function closeExtDialog() {
+      function closeExtDialog(picked) {
         if (typeof els.extDialog.close === "function") els.extDialog.close();
         else els.extDialog.removeAttribute("open");
+        const done = placeDone;
+        placeDone = null;
+        if (done) done(picked === true);
       }
       function confirmExtDialog() {
-        const type = extDialogType();
-        if (type === "file" && !extPicked) {
-          els.extErr.textContent = "ファイルをえらんでください";
-          els.extErr.hidden = false;
+        const station = (amedasStations || []).find(one => one[0] === els.extAmStation.value) || null;
+        setPlace({
+          pref: els.extAmPref.value,
+          station: station ? { id: station[0], name: station[1], pref: station[2], flags: String(station[3] || ""), lat: Number(station[4]), lon: Number(station[5]) } : null
+        });
+        closeExtDialog(true);
+      }
+      // ---- 前の記録をえらぶ（一覧にある記録から。ファイルからもえらべる） ----
+      const prevUi = {
+        dialog: document.getElementById("prevDialog"), rec: document.getElementById("prevRec"), err: document.getElementById("prevErr"),
+        ok: document.getElementById("prevOk"), cancel: document.getElementById("prevCancel")
+      };
+      let prevPicked = null;   // { label, file?, series: [{ name, unit, points }] }。OK を押すまでは仮
+      let prevDone = null;
+      function renderPrevDialog() {
+        const series = prevPicked ? prevPicked.series : [];
+        els.extFileName.textContent = prevPicked && prevPicked.file ? prevPicked.label : "";
+        els.extColBox.hidden = !series.length;
+        fillSelect(els.extCol, series.map((one, n) => [String(n), `${one.name}${one.unit ? `（${one.unit}）` : ""}`]), els.extCol.value);
+      }
+      async function prevPickRec(id) {
+        prevPicked = null;
+        if (id) {
+          try {
+            const rec = await V2DB.getRec(id), rows = await V2DB.loadRows(id);
+            const by = {};
+            rows.forEach(row => { if (Number.isFinite(row.v) && Number.isFinite(row.t)) (by[row.k] = by[row.k] || []).push([row.t, row.v]); });
+            prevPicked = {
+              label: recTitle(rec),
+              series: rec.keys.filter(key => by[key] && by[key].length).map(key => {
+                const info = (rec.sensors && rec.sensors[key]) || {};
+                return { name: info.name || key, unit: info.unit || "", points: by[key].sort((a, b) => a[0] - b[0]) };
+              })
+            };
+          } catch (error) {
+            console.warn("[前の記録] 読めませんでした", error);
+          }
+        }
+        renderPrevDialog();
+      }
+      async function openPrevDialog(done) {
+        prevDone = done || null;
+        prevUi.err.hidden = true;
+        let recs = [];
+        try { recs = STORE_ON ? (await V2DB.listRecs()).filter(rec => rec.count > 0 && (!curRec || rec.id !== curRec.id)) : []; } catch (error) { /* 一覧を読めない */ }
+        fillSelect(prevUi.rec, [["", recs.length ? "えらんでください" : "（まだ記録がありません）"], ...recs.map(rec => [rec.id, recTitle(rec)])], "");
+        prevPicked = null;
+        renderPrevDialog();
+        if (prev) els.extAlign.value = prev.align;
+        if (typeof prevUi.dialog.showModal === "function") prevUi.dialog.showModal();
+        else prevUi.dialog.setAttribute("open", "");
+      }
+      function closePrevDialog(picked) {
+        if (typeof prevUi.dialog.close === "function") prevUi.dialog.close();
+        else prevUi.dialog.removeAttribute("open");
+        const done = prevDone;
+        prevDone = null;
+        if (done) done(picked === true);
+      }
+      function confirmPrevDialog() {
+        const one = prevPicked && prevPicked.series[Number(els.extCol.value) || 0];
+        if (!one) {
+          prevUi.err.textContent = "記録をえらんでください";
+          prevUi.err.hidden = false;
           return;
         }
-        const station = type === "amedas" ? (amedasStations || []).find(one => one[0] === els.extAmStation.value) : null;
-        if (type === "amedas" && (!station || !AMEDAS_ITEMS[els.extAmItem.value])) {
-          els.extErr.textContent = "地点と項目をえらんでください";
-          els.extErr.hidden = false;
-          return;
-        }
-        applyExternal(type === "sun" ? { type, pref: els.extPref.value }
-          : type === "amedas" ? { type, station: { id: station[0], name: station[1], pref: station[2] }, item: els.extAmItem.value }
-          : { type, file: extPicked, col: Number(els.extCol.value) || 0, align: els.extAlign.value });
-        closeExtDialog();
-        if (aiMode || !activeKeys().includes("external")) pickSensor("external");
-        else applySensorUI();   // えらび直しただけ
+        setPrev({ label: prevPicked.label, name: one.name, unit: one.unit || "", points: one.points, align: els.extAlign.value === "clock" ? "clock" : "start" });
+        closePrevDialog(true);
       }
 
-      // ===== 記録をブラウザに残す（IndexedDB） ========================================
-      // ページを閉じたり端末を再起動したりしても、次に開いたときに前の画面（選んでいたセンサー・記録・メモ・写真）から続けられるようにする。
-      //   records: 記録 1 件ごと（キーは [センサー, 番号]） / photos: 写真の画像（キーは写真の番号） / meta の "ui": 画面のようす（uiState）
-      // 書きこみは少しためてから 1 回のトランザクションで行う。記録中かどうかは残さない（開き直したら記録は止まっている）。
-      // デモモードと ?store=off では保存も復元もしない（写真はメモリーに置くだけ）。
-      // 同じページを 2 つのタブで開くと記録がまざるので、保存するのは先に開いたタブだけにする（Web Locks）
-      const STORE_ON = !DEMO && PAGE_PARAMS.get("store") !== "off" && Boolean(window.indexedDB);
+      // ===== 記録をブラウザに残す（IndexedDB。v2db.js） ==============================
+      // v2: 記録は 1 組だけではなく、いくつも残る。トップページの一覧からえらんで、ひらく・くらべる・消す。
+      //   recs: 記録の見出し（一覧に出す要約つき） / records: 記録 1 件ごと（キーは [記録, センサー, 番号]） / photos: 写真の画像
+      // いまひらいている記録（curRec）の分だけをメモリー（dataStore）に持ち、書きこみは少しためてから 1 回のトランザクションで行う。
+      // 記録中かどうかは残さない（ひらき直したら記録は止まっている）。?store=off では保存しない（写真はメモリーに置くだけ）。
+      // 同じ記録を 2 つのタブでひらくとまざるので、ひらいているあいだはロックを持つ（Web Locks）
+      const STORE_ON = PAGE_PARAMS.get("store") !== "off" && Boolean(window.indexedDB) && Boolean(window.V2DB);
+      let storeReady = false;     // 保存先をひらけたか（ひらけなかったら、一覧は空のまま・記録はこのページをひらいている間だけ）
+      let curRec = null;          // いまひらいている記録の見出し
+      const memRecs = new Map();  // 保存できないときの、記録の見出しの置き場
       function uiState() {
         return {
-          sensor: aiMode ? (savedSensor || "temperature") : selectedSensor, ai: aiMode,
-          compareOn, compareKeys: [...compareKeys], overlay, view: viewMode,
+          overlay, view: viewMode,
           interval: els.intervalSelect.value, photoMode: els.photoMode.value, aiPrompt: els.aiPrompt.value,
-          seq: { ...seqCounters }, fine: { ...fineTime },
-          external: { type: ext.type, pref: ext.pref, align: ext.align, col: ext.col, station: ext.station, item: ext.item }
+          seq: { ...seqCounters }, fine: { ...fineTime }, hidden: [...hiddenKeys]
         };
       }
+      // 一覧に出す日時（同じ日の 2 回を区別できるように、時刻まで）と、記録の名前
+      function recDateText(ms) {
+        const d = new Date(ms);
+        return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+      }
+      function recTitle(rec) { return rec.name || `${recDateText(rec.startedAt || rec.createdAt)} の記録`; }
+      // いまの画面のようすと、一覧に出す要約を、記録の見出しに写す
+      function recSnapshot() {
+        const rec = curRec, keys = activeKeys();
+        let count = 0, startedAt = null, endedAt = null, photoCount = 0;
+        const info = {};
+        keys.forEach(key => {
+          const sensor = sensors[key], data = dataStore[key];
+          info[key] = { name: sensor.name, unit: sensor.unit, decimals: sensor.decimals, color: sensor.color };
+          if (isExt(key) || !data.length) return;
+          count = Math.max(count, data.length);
+          const t0 = data[0].time.getTime(), t1 = data[data.length - 1].time.getTime();
+          startedAt = startedAt === null ? t0 : Math.min(startedAt, t0);
+          endedAt = endedAt === null ? t1 : Math.max(endedAt, t1);
+          for (let i = 0; i < data.length; i++) if (data[i].photo) photoCount += 1;
+        });
+        Object.assign(rec, {
+          keys, sensors: info, interval: Number(els.intervalSelect.value), count, startedAt, endedAt, photoCount,
+          fine: keys.some(key => fineTime[key]), ui: uiState(),
+          place: { pref: place.pref, station: place.station, chosen: place.chosen }, prev: keys.includes("xPrev") ? prev : null
+        });
+        return rec;
+      }
       const store = (() => {
-        let db = null, timer = null, uiDirty = false;
+        let timer = null, uiDirty = false;
         let ops = [];
         const pending = new Map();     // まだ書きこんでいない写真（すぐ「大きく見る」を押されたとき用）
         const memPhotos = new Map();   // IndexedDB を使わないときの写真の置き場（ページを閉じると消える）
-        const done = req => new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
-        const toRec = (key, item) => {
-          const rec = { k: key, seq: item.seq, t: item.time.getTime(), v: item.value };
-          ["note", "memo", "photo", "thumb"].forEach(name => { if (item[name] !== undefined) rec[name] = item[name]; });
-          return rec;
+        const db = () => (storeReady ? V2DB.raw() : null);
+        const toRow = (rec, key, item) => {
+          const row = { rec, k: key, seq: item.seq, t: item.time.getTime(), v: item.value };
+          ["note", "memo", "photo", "thumb"].forEach(name => { if (item[name] !== undefined) row[name] = item[name]; });
+          return row;
         };
-        function schedule() { if (db && timer === null) timer = setTimeout(flush, 400); }
+        function schedule() { if (db() && timer === null) timer = setTimeout(flush, 400); }
         function flush() {
           clearTimeout(timer);
           timer = null;
-          if (!db || (!ops.length && !uiDirty)) return;
+          const d = db();
+          if (!d || (!ops.length && !uiDirty)) return;
           const batch = ops, ui = uiDirty;
           ops = [];
           uiDirty = false;
           try {
-            const tx = db.transaction(["records", "photos", "meta"], "readwrite");
+            const tx = d.transaction(["recs", "records", "photos"], "readwrite");
             const records = tx.objectStore("records"), photos = tx.objectStore("photos");
             const written = [];
             batch.forEach(op => {
-              if (op.type === "put") records.put(toRec(op.key, op.item));
-              else if (op.type === "del") records.delete([op.key, op.seq]);
-              else if (op.type === "clear") records.delete(IDBKeyRange.bound([op.key, 0], [op.key, Number.MAX_SAFE_INTEGER]));
-              else if (op.type === "photo") { photos.put({ id: op.id, blob: op.blob }); written.push(op.id); }
+              if (op.type === "put") records.put(toRow(op.rec, op.key, op.item));
+              else if (op.type === "del") records.delete([op.rec, op.key, op.seq]);
+              else if (op.type === "clear") records.delete(V2DB.rangeOf(op.rec, op.key));
+              else if (op.type === "photo") { photos.put({ id: op.id, rec: op.rec, blob: op.blob }); written.push(op.id); }
               else if (op.type === "photoDel") photos.delete(op.id);
-              else if (op.type === "meta") { if (op.value === null || op.value === undefined) tx.objectStore("meta").delete(op.name); else tx.objectStore("meta").put(op.value, op.name); }
             });
-            if (ui) tx.objectStore("meta").put(uiState(), "ui");
+            if (ui && curRec) tx.objectStore("recs").put(recSnapshot());
             tx.oncomplete = () => written.forEach(id => pending.delete(id));
             tx.onerror = tx.onabort = () => console.warn("[保存] 書きこめませんでした", tx.error);
           } catch (error) {
             console.warn("[保存] 書きこめませんでした", error);
           }
         }
-        function push(op) { if (db && op.key !== "external") { ops.push(op); uiDirty = true; schedule(); } }   // 外部（key が "external"）は記録として残さない   // 番号（seq）も一緒に残すので、画面のようすも書く
+        // 記録にさわる書きこみ。ひらいている記録の id を、その場で付ける（あとで別の記録をひらいても、まざらない）
+        function push(op, data = true) {
+          if (!curRec) return;
+          if (data) curRec.updatedAt = Date.now();   // 一覧は、さいごに記録した順
+          if (!db()) return;
+          op.rec = curRec.id;
+          ops.push(op);
+          uiDirty = true;   // 番号（seq）も一緒に残すので、画面のようすも書く
+          schedule();
+        }
         return {
           flush,
-          open() {
-            return new Promise((resolve, reject) => {
-              const req = indexedDB.open("akadako-multi", 1);
-              req.onupgradeneeded = () => {
-                req.result.createObjectStore("records", { keyPath: ["k", "seq"] });
-                req.result.createObjectStore("photos", { keyPath: "id" });
-                req.result.createObjectStore("meta");
-              };
-              req.onsuccess = () => {
-                db = req.result;
-                db.onversionchange = () => { db.close(); db = null; };
-                resolve();
-              };
-              req.onerror = () => reject(req.error);
-              req.onblocked = () => reject(new Error("blocked"));
-            });
-          },
-          async load() {
-            const tx = db.transaction(["records", "photos", "meta"], "readonly");
-            const [records, photoIds, ui, extFile] = await Promise.all([
-              done(tx.objectStore("records").getAll()), done(tx.objectStore("photos").getAllKeys()),
-              done(tx.objectStore("meta").get("ui")), done(tx.objectStore("meta").get("extFile"))
-            ]);
-            return { records, photoIds, ui, extFile };
-          },
           put(key, item) { push({ type: "put", key, item }); },
           remove(key, item) {
             if (!item) return;
@@ -6139,15 +6398,14 @@
             push({ type: "del", key, seq: item.seq });
           },
           clear(key) { push({ type: "clear", key }); },
-          // 範囲の外を消したあとなど: そのセンサーの分を入れかえる
-          replace(key) {
-            push({ type: "clear", key });
-            dataStore[key].forEach(item => push({ type: "put", key, item }));
+          // 範囲の外を消したあと・自分ではかっていないデータを残すときなど: そのセンサーの分を入れかえる
+          replace(key, data = true) {
+            push({ type: "clear", key }, data);
+            dataStore[key].forEach(item => push({ type: "put", key, item }, data));
           },
-          touchUi() { if (db) { uiDirty = true; schedule(); } },
-          metaPut(name, value) { push({ type: "meta", name, value }); },
+          touchUi() { if (curRec && db()) { uiDirty = true; schedule(); } },
           photoPut(id, blob) {
-            if (!db) { memPhotos.set(id, blob); return; }
+            if (!db() || !curRec) { memPhotos.set(id, blob); return; }
             pending.set(id, blob);
             push({ type: "photo", id, blob });
           },
@@ -6159,10 +6417,9 @@
           async photoGet(id) {
             if (pending.has(id)) return pending.get(id);
             if (memPhotos.has(id)) return memPhotos.get(id);
-            if (!db) return null;
+            if (!db()) return null;
             try {
-              const found = await done(db.transaction("photos", "readonly").objectStore("photos").get(id));
-              return found ? found.blob : null;
+              return await V2DB.photoGet(id);
             } catch (error) {
               console.warn("[保存] 写真を読めませんでした", error);
               return null;
@@ -6170,93 +6427,134 @@
           }
         };
       })();
-      function acquireStoreLock() {
+      // ---- 記録の見出しを読む・書く（保存できないときはメモリー） ----
+      async function recList() {
+        if (!storeReady) return [...memRecs.values()].filter(rec => !rec.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt);
+        return V2DB.listRecs();
+      }
+      async function recGet(id) { return storeReady ? V2DB.getRec(id) : memRecs.get(id) || null; }
+      async function recPut(rec) { if (storeReady) await V2DB.putRec(rec); else memRecs.set(rec.id, rec); }
+      // ---- 同じ記録を、ほかのタブでひらけないようにする ----
+      let recUnlock = null;
+      function lockRecord(id) {
         if (!navigator.locks || !navigator.locks.request) return Promise.resolve(true);
         return new Promise(resolve => {
-          navigator.locks.request("akadako-multi:store", { ifAvailable: true }, lock => {
-            resolve(Boolean(lock));
-            return lock ? new Promise(() => {}) : undefined;   // このタブを閉じるまで持ちつづける
+          navigator.locks.request(`akadako-multi-v2:rec:${id}`, { ifAvailable: true }, lock => {
+            if (!lock) { resolve(false); return undefined; }
+            resolve(true);
+            return new Promise(release => { recUnlock = release; });   // 記録を閉じるまで持ちつづける
           }).catch(() => resolve(true));
         });
       }
-      // 前に開いていたときの記録と画面にもどす
-      let restoredAt = -Infinity;   // 戻した時刻（そのすぐあとにつながったとき、お知らせを 1 つにまとめる）
-      async function restoreSession() {
-        if (!STORE_ON) return;
-        if (!(await acquireStoreLock())) {
-          showToast("ほかのタブでも開いているので、このタブの記録は保存されません");
-          return;
-        }
-        let saved;
+      // ---- 記録を閉じる・ひらく・作る ----
+      function resetMeasureState() {
+        stopRecording();
+        if (aiMode) exitAiMode();
+        if (memoEdit) closeMemoEditor();
+        Object.keys(dataStore).forEach(key => {
+          dataStore[key].length = 0;
+          seqCounters[key] = 0;
+          fineTime[key] = false;
+          timeIndex[key] = null;
+          delete latestValues[key];
+          delete compareErrors[key];
+        });
+        EXT_KEYS.forEach(key => { extSig[key] = ""; extKept[key] = new Map(); });
+        hiddenKeys.clear();
+        hover = null;
+        selClear();
+        resetChartView();
+        resetTable();
+      }
+      // いまの記録を閉じる（保存して、手ばなす）。一覧にもどるとき・ほかの記録をひらく前に
+      function leaveRecord() {
+        if (!curRec) return;
+        stopRecording();
+        persistExternal();
+        store.touchUi();
+        store.flush();
+        if (!storeReady) recSnapshot();
+        if (recUnlock) { recUnlock(); recUnlock = null; }
+        curRec = null;
+      }
+      async function openRecord(id) {
+        leaveRecord();
+        let rec = null, rows = [];
         try {
-          await store.open();
-          saved = await store.load();
+          rec = await recGet(id);
+          if (rec && storeReady) rows = await V2DB.loadRows(id);
         } catch (error) {
-          console.warn("[保存] 前の記録を読めませんでした", error);
-          return;
+          console.warn("[保存] 記録を読めませんでした", error);
         }
-        const used = new Set();
-        saved.records.forEach(rec => {
-          const list = dataStore[rec.k];
-          if (!list || !Number.isFinite(rec.t) || !Number.isFinite(rec.v) || !Number.isInteger(rec.seq)) return;
-          const item = { time: new Date(rec.t), value: rec.v, seq: rec.seq };
-          ["note", "memo", "photo", "thumb"].forEach(name => { if (typeof rec[name] === "string") item[name] = rec[name]; });
-          if (item.photo) used.add(item.photo);
+        if (!rec || rec.deletedAt) { showToast("この記録は見つかりませんでした"); return false; }
+        if (!(await lockRecord(id))) { showToast("この記録は、ほかのタブでひらいています"); return false; }
+        resetMeasureState();
+        const ui = rec.ui || {};
+        rows.forEach(row => {
+          const list = dataStore[row.k];
+          if (!list || !Number.isFinite(row.t) || !Number.isFinite(row.v) || !Number.isInteger(row.seq)) return;
+          if (isExt(row.k)) { extKept[row.k].set(row.seq, row.v); return; }   // 自分ではかっていないデータは、作り直すときの控えにする
+          const item = { time: new Date(row.t), value: row.v, seq: row.seq };
+          ["note", "memo", "photo", "thumb"].forEach(name => { if (typeof row[name] === "string") item[name] = row[name]; });
           list.push(item);
         });
-        saved.photoIds.forEach(id => { if (!used.has(id)) store.photoDel(id); });   // どの記録にも付いていない写真を片づける
-        const ui = saved.ui || {};
         Object.keys(dataStore).forEach(key => {
+          dataStore[key].sort((a, b) => a.seq - b.seq);
           const last = dataStore[key][dataStore[key].length - 1];
-          seqCounters[key] = Math.max(seqCounters[key], Number(ui.seq && ui.seq[key]) || 0, last ? last.seq : 0);
+          seqCounters[key] = Math.max(Number(ui.seq && ui.seq[key]) || 0, last ? last.seq : 0);
           fineTime[key] = Boolean(ui.fine && ui.fine[key]);
         });
-        // 外部のデータ（えらんだ内容と、前の記録のファイル）
-        const savedExt = ui.external || {};
-        const file = saved.extFile && Array.isArray(saved.extFile.series) ? saved.extFile : null;
-        const station = savedExt.station && /^\d{5}$/.test(String(savedExt.station.id)) && typeof savedExt.station.name === "string"
-          ? { id: String(savedExt.station.id), name: savedExt.station.name, pref: String(savedExt.station.pref || "") } : null;
-        Object.assign(ext, {
-          station,
-          item: AMEDAS_ITEMS[savedExt.item] ? savedExt.item : "rain",
-          type: savedExt.type === "sun" || (savedExt.type === "file" && file) || (savedExt.type === "amedas" && station) ? savedExt.type : null,
-          pref: PREFS.some(pref => pref[0] === savedExt.pref) ? savedExt.pref : ext.pref,
-          align: savedExt.align === "clock" ? "clock" : "start",
-          col: file && file.series[savedExt.col] ? savedExt.col : 0,
-          file
-        });
+        if (rec.place && typeof rec.place.pref === "string" && PREFS.some(one => one[0] === rec.place.pref)) {
+          Object.assign(place, { pref: rec.place.pref, station: rec.place.station || null, chosen: Boolean(rec.place.chosen) });
+        }
+        prev = rec.prev && Array.isArray(rec.prev.points) ? rec.prev : null;
         extVersion += 1;
         applyExtMeta();
-        if (saved.ui) applyUiState(ui);
-        else { updateSummary(); refreshView(); }
-        renderPhotoCount();
-        if (saved.records.length) {
-          restoredAt = performance.now();
-          showToast(isConnected() ? "センサーに接続しました（前の記録のつづきから表示しています）" : "前の記録のつづきから表示しています");
-        }
-      }
-      function applyUiState(ui) {
-        const ok = key => Boolean(sensors[key]) && key !== "ai" && (key !== "external" || extReady());
-        if (ok(ui.sensor)) selectedSensor = ui.sensor;
-        const others = (Array.isArray(ui.compareKeys) ? ui.compareKeys : []).filter(key => ok(key) && key !== selectedSensor);
-        compareKeys = [...new Set(others)].slice(-(COMPARE_MAX - 1));
-        if (selectedSensor === "external" && compareKeys.length) {   // 外部は主センサーにしない
-          selectedSensor = compareKeys.pop();
-          compareKeys.push("external");
-        }
-        compareOn = Boolean(ui.compareOn) || compareKeys.length > 0;
-        els.compareToggle.setAttribute("aria-pressed", String(compareOn));
-        els.compareToggleState.textContent = compareOn ? "ON" : "OFF";
+        curRec = rec;
+        const keys = Array.isArray(rec.keys) ? rec.keys.filter(key => sensors[key]) : [];
+        setRecKeys(keys);
+        (Array.isArray(ui.hidden) ? ui.hidden : []).forEach(key => { if (activeKeys().includes(key)) hiddenKeys.add(key); });
         overlay = Boolean(ui.overlay);
         if (typeof ui.aiPrompt === "string") els.aiPrompt.value = ui.aiPrompt;
         applySensorUI();
         renderLayoutToggle();
-        if (ui.ai) enterAiMode();   // 画面の切り替えは同期で終わる（カメラの準備だけがあとから）
-        if ([...els.intervalSelect.options].some(option => option.value === ui.interval)) els.intervalSelect.value = ui.interval;
+        if (keys[0] === "ai") enterAiMode();   // 画面の切り替えは同期で終わる（カメラの準備だけがあとから）
+        const interval = String(ui.interval || rec.interval || "");
+        if ([...els.intervalSelect.options].some(option => option.value === interval)) els.intervalSelect.value = interval;
         syncPhotoModes();   // 記録間隔を戻してから、写真の記録を戻す（選べる周期は記録間隔で決まる）
-        if ([...els.photoMode.options].some(option => option.value === ui.photoMode)) els.photoMode.value = ui.photoMode;
+        els.photoMode.value = [...els.photoMode.options].some(option => option.value === ui.photoMode) ? ui.photoMode : "off";
         els.photoMode.dispatchEvent(new CustomEvent("restored"));
         setViewMode(ui.view);
+        renderPhotoCount();
+        updateSummary();
+        refreshView();
+        if (storeReady) V2DB.metaPut("last", { id: rec.id, at: Date.now() }).catch(() => {});
+        showView("measure");
+        return true;
+      }
+      // あたらしい記録を作って、ひらく。keys: センサーの組（自分ではかったもの → 自分ではかっていないデータ）
+      async function createRecord(keys, options = {}) {
+        const now = Date.now();
+        const interval = String(options.interval || els.intervalSelect.value || "1000");
+        const rec = {
+          id: V2DB.newId("r"), name: "", createdAt: now, updatedAt: now, keys: [...keys], sensors: {},
+          interval: Number(interval), startedAt: null, endedAt: null, count: 0, photoCount: 0, fine: false, source: "local",
+          ui: { interval, view: "chart", hidden: [] },
+          place: { pref: place.pref, station: place.station, chosen: place.chosen }, prev: keys.includes("xPrev") ? prev : null
+        };
+        keys.forEach(key => { const sensor = sensors[key]; if (sensor) rec.sensors[key] = { name: sensor.name, unit: sensor.unit, decimals: sensor.decimals, color: sensor.color }; });
+        if (DEMO) rec.demo = true;
+        await recPut(rec);
+        if (storeReady) V2DB.metaPut("lastSet", { keys: [...keys], interval, at: now }).catch(() => {});
+        return openRecord(rec.id);
+      }
+      // 記録のとちゅうで、センサーを足す（外すことはできない。画面から消すのは、左の一覧のチェックで）
+      function addSensors(keys) {
+        const next = [...activeKeys(), ...keys.filter(key => sensors[key] && key !== "ai" && !activeKeys().includes(key))];
+        setRecKeys(next);
+        extVersion += 1;
+        applySensorUI();
+        store.touchUi();
       }
 
       // ===== 測定室（s-link-logger から移植） =========================================
@@ -6267,7 +6565,7 @@
       // センサーを切り替えたり記録を削除したりしたら、新しいセッションにしてサーバー側のこの端末の分を入れ替える。
       // サーバーが「どの連番まで受け取ったか」を返すので、Wi-Fi が切れていた間の記録もあとからまとめて送られる。
       const SHARE_API = String(PAGE_PARAMS.get("api") || "").replace(/\/+$/, "") || "https://logdb.699.jp";
-      const SHARE_KEY = "akadako-multi:stream";
+      const SHARE_KEY = "akadako-multi-v2:stream";
       const SHARE_INTERVAL = 5000, SHARE_BATCH = 500;
       const latestValues = {};   // センサーごとの直近の測定値（測定室の「現在値」用）
       let clockOffset = 0;       // サーバー時刻 − この端末の時刻（ミリ秒）。送るデータの時刻をサーバー時刻にそろえる
@@ -6292,9 +6590,10 @@
       };
       function newSession() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
       // 送るセンサーの組（くらべているときは複数）。st.sensorKey には "temperature+humidity" のようにつないで覚える
-      function shareKey() { return activeKeys().join("+"); }
+      function shareOrder() { return aiMode ? ["ai"] : [...compareKeys, selectedSensor]; }
+      function shareKey() { return shareOrder().join("+"); }
       function shareKeys() { return String(st && st.sensorKey || selectedSensor).split("+").filter(key => sensors[key]); }
-      function shareSensors(keys = activeKeys()) {
+      function shareSensors(keys = shareOrder()) {
         return keys.map(key => {
           const s = sensors[key];
           return { key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals === null ? 2 : s.decimals };
@@ -6394,7 +6693,7 @@
         const out = [];
         const keys = shareKeys();
         const base = keys[keys.length - 1];
-        const data = base === "external" ? [] : dataStore[base] || [];   // 外部だけのときは、行は送らない（現在値だけ）
+        const data = isExt(base) ? [] : dataStore[base] || [];
         for (let i = 0; i < data.length && out.length < SHARE_BATCH; i++) {
           const r = data[i];
           if (r.seq <= st.lastAck) continue;
@@ -6408,9 +6707,14 @@
         return out;
       }
       async function sharePush() {
-        if (!isSending() || shareBusy) return;
+        if (!isSending() || shareBusy || !curRec) return;   // 記録をひらいていないとき（一覧・えらぶ画面）は送らない
         shareBusy = true;
         try {
+          if (st.recId !== curRec.id) {   // ひらいている記録が変わった → 新しいセッションで送り直す
+            st.recId = curRec.id;
+            st.sensorKey = shareKey();
+            shareOnCleared();
+          }
           if (st.sensorKey !== shareKey()) {   // 選んでいるセンサー（の組）が変わった → 新しいセッションでその記録を送り直す
             st.sensorKey = shareKey();
             shareOnCleared();
@@ -6469,7 +6773,7 @@
       async function syncMemos() {
         if (!isSending() || !st.session) return;
         const base = shareKeys().slice(-1)[0];
-        if (!base || base === "external") return;
+        if (!base || isExt(base)) return;
         if (memoSent === null || memoSentFor !== st.session) {
           const res = await shareApi("GET", `/streams/${st.streamId}/memos`, null, st.token);
           memoSent = new Map();
@@ -6543,6 +6847,7 @@
         return st && st.sentAt ? `送信ずみ ${(st.lastAck || 0).toLocaleString("ja-JP")}件　最終 ${new Date(st.sentAt + clockOffset).toLocaleTimeString("ja-JP")}` : "";
       }
       function renderRoom() {
+        roomsRemember();
         const r = st && st.room;
         const sending = isSending();
         const state = sending ? (shareErr ? "warn" : "on") : "off";   // 印はデータを送っているかどうか
@@ -6781,6 +7086,483 @@
         renderRoom();
       }
 
+      // ===== v2: 画面の切りかえ（一覧／えらぶ／はかる） ================================
+      // ページをひらいたら、いつもトップページ（一覧）。「あたらしくはかる」→ えらぶ画面 → はかる画面、と進む。
+      // 1 ページの中で切りかえる（ページを移ると、センサーとの接続が切れるため）
+      const byId = id => document.getElementById(id);
+      const v2 = {
+        home: byId("homeView"), choose: byId("chooseView"), homeBtn: byId("homeBtn"), recName: byId("recName"),
+        homeNew: byId("homeNew"), homeSame: byId("homeSame"), homeSameText: byId("homeSameText"), homeLive: byId("homeLive"),
+        homeResume: byId("homeResume"), homeResumeText: byId("homeResumeText"), homeNote: byId("homeNote"),
+        homeUndo: byId("homeUndo"), homeUndoText: byId("homeUndoText"), homeUndoBtn: byId("homeUndoBtn"),
+        homeCompare: byId("homeCompare"), homeExport: byId("homeExport"), homeImport: byId("homeImport"), homeImportInput: byId("homeImportInput"),
+        homeDelPhotos: byId("homeDelPhotos"), homeDelete: byId("homeDelete"), homeList: byId("homeList"), homeEmpty: byId("homeEmpty"), homeClear: byId("homeClear"),
+        homeRooms: byId("homeRooms"), homeRoomsEmpty: byId("homeRoomsEmpty"), homeRoomBtn: byId("homeRoomBtn"),
+        chooseBack: byId("chooseBack"), chooseTitle: byId("chooseTitle"), chooseCount: byId("chooseCount"), chooseOwn: byId("chooseOwn"), chooseAdd: byId("chooseAdd"),
+        chooseExtBox: byId("chooseExtBox"), chooseExt: byId("chooseExt"), choosePlace: byId("choosePlace"), choosePlaceBtn: byId("choosePlaceBtn"),
+        chooseGo: byId("chooseGo"), chooseHint: byId("chooseHint"), addSensorBtn: byId("addSensorBtn"), lessonBtn: byId("lessonBtn")
+      };
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+      let viewName = "home";
+      // はかる画面の読み取りをつづけるか（センサーを足すために、えらぶ画面を出しているあいだも記録はつづける）
+      function measuring() { return Boolean(curRec) && (viewName === "measure" || (viewName === "choose" && choose.mode === "add")); }
+      function showView(name) {
+        viewName = name;
+        document.body.dataset.view = name;
+        v2.home.hidden = name !== "home";
+        v2.choose.hidden = name !== "choose";
+        v2.recName.textContent = name === "measure" && curRec ? recTitle(curRec) : "";
+        window.scrollTo(0, 0);
+        if (name === "home") { renderHome(); homeLoop(); }
+        else if (name === "choose") chooseLoop();
+        else {
+          ensureReadingLoop();
+          requestAnimationFrame(() => { syncOverlayFit(); refreshView(); });   // 箱の幅が決まってから描く
+        }
+      }
+
+      // ---- トップページ（一覧） ----
+      const homeSel = new Set();   // チェックを付けた記録
+      let homeRecs = [];
+      function intervalText(ms) { return ms < 60000 ? `${ms / 1000}秒ごと` : `${ms / 60000}分ごと`; }
+      function recSensorsText(rec) {
+        return (rec.keys || []).map(key => (rec.sensors && rec.sensors[key] && rec.sensors[key].name) || (sensors[key] && sensors[key].name) || key).join("・");
+      }
+      function recSubText(rec) {
+        return `${recSensorsText(rec)}　${intervalText(rec.interval || 1000)}　${Number(rec.count || 0).toLocaleString("ja-JP")}件`;
+      }
+      function homeRow(rec) {
+        const row = document.createElement("li");
+        row.className = "home-row";
+        row.dataset.id = rec.id;
+        const check = document.createElement("label");
+        check.className = "home-check";
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = homeSel.has(rec.id);
+        box.setAttribute("aria-label", `${recTitle(rec)} をえらぶ`);
+        check.append(box);
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "home-open";
+        const title = document.createElement("span");
+        title.className = "t";
+        title.textContent = rec.name ? `${rec.name}（${recDateText(rec.startedAt || rec.createdAt)}）` : recTitle(rec);   // 名前を付けていても、日付と時刻は出す
+        const badge = (text, cls = "") => { const one = document.createElement("span"); one.className = `badge ${cls}`.trim(); one.textContent = text; title.append(one); };
+        if (rec.photoCount) badge(`写真あり ${rec.photoCount}まい`);
+        if (rec.source === "room") badge("測定室から", "src");
+        if (rec.source === "file") badge("ファイルから", "src");
+        if (rec.demo) badge("デモ", "src");
+        const sub = document.createElement("span");
+        sub.className = "s";
+        sub.textContent = recSubText(rec);
+        open.append(title, sub);
+        const rename = document.createElement("button");
+        rename.type = "button";
+        rename.className = "tool-btn home-rename";
+        rename.textContent = "名前をかえる";
+        row.append(check, open, rename);
+        return row;
+      }
+      function syncHomeTools() {
+        const n = homeSel.size;
+        const photos = homeRecs.some(rec => homeSel.has(rec.id) && rec.photoCount);
+        v2.homeCompare.disabled = !n || !storeReady;
+        v2.homeCompare.textContent = n ? `くらべる（${n}）` : "くらべる";
+        v2.homeExport.disabled = !n || !storeReady;
+        v2.homeDelPhotos.disabled = !photos;
+        v2.homeDelete.disabled = !n;
+        v2.homeImport.disabled = !storeReady;
+      }
+      async function renderHome() {
+        let recs = [];
+        try { recs = await recList(); } catch (error) { console.warn("[保存] 一覧を読めませんでした", error); }
+        homeRecs = recs;
+        [...homeSel].forEach(id => { if (!recs.some(rec => rec.id === id)) homeSel.delete(id); });
+        v2.homeEmpty.hidden = recs.length > 0;
+        v2.homeClear.hidden = !recs.length;
+        v2.homeNote.textContent = storeReady ? "記録は、この端末にだけのこります" : "このブラウザでは記録を保存できません（ページをとじると消えます）";
+        v2.homeList.replaceChildren(...recs.map(homeRow));
+        let last = null, lastSet = null;
+        if (storeReady) {
+          try { [last, lastSet] = await Promise.all([V2DB.metaGet("last"), V2DB.metaGet("lastSet")]); } catch (error) { /* 読めなければ出さない */ }
+        }
+        // さっきのつづき: 一覧のいちばん上に大きく出す（ふたを閉じた・タブを閉じた、のあとで、記録が 2 つに割れないように）
+        const lastRec = last && recs.find(rec => rec.id === last.id);
+        v2.homeResume.hidden = !lastRec;
+        if (lastRec) {
+          v2.homeResume.dataset.id = lastRec.id;
+          v2.homeResumeText.textContent = `${recTitle(lastRec)}　${recSubText(lastRec)}`;
+        }
+        const sameKeys = lastSet && Array.isArray(lastSet.keys) ? lastSet.keys.filter(key => sensors[key]) : [];
+        v2.homeSame.hidden = !sameKeys.length;
+        if (sameKeys.length) {
+          v2.homeSame.dataset.keys = sameKeys.join(",");
+          v2.homeSame.dataset.interval = String(lastSet.interval || "");
+          v2.homeSameText.textContent = sameKeys.map(key => sensors[key].name).join("・");
+        }
+        syncHomeTools();
+        renderHomeRooms();
+      }
+      // いま、センサーにつながっているか（先生が「数字が動いた人は手をあげて」で、全員の接続を確かめられるように）
+      let homeLoopOn = false;
+      async function homeLoop() {
+        if (homeLoopOn) return;
+        homeLoopOn = true;
+        try {
+          while (viewName === "home") {
+            let text = "センサー：まだつながっていません";
+            if (DEMO) text = "デモモード（センサーなしで、ためせます）";
+            else if (isConnected()) {
+              text = "センサー：つながっています";
+              try {
+                const value = Number(await sensors.temperature.fetch(board));
+                if (Number.isFinite(value)) text += `　いまの温度 ${formatValue(value, sensors.temperature)}℃`;
+              } catch (error) { /* 読めないときは、つながっていることだけ出す */ }
+            }
+            if (viewName !== "home") break;
+            v2.homeLive.textContent = text;
+            v2.homeLive.classList.toggle("on", DEMO || isConnected());
+            await sleep(1000);
+          }
+        } finally {
+          homeLoopOn = false;
+        }
+      }
+      // 消す: すぐには消さず、しばらく「もとにもどす」を出す（一覧からは、すぐ消える）
+      let undoIds = [], undoTimer = null;
+      async function purgeDeleted(ids) {
+        for (const id of ids) {
+          try { if (storeReady) await V2DB.deleteRec(id); else memRecs.delete(id); } catch (error) { console.warn("[保存] 消せませんでした", error); }
+        }
+      }
+      async function homeDelete() {
+        const ids = [...homeSel];
+        if (!ids.length) return;
+        if (undoIds.length) { clearTimeout(undoTimer); await purgeDeleted(undoIds); }   // 前に消した分は、もう戻せない
+        const now = Date.now();
+        for (const id of ids) {
+          const rec = await recGet(id);
+          if (rec) { rec.deletedAt = now; await recPut(rec); }
+        }
+        undoIds = ids;
+        homeSel.clear();
+        v2.homeUndoText.textContent = `${ids.length} つの記録を消しました`;
+        v2.homeUndo.hidden = false;
+        undoTimer = setTimeout(async () => { const gone = undoIds; undoIds = []; v2.homeUndo.hidden = true; await purgeDeleted(gone); }, 12000);
+        renderHome();
+      }
+      async function homeUndo() {
+        clearTimeout(undoTimer);
+        for (const id of undoIds) {
+          const rec = await recGet(id);
+          if (rec) { delete rec.deletedAt; await recPut(rec); }
+        }
+        undoIds = [];
+        v2.homeUndo.hidden = true;
+        renderHome();
+        showToast("もとにもどしました");
+      }
+      async function homeDeletePhotos() {
+        const targets = homeRecs.filter(rec => homeSel.has(rec.id) && rec.photoCount);
+        if (!targets.length) return;
+        if (!window.confirm(`${targets.length} つの記録の写真を消します。記録とメモの文は残ります。写真は、もとにもどせません。よろしいですか？`)) return;
+        let count = 0;
+        for (const rec of targets) {
+          try { count += await V2DB.deletePhotosOf(rec.id); } catch (error) { console.warn("[保存] 写真を消せませんでした", error); }
+        }
+        showToast(`写真 ${count}まいを消しました`);
+        renderHome();
+      }
+      async function homeClearAll() {
+        if (!window.confirm("この端末にある記録を、写真もふくめて、ぜんぶ消します。もとにもどせません。よろしいですか？")) return;
+        try {
+          clearTimeout(undoTimer);
+          undoIds = [];
+          v2.homeUndo.hidden = true;
+          if (storeReady) { await V2DB.clearAll(); await V2DB.metaPut("last", null); } else memRecs.clear();
+          homeSel.clear();
+          showToast("この端末の記録を、ぜんぶ消しました");
+        } catch (error) {
+          console.warn("[保存] 消せませんでした", error);
+          showToast("消せませんでした");
+        }
+        renderHome();
+      }
+      async function homeRename(id) {
+        const rec = await recGet(id);
+        if (!rec) return;
+        const name = window.prompt("記録の名前（みじかく。自分や友だちの名前は書きません）\n空にすると、日付と時刻の名前にもどります", rec.name || "");
+        if (name === null) return;
+        rec.name = name.trim().slice(0, 30);
+        await recPut(rec);
+        renderHome();
+      }
+      // 作成・参加した測定室（この端末でおぼえている分。サーバーには、さいごに送ってから 4 週間のこる）
+      const ROOMS_KEY = "akadako-multi-v2:rooms", ROOM_KEEP_MS = 28 * 86400000;
+      function roomsLoad() {
+        try {
+          const list = JSON.parse(localStorage.getItem(ROOMS_KEY) || "[]");
+          return Array.isArray(list) ? list.filter(one => one && one.roomId && Date.now() - one.at < ROOM_KEEP_MS) : [];
+        } catch (error) { return []; }
+      }
+      function roomsRemember() {
+        if (!st || !st.room || !st.room.roomId || !st.room.roomPage) return;
+        const r = st.room, list = roomsLoad().filter(one => one.roomId !== r.roomId);
+        list.unshift({ roomId: r.roomId, name: r.name || "", code: r.code || "", isOwner: Boolean(r.isOwner), url: roomPageUrl(), at: Date.now() });
+        try { localStorage.setItem(ROOMS_KEY, JSON.stringify(list.slice(0, 20))); } catch (error) { /* 覚えられなくても動く */ }
+      }
+      function renderHomeRooms() {
+        const list = roomsLoad(), current = st && st.room ? st.room.roomId : null;
+        v2.homeRoomsEmpty.hidden = list.length > 0;
+        v2.homeRooms.replaceChildren(...list.map(one => {
+          const row = document.createElement("li");
+          const link = document.createElement("a");
+          link.className = "home-open";
+          link.href = one.url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          const title = document.createElement("span");
+          title.className = "t";
+          title.textContent = one.name || "測定室";
+          if (one.roomId === current) { const badge = document.createElement("span"); badge.className = "badge src"; badge.textContent = "参加中"; title.append(badge); }
+          const sub = document.createElement("span");
+          sub.className = "s";
+          const until = new Date(one.at + ROOM_KEEP_MS);
+          sub.textContent = `${one.code ? `ID ${fmtCode(one.code)}　` : ""}${until.getMonth() + 1}/${until.getDate()} ごろまで見られます`;
+          link.append(title, sub);
+          row.append(link);
+          return row;
+        }));
+      }
+
+      // ---- えらぶ画面 ----
+      // センサーは 6 つまで。自分ではかっていないデータは、この数に数えない（いくつでも）。AI 計測は、ほかと組み合わせない
+      const CHOOSE_OWN = ["temperature", "brightness", "distance", "humidity", "pressure", "gravity", "tilt", "motion", "volume"];
+      const CHOOSE_ADD = ["waterTemperature", "oxygen", "current", "voltage", "power", "ai"];
+      const SENSOR_MAX = 6;
+      const EXT_ICONS = {
+        xRain: '<svg viewBox="0 0 32 32" fill="none"><path d="M9 17a6 6 0 1 1 2.2-11.6A7 7 0 0 1 24.5 8 4.6 4.6 0 0 1 23 17H9Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M11 21l-1.5 4M16 21l-1.5 4M21 21l-1.5 4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+        xWind: '<svg viewBox="0 0 32 32" fill="none"><path d="M4 12h14a3.5 3.5 0 1 0-3.5-3.5M4 17h20a3.5 3.5 0 1 1-3.5 3.5M4 22h9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+        xWindDir: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="2.4"/><path d="m20 12-2.5 6.5L11 21l2.5-6.5L20 12Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+        xSun: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="5.5" stroke="currentColor" stroke-width="2.4"/><path d="M16 4v3M16 25v3M4 16h3M25 16h3M7.5 7.5l2 2M22.5 22.5l2 2M24.5 7.5l-2 2M9.5 22.5l-2 2" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+        xElev: '<svg viewBox="0 0 32 32" fill="none"><path d="M4 24h24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7 24a9 9 0 0 1 18 0" stroke="currentColor" stroke-width="2.4"/><path d="M16 7v3M6.5 12.5l2 2M25.5 12.5l-2 2" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+        xPrev: '<svg viewBox="0 0 32 32" fill="none"><path d="M5 23l6-8 5 4 6-9 5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 4.5"/><path d="M5 27h22M5 5v22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
+      };
+      const choose = { mode: "new", picked: [], locked: new Set() };
+      const tiles = {};
+      function makeTile(key) {
+        const sensor = sensors[key];
+        const tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = "tile";
+        tile.dataset.key = key;
+        tile.setAttribute("aria-pressed", "false");
+        tile.style.setProperty("--sensor-color", sensor.color);
+        const icon = document.createElement("span");
+        icon.className = "sensor-icon";
+        icon.setAttribute("aria-hidden", "true");
+        const from = els.sensorButtons.find(button => button.dataset.sensor === key);   // 絵は、前のタブのものを使う
+        icon.innerHTML = from ? from.querySelector(".sensor-icon").innerHTML : EXT_ICONS[key] || "";
+        const name = document.createElement("span");
+        name.className = "tile-name";
+        const value = document.createElement("span");
+        value.className = "tile-value";
+        const check = document.createElement("span");
+        check.className = "tile-check";
+        check.textContent = "✓";
+        check.setAttribute("aria-hidden", "true");
+        tile.append(icon, name, value, check);
+        tiles[key] = { tile, name, value };
+        return tile;
+      }
+      function ownPicked() { return choose.picked.filter(key => !isExt(key)); }
+      function renderChooser() {
+        const own = ownPicked();
+        Object.keys(tiles).forEach(key => {
+          const one = tiles[key], on = choose.picked.includes(key);
+          one.name.textContent = key === "ai" ? "AI 計測" : sensors[key].name;
+          one.tile.setAttribute("aria-pressed", String(on));
+          one.tile.classList.toggle("locked", choose.locked.has(key));
+        });
+        v2.chooseTitle.textContent = choose.mode === "add" ? "センサーを足す" : "はかるものをえらぶ";
+        v2.chooseCount.textContent = `センサー ${own.length} / ${SENSOR_MAX}`;
+        v2.choosePlace.textContent = placeText();
+        const fresh = choose.picked.filter(key => !choose.locked.has(key));
+        v2.chooseGo.textContent = choose.mode === "add" ? "足す" : "この組ではじめる";
+        v2.chooseGo.disabled = choose.mode === "add" ? !fresh.length : !own.length;
+        v2.chooseHint.textContent = choose.mode === "add" ? "はかっているセンサーは、外せません" : !own.length ? "センサーを 1 つ以上えらんでください" : "";
+      }
+      function openChooser(mode) {
+        choose.mode = mode;
+        choose.locked = new Set(mode === "add" ? activeKeys() : []);
+        choose.picked = mode === "add" ? [...activeKeys()] : [];
+        v2.chooseExtBox.open = choose.picked.some(isExt);
+        Object.keys(tiles).forEach(key => { tiles[key].value.textContent = ""; tiles[key].value.classList.remove("live"); });
+        renderChooser();
+        showView("choose");
+      }
+      function chooseToggle(key) {
+        if (choose.locked.has(key)) { showToast("はかっているセンサーは外せません。グラフの左のチェックで、画面から消せます"); return; }
+        const at = choose.picked.indexOf(key);
+        if (at >= 0) { choose.picked.splice(at, 1); renderChooser(); return; }
+        const add = () => { choose.picked.push(key); renderChooser(); };
+        if (key === "ai") {
+          if (choose.mode === "add") { showToast("AI 計測は、ほかのセンサーといっしょには、はかれません"); return; }
+          if (choose.picked.length) showToast("AI 計測は、ひとつだけではかります");
+          choose.picked = ["ai"];
+          renderChooser();
+          return;
+        }
+        if (choose.locked.has("ai")) { showToast("AI 計測の記録には、ほかのものを足せません"); return; }
+        if (choose.picked.includes("ai")) choose.picked = [];
+        if (!isExt(key) && ownPicked().length >= SENSOR_MAX) { showToast(`センサーは ${SENSOR_MAX} つまでです`); return; }
+        if (EXT_AMEDAS[key] && !place.station) {
+          openPlaceDialog(ok => { if (ok && place.station) add(); else if (ok) showToast("アメダスは、地点までえらぶと使えます"); renderChooser(); });
+          return;
+        }
+        if (key === "xElev" && !place.chosen) { openPlaceDialog(ok => { if (ok) add(); renderChooser(); }); return; }
+        if (key === "xPrev") { openPrevDialog(ok => { if (ok) add(); renderChooser(); }); return; }
+        if (sensors[key].connectGuide && !DEMO) { showSensorGuide(key, add); return; }
+        add();
+      }
+      async function chooseGo() {
+        const keys = [...ownPicked(), ...EXT_KEYS.filter(key => choose.picked.includes(key))];
+        if (choose.mode === "add") {
+          const fresh = keys.filter(key => !choose.locked.has(key));
+          if (fresh.length) addSensors(fresh);
+          showView("measure");
+          if (fresh.length) showToast(`${fresh.map(key => sensors[key].name).join("・")}を足しました`);
+          return;
+        }
+        if (!ownPicked().length) return;
+        v2.chooseGo.disabled = true;
+        try { await createRecord(keys); } finally { renderChooser(); }
+      }
+      // タイルに、いまの値を出す（えらぶ画面が、そのまま「ためす場所」になる）
+      async function tileText(key) {
+        const sensor = sensors[key], picked = choose.picked.includes(key);
+        if (key === "ai") return "カメラと AI ではかります";
+        if (key === "motion" && !picked) return "パソコンのカメラではかります";
+        if (key === "volume" && !picked) return "パソコンのマイクではかります";
+        if (key === "xPrev" && !prev) return "前にはかった記録";
+        if (EXT_AMEDAS[key] && !place.station) return "場所をえらぶと出ます";
+        if (choose.mode === "add") {   // 記録をつづけているあいだは、タイルのためには読まない（記録の読み取りとぶつかるため）
+          const value = latestValues[key];
+          return typeof value === "number" && choose.locked.has(key) ? [`${formatValue(value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""}`] : isExt(key) ? "" : "えらぶと、はかれます";
+        }
+        if (!isExt(key) && sensor.needsBoard !== false && !DEMO && !isConnected()) return "センサーをつなぐと出ます";
+        if (sensor.connectGuide && !picked && !DEMO) return "つないで使うセンサー";
+        try {
+          const result = DEMO && !isExt(key) ? demoRead(key) : await sensor.fetch(board);
+          const value = Number(result !== null && typeof result === "object" ? result.value : result);
+          if (!Number.isFinite(value)) throw new Error("数ではありません");
+          return [`${formatValue(value, sensor)}${sensor.unit ? ` ${sensor.unit}` : ""}`];   // 配列は「いまの値」（色を付けて大きく出す）
+        } catch (error) {
+          return error instanceof SensorNoticeError ? error.message : sensor.connectGuide ? "つないでいません" : "はかれませんでした";
+        }
+      }
+      let chooseLoopOn = false;
+      async function chooseLoop() {
+        if (chooseLoopOn) return;
+        chooseLoopOn = true;
+        amedasWanted = true;
+        try {
+          while (viewName === "choose") {
+            loadAmedas();
+            for (const key of Object.keys(tiles)) {
+              if (viewName !== "choose") break;
+              const text = await tileText(key);
+              const live = Array.isArray(text);
+              tiles[key].value.textContent = live ? text[0] : text;
+              tiles[key].value.classList.toggle("live", live);
+            }
+            await sleep(1000);
+          }
+        } finally {
+          chooseLoopOn = false;
+          amedasWanted = false;
+        }
+      }
+      // 一覧にもどる（記録はとめて、保存する）
+      function goHome() {
+        const wasRecording = isRecording;
+        leaveRecord();
+        showView("home");
+        if (wasRecording) showToast("記録をとめて、一覧にもどりました");
+      }
+      function initV2() {
+        v2.chooseOwn.replaceChildren(...CHOOSE_OWN.map(makeTile));
+        v2.chooseAdd.replaceChildren(...CHOOSE_ADD.map(makeTile));
+        v2.chooseExt.replaceChildren(...EXT_KEYS.map(makeTile));
+        v2.choose.addEventListener("click", event => {
+          const tile = event.target.closest(".tile");
+          if (tile) chooseToggle(tile.dataset.key);
+        });
+        v2.choosePlaceBtn.addEventListener("click", () => openPlaceDialog(() => renderChooser()));
+        v2.chooseGo.addEventListener("click", chooseGo);
+        v2.chooseBack.addEventListener("click", () => { if (choose.mode === "add" && curRec) showView("measure"); else showView("home"); });
+        v2.homeBtn.addEventListener("click", goHome);
+        v2.homeNew.addEventListener("click", () => openChooser("new"));
+        v2.homeSame.addEventListener("click", () => {
+          const keys = String(v2.homeSame.dataset.keys || "").split(",").filter(key => sensors[key]);
+          if (keys.length) createRecord(keys, { interval: v2.homeSame.dataset.interval });
+        });
+        v2.homeResume.addEventListener("click", () => openRecord(v2.homeResume.dataset.id));
+        v2.homeList.addEventListener("change", event => {
+          const row = event.target.closest(".home-row");
+          if (!row || event.target.type !== "checkbox") return;
+          if (event.target.checked) homeSel.add(row.dataset.id); else homeSel.delete(row.dataset.id);
+          syncHomeTools();
+        });
+        v2.homeList.addEventListener("click", event => {
+          const row = event.target.closest(".home-row");
+          if (!row) return;
+          if (event.target.closest(".home-rename")) homeRename(row.dataset.id);
+          else if (event.target.closest(".home-open")) openRecord(row.dataset.id);
+        });
+        v2.homeCompare.addEventListener("click", () => {
+          if (homeSel.size) location.href = `room.html?local=${[...homeSel].map(encodeURIComponent).join(",")}`;
+        });
+        v2.homeDelete.addEventListener("click", homeDelete);
+        v2.homeUndoBtn.addEventListener("click", homeUndo);
+        v2.homeDelPhotos.addEventListener("click", homeDeletePhotos);
+        v2.homeClear.addEventListener("click", homeClearAll);
+        v2.homeRoomBtn.addEventListener("click", openRoomDialog);
+        v2.addSensorBtn.addEventListener("click", () => openChooser("add"));
+        els.compareRows.addEventListener("change", event => {
+          const row = event.target.closest(".compare-row");
+          if (!row || !event.target.classList.contains("row-show")) return;
+          const key = row.dataset.sensor;
+          if (event.target.checked) hiddenKeys.delete(key);
+          else if (viewKeys().length <= 1) { event.target.checked = true; showToast("さいごの 1 本は、消せません"); return; }
+          else hiddenKeys.add(key);
+          store.touchUi();
+          renderCompareList();
+          renderLayoutToggle();
+          updateHeadings();
+          refreshView();
+        });
+      }
+      async function bootV2() {
+        initV2();
+        if (STORE_ON) {
+          try {
+            await V2DB.open();
+            storeReady = true;
+            for (const rec of await V2DB.listRecs(true)) if (rec.deletedAt) await V2DB.deleteRec(rec.id);   // 「もとにもどす」をしないまま閉じた分を片づける
+            const saved = await V2DB.metaGet("place");
+            if (saved && PREFS.some(one => one[0] === saved.pref)) Object.assign(place, { pref: saved.pref, station: saved.station || null, chosen: true });
+          } catch (error) {
+            console.warn("[保存] 保存先をひらけませんでした", error);
+            storeReady = false;
+          }
+        }
+        applyExtMeta();
+        initRoom();
+        showView("home");
+      }
+
       // ===== iPad 対策 ============================================================
       // iPad の Safari/Chrome には Web MIDI が無く S-LiNK につなげない。Scratch専用ブラウザ「Scrub」
       // （UA に "Scrub" を含み、WebMIDIKit で Web MIDI を提供）で開き直してもらう。判定は 699.jp/d/scrub と同じ。
@@ -6822,12 +7604,13 @@
       els.recordBtn.addEventListener("click", () => isRecording ? stopRecording() : startRecording());
       els.sensorButtons.forEach(button => button.addEventListener("click", () => requestSensor(button.dataset.sensor)));
       els.sensorDialogOk.addEventListener("click", () => {
-        const sensorKey = pendingSensor;
+        const sensorKey = pendingSensor, done = guideDone;
         closeSensorDialog();
-        if (sensorKey) pickSensor(sensorKey);
+        if (done) done();
+        else if (sensorKey) pickSensor(sensorKey);
       });
       els.sensorDialogCancel.addEventListener("click", closeSensorDialog);
-      els.sensorDialog.addEventListener("cancel", () => { pendingSensor = null; });   // Escキー
+      els.sensorDialog.addEventListener("cancel", () => { pendingSensor = null; guideDone = null; });   // Escキー
       els.sensorDialog.addEventListener("click", event => {
         if (event.target === els.sensorDialog) closeSensorDialog();   // 外側をクリック
       });
@@ -6896,29 +7679,27 @@
       els.camWarnOk.addEventListener("click", () => closeCamWarn(true));
       els.camWarnCancel.addEventListener("click", () => closeCamWarn(false));
       els.camWarnDialog.addEventListener("cancel", event => { event.preventDefault(); closeCamWarn(false); });   // Esc は「やめる」
-      // 「外部」のデータをえらぶ画面
-      els.extPref.replaceChildren(...PREFS.map(([name]) => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        return option;
-      }));
-      els.extDialog.querySelectorAll('input[name="extType"]').forEach(input => input.addEventListener("change", () => { els.extErr.hidden = true; renderExtDialog(); }));
+      // 前の記録をえらぶ画面
+      prevUi.rec.addEventListener("change", () => { prevUi.err.hidden = true; prevPickRec(prevUi.rec.value); });
       els.extFileBtn.addEventListener("click", () => els.extFileInput.click());
       els.extFileInput.addEventListener("change", async () => {
         const file = els.extFileInput.files[0];
         els.extFileInput.value = "";   // 同じファイルをえらび直しても change が出るように
         if (!file) return;
         try {
-          extPicked = { name: file.name, series: seriesFromCsv(await csvTextFromFile(file)) };
-          els.extErr.hidden = true;
+          prevPicked = { label: file.name, file: true, series: seriesFromCsv(await csvTextFromFile(file)) };
+          prevUi.rec.value = "";
+          prevUi.err.hidden = true;
         } catch (error) {
-          console.warn("[外部] ファイルを読めませんでした", error);
-          els.extErr.textContent = "このファイルは読めませんでした。このアプリの「ダウンロード」で保存した CSV か ZIP をえらんでください";
-          els.extErr.hidden = false;
+          console.warn("[前の記録] ファイルを読めませんでした", error);
+          prevUi.err.textContent = "このファイルは読めませんでした。このアプリの「ダウンロード」で保存した CSV か ZIP をえらんでください";
+          prevUi.err.hidden = false;
         }
-        renderExtDialog();
+        renderPrevDialog();
       });
+      prevUi.ok.addEventListener("click", confirmPrevDialog);
+      prevUi.cancel.addEventListener("click", closePrevDialog);
+      prevUi.dialog.addEventListener("cancel", event => { event.preventDefault(); closePrevDialog(); });
       els.askBtn.addEventListener("click", openAsk);
       els.askClose.addEventListener("click", closeAsk);
       els.askDialog.addEventListener("close", () => document.body.classList.remove("ask-open"));   // Esc で閉じたとき
@@ -6934,15 +7715,15 @@
         if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); els.askForm.requestSubmit(); }
       });
       els.extAmPref.addEventListener("change", () => renderAmedasPicker({ pref: els.extAmPref.value }));
-      els.extAmStation.addEventListener("change", () => renderAmedasPicker({ pref: els.extAmPref.value, id: els.extAmStation.value }));
+      els.extDialog.addEventListener("cancel", event => { event.preventDefault(); closeExtDialog(); });
       setInterval(() => loadAmedas(), 60000);   // アメダスの新しい値を取りに行く（中で 5 分おきに間引く）
       els.extOk.addEventListener("click", confirmExtDialog);
       els.extCancel.addEventListener("click", closeExtDialog);
       els.extDialog.addEventListener("click", event => { if (event.target === els.extDialog) closeExtDialog(); });
       els.camRetry.addEventListener("click", startCamPanel);
       // ページを閉じる・裏に回るときは、ためている分をすぐ書く
-      window.addEventListener("pagehide", () => store.flush());
-      document.addEventListener("visibilitychange", () => { if (document.hidden) store.flush(); });
+      window.addEventListener("pagehide", () => { persistExternal(); store.touchUi(); store.flush(); });
+      document.addEventListener("visibilitychange", () => { if (document.hidden) { persistExternal(); store.flush(); } });
       els.downloadBtn.addEventListener("click", downloadCsv);
       els.copyBtn.addEventListener("click", copyTsv);
       els.deleteBtn.addEventListener("click", deleteCurrentData);
@@ -6965,8 +7746,7 @@
         startAutoConnect();
       }
       startCamPanel();
-      // 前の記録を戻してから測定室を始める（先に始めると、選んでいるセンサーが違うと見なして送り直してしまう）
-      restoreSession().catch(error => console.warn("[保存] 前の記録を戻せませんでした", error)).finally(initRoom);
+      bootV2();
     })();
   </script>
 </body>
