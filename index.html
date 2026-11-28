@@ -6349,7 +6349,7 @@
         stSave();
         return st;
       }
-      // 端末の登録は、最後の送信から 1 週間で API 側から消える。消えていたら登録し直して、もう一度だけ試す
+      // 端末の登録は、最後の送信から 4 週間で API 側から消える。消えていたら登録し直して、もう一度だけ試す
       async function withStream(name, call) {
         try { await ensureStream(name); return await call(); }
         catch (error) {
