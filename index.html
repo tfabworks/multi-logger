@@ -3120,7 +3120,8 @@
       function overlayAxes(keys) {
         const axes = [];
         keys.forEach((key, n) => {
-          const axis = axes.find(members => sensors[keys[members[0]]].unit === sensors[key].unit);
+          const axisOf = one => (sensors[one].dir ? "方位" : sensors[one].unit);   // 風向は、ほかの単位なしのセンサー（動き・音量）とは別の軸
+          const axis = axes.find(members => axisOf(keys[members[0]]) === axisOf(key));
           if (axis) axis.push(n); else axes.push([n]);
         });
         return axes;
@@ -3681,6 +3682,7 @@
 
       // 単位のない「動き」「音量」は 0〜100 のスケール。AIは答えの数そのものなので範囲は添えない
       function unitSuffix(sensor) {
+        if (sensor.dir) return "";   // 風向は、方位の名前で出すので単位なし
         if (sensor.unit) return `（${sensor.unit}）`;
         return sensor.noteLabel ? "" : "（0〜100）";
       }
@@ -3836,7 +3838,7 @@
             return;
           }
           stats.classList.remove("warn");
-          if (!data.length) { stats.textContent = ""; return; }
+          if (!data.length || sensor.dir) { stats.textContent = ""; return; }   // 風向の最小・平均・最大は、意味が無い
           const values = data.map(item => item.value);
           const min = Math.min(...values), max = Math.max(...values);
           const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -3985,7 +3987,14 @@
       }
 
       // decimals が null の項目（AI）は、整数は整数のまま・小数は最大2桁で出す
+      // 風向（アメダス）は「ぐるっと 1 周する」値（北 0°、東 90°、南 180°、西 270°）。北と北北西はとなりどうしなのに、数字では 0 と 337.5 で両はしになる。
+      // 折れ線にすると、北をまたいだだけで大きく上下して見えるので、線で結ばずに点で出し、縦軸と値は方位の名前にする（sensor.dir）
+      const DIR_NAMES = ["北", "北北東", "北東", "東北東", "東", "東南東", "南東", "南南東", "南", "南南西", "南西", "西南西", "西", "西北西", "北西", "北北西"];
+      const DIR_TICKS = ["北", "東", "南", "西", "北"];   // 縦軸の目もり（下から 0°・90°・180°・270°・360°。北は上と下の両方）
+      const DIR_SCALE = { yMin: 0, yMax: 360, step: 90, count: 4 };
+      function dirName(value) { return DIR_NAMES[((Math.round(Number(value) / 22.5) % 16) + 16) % 16]; }
       function formatValue(value, sensor = sensors[selectedSensor]) {
+        if (sensor.dir) return dirName(value);
         if (sensor.decimals === null) return String(Number(value.toFixed(2)));
         return value.toFixed(sensor.decimals);
       }
@@ -4005,7 +4014,7 @@
         els.copyBtn.disabled = !hasData;
         els.deleteBtn.disabled = !activeKeys().some(key => dataStore[key].length);
 
-        if (!hasData) {
+        if (!hasData || sensor.dir) {
           els.minValue.textContent = "--";
           els.avgValue.textContent = "--";
           els.maxValue.textContent = "--";
@@ -4351,10 +4360,13 @@
             side: a === 0 ? -1 : 1,   // 数字を書く側（-1: 軸の左 / 1: 軸の右）
             color: shared ? "#9cb5c5" : sensorsOf[members[0]].color,
             textColor: shared ? "#667b8c" : sensorsOf[members[0]].color,
-            scale: values.length ? niceScale(values, sensorsOf[members[0]], 5) : null
+            dir: Boolean(sensorsOf[members[0]].dir),
+            scale: values.length ? (sensorsOf[members[0]].dir ? { ...DIR_SCALE } : niceScale(values, sensorsOf[members[0]], 5)) : null
           };
         });
-        const scaled = axes.filter(axis => axis.scale);
+        // 風向の軸は、ほかに数字の軸があるときは別あつかい（目もりの本数をそろえると、360°より上まで伸びてしまう）。風向だけのときは、ふつうの軸として横線も引く
+        const dirOnly = axes.every(axis => !axis.scale || axis.dir);
+        const scaled = axes.filter(axis => axis.scale && (dirOnly || !axis.dir));
         const count = Math.max(0, ...scaled.map(axis => axis.scale.count));   // 本数をそろえる（少ない軸は上を広げる）
         scaled.forEach(({ scale }) => {
           if (scale.count < count) { scale.yMax += (count - scale.count) * scale.step; scale.count = count; }
@@ -4379,12 +4391,29 @@
             const { scale } = axis;
             ctx.fillStyle = axis.textColor;
             ctx.textAlign = axis.side < 0 ? "right" : "left";
-            ctx.fillText((scale.yMin + i * scale.step).toFixed(tickDecimals(scale.step)), axis.x + axis.side * 9, y);
+            ctx.fillText(axis.dir ? DIR_TICKS[i] : (scale.yMin + i * scale.step).toFixed(tickDecimals(scale.step)), axis.x + axis.side * 9, y);
             if (axis.x > p.right) {   // 横線の届かない外の軸には、短い目盛りを付ける
               ctx.strokeStyle = axis.color;
               ctx.beginPath();
               ctx.moveTo(axis.x, y);
               ctx.lineTo(axis.x + 5, y);
+              ctx.stroke();
+            }
+          });
+        }
+        // 風向の軸（数字の軸といっしょのとき）: 北・東・南・西・北 を、その軸のそばに書く
+        if (!dirOnly) {
+          axes.filter(axis => axis.dir && axis.scale).forEach(axis => {
+            ctx.fillStyle = axis.textColor;
+            ctx.textAlign = axis.side < 0 ? "right" : "left";
+            ctx.strokeStyle = axis.color;
+            ctx.lineWidth = 1;
+            for (let k = 0; k <= 4; k++) {
+              const y = p.top + panelH - (k / 4) * panelH;
+              ctx.fillText(DIR_TICKS[k], axis.x + axis.side * 9, y);
+              ctx.beginPath();
+              ctx.moveTo(axis.x, y);
+              ctx.lineTo(axis.x + axis.side * 5, y);
               ctx.stroke();
             }
           });
@@ -4415,7 +4444,7 @@
           ctx.strokeStyle = sensorsOf[n].color;
           ctx.lineWidth = 3;
           ctx.lineCap = "round";
-          ctx.setLineDash(OVERLAY_DASHES[n]);
+          ctx.setLineDash(sensorsOf[n].dir ? [0.5, 7] : OVERLAY_DASHES[n]);
           ctx.beginPath();
           ctx.moveTo(x + 1.5, sampleY);
           ctx.lineTo(x + sampleW - 1.5, sampleY);
@@ -4454,6 +4483,7 @@
         datas.forEach((data, n) => {
           const sensor = sensorsOf[n], yAt = yAts[n], xs = p.xs[n];
           if (!data.length || !yAt) return;
+          if (sensor.dir) { drawDirDots(data, xs, yAt, sensor.color, 3, p); return; }   // 風向は点
           const pts = thinned(data.length, i => data[i].value, Math.max(200, Math.floor(p.right - p.left) * 2));
           const gradient = ctx.createLinearGradient(0, p.top, 0, p.bottom);
           gradient.addColorStop(0, hexToRgba(sensor.color, 0.12));
@@ -4487,6 +4517,30 @@
         return keys.map((key, n) => ({ key, data: datas[n], yAt: yAts[n], xs: p.xs[n], top: p.top, bottom: p.bottom, left: p.left, right: p.right, small: p.small, titled: true }));
       }
 
+      // 風向: 点だけを打つ（線で結ばない）。いちばん新しい点は、ほかの線と同じ白ぬきの丸
+      function drawDirDots(data, xs, yAt, color, radius, p) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(p.left - 4, p.top - 5, p.right - p.left + 8, p.bottom - p.top + 10);
+        ctx.clip();
+        ctx.fillStyle = color;
+        data.forEach((item, i) => {
+          ctx.beginPath();
+          ctx.arc(xs(i), yAt(item.value), radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
+        if (!data.length) return;
+        ctx.beginPath();
+        ctx.arc(xs(data.length - 1), yAt(data[data.length - 1].value), radius + 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.stroke();
+      }
+
       // 1 つのセンサーの線を p の枠（top/bottom/left/right）に描く。p.xs(i) は data[i] の x
       function drawPanel(key, data, p) {
         const sensor = sensors[key];
@@ -4517,7 +4571,7 @@
           return null;
         }
 
-        const { yMin, yMax, step } = niceScale(data.map(item => item.value), sensor, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす
+        const { yMin, yMax, step } = sensor.dir ? DIR_SCALE : niceScale(data.map(item => item.value), sensor, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす。風向は、いつも 北〜北
         const yAt = value => p.top + ((yMax - value) / (yMax - yMin)) * panelH;
 
         ctx.lineWidth = 1;
@@ -4534,7 +4588,11 @@
           ctx.moveTo(p.left, y);
           ctx.lineTo(p.right, y);
           ctx.stroke();
-          ctx.fillText(tick.toFixed(tickDecimals(step)), p.left - 9, y);
+          ctx.fillText(sensor.dir ? DIR_TICKS[i] : tick.toFixed(tickDecimals(step)), p.left - 9, y);
+        }
+        if (sensor.dir) {   // 風向は点
+          drawDirDots(data, p.xs, yAt, sensor.color, 3.2, p);
+          return yAt;
         }
 
         const gradient = ctx.createLinearGradient(0, p.top, 0, p.bottom);
@@ -5806,12 +5864,15 @@
       // えらんだデータに合わせて、名前・単位・小数の桁を入れかえる
       function applyExtMeta() {
         const def = sensors.external;
+        def.dir = false;
         if (ext.type === "sun") {
           Object.assign(def, { name: "太陽の高さ", unit: "°", csvUnit: "°", decimals: 1 });
         } else if (ext.type === "amedas" && extReady()) {
           const item = AMEDAS_ITEMS[ext.item];
           // 名前は「アメダス風速（古河）」の形。「古河の風速・湿度」と並ぶと、湿度まで古河のものに見えるため
-          Object.assign(def, { name: `アメダス${item.name}（${ext.station.name}）`, unit: item.unit, csvUnit: item.unit, decimals: item.decimals });
+          // 風向は、画面には方位の名前で出す（単位なし）。CSV には度の数のまま（16 方位は 22.5° きざみなので、小数 1 けた）
+          const dir = ext.item === "windDir";
+          Object.assign(def, { name: `アメダス${item.name}（${ext.station.name}）`, unit: dir ? "" : item.unit, csvUnit: item.unit, decimals: dir ? 1 : item.decimals, dir });
         } else if (extReady()) {
           const series = ext.file.series[ext.col];
           const same = Object.keys(sensors).map(key => sensors[key]).find(sensor => sensor !== def && sensor.name === series.name);   // 同じ名前のセンサーがあれば、単位と桁を合わせる（軸を共通にできる）

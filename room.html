@@ -66,7 +66,8 @@
   #tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
   #empty { padding: 44px 20px; text-align: center; }
   .empty-bubble { display: inline-block; max-width: 420px; padding: 20px 24px; border-radius: 22px; background: rgba(255,241,224,.94); border: 2px dashed #e9b27c; color: var(--accent-dark); font-weight: 900; line-height: 1.7; }
-  .tile { display: grid; gap: 9px; padding: 14px; cursor: pointer; transition: transform .14s ease; }
+  /* 中身（値の行・グラフ）は、タイルの幅に合わせる。見出しが長くても、中身を押し広げない */
+  .tile { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 14px; cursor: pointer; transition: transform .14s ease; }
   .tile:hover { transform: translateY(-2px); border-color: var(--accent); }
   .tile.picked { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,86,12,.2), var(--shadow); }
   .tile.stale { opacity: .62; }
@@ -81,8 +82,8 @@
   .badge.jma { color: #1d5b8f; background: #e2f0fb; }
   .drop-btn { min-height: 26px; padding: 0 9px; font-size: .72rem; }
   .field select { padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; font-weight: 800; background: white; }
-  .tile-head { display: flex; align-items: center; gap: 8px; font-size: 1.02rem; font-weight: 900; }
-  .tile-head .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 1.02rem; font-weight: 900; }
+  .tile-head .name { flex: 1 1 5em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badge { padding: 2px 8px; border-radius: 999px; color: var(--accent-dark); background: var(--accent-soft); font-size: .68rem; font-weight: 900; white-space: nowrap; }
   .seen { color: var(--muted); font-size: .72rem; font-weight: 800; white-space: nowrap; }
   .seen::before { content: '●'; margin-right: 3px; color: #56d39d; }
@@ -525,7 +526,22 @@
   // fine: 記録間隔が 1 秒より短いときは、0.1 秒の位まで出す
   function timeText(ms, fine) { return fmtTime(ms) + (fine ? '.' + Math.floor(new Date(ms).getMilliseconds() / 100) : ''); }
   function fmtDateTime(ms) { var d = new Date(ms); return d.toLocaleDateString('ja-JP') + ' ' + d.toLocaleTimeString('ja-JP', {hour12: false}); }
-  function fmtVal(v, s) { return v === null || v === undefined ? '—' : Number(v).toFixed(s.decimals || 0); }
+  // ---- 風向（アメダス） ----
+  // 風向は「ぐるっと 1 周する」値（北 0°、東 90°、南 180°、西 270°）。北と北北西はとなりどうしなのに、数字では 0 と 337.5 で両はしになる。
+  // 折れ線にすると、北をまたいだだけで大きく上下して見えるので、線で結ばずに点で出し、縦軸と値は方位の名前にする
+  var DIR_NAMES = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+  var DIR_TICKS = ['北', '東', '南', '西', '北'];   // 縦軸の目もり（下から 0°・90°・180°・270°・360°。北は上と下の両方）
+  var DIR_SCALE = {yMin: 0, yMax: 360, step: 90, count: 4};
+  function dirName(v) { return DIR_NAMES[((Math.round(Number(v) / 22.5) % 16) + 16) % 16]; }
+  // 届いたセンサーの一覧のうち、風向に印を付ける（サーバーが入れるアメダスの端末は key が xWindDir。アプリの「外部」は名前で見分ける）。
+  // 単位は出さない（値を方位の名前で出すので。ダウンロードでは、度の数のまま）
+  function markDir(sensors) {
+    (sensors || []).forEach(function (sn) {
+      if (sn.key === 'xWindDir' || /^アメダス風向/.test(sn.name || '')) { sn.dir = true; sn.unit = ''; }
+    });
+    return sensors;
+  }
+  function fmtVal(v, s) { return v === null || v === undefined ? '—' : s.dir ? dirName(v) : Number(v).toFixed(s.decimals || 0); }
   function fmtCode(c) { c = String(c || '').replace(/\D/g, ''); return c.length === 6 ? c.slice(0, 3) + ' ' + c.slice(3) : c; }
   function ago(ms) { var s = Math.max(0, Math.round((Date.now() - ms) / 1000)); return s < 60 ? s + '秒前' : s < 3600 ? Math.floor(s / 60) + '分前' : Math.floor(s / 3600) + '時間前'; }
   function unitSuffix(s) { return s.unit ? '（' + s.unit + '）' : ''; }
@@ -571,6 +587,7 @@
       var data = await api('GET', '/rooms/' + ROOM_ID);
       serverOffset = data.now - Date.now();
       room = data.room; devices = data.devices;
+      devices.forEach(function (d) { markDir(d.sensors); });
       render();
       if (!$('ov-detail').hidden) detailRefresh();
       if (!$('ov-overlay').hidden) overlayRefresh();
@@ -670,12 +687,13 @@
     t.classList.toggle('picked', Boolean(picked[d.deviceId]));
     t.querySelector('.pick').checked = Boolean(picked[d.deviceId]);
     t.querySelector('.seen').textContent = seenText(d);
+    t.querySelector('.seen').hidden = isAmedas(d);   // アメダスは見出しが長いので、「10 分ごと」は下の行に出す
     t.querySelector('.drop-btn').hidden = !(isAmedas(d) && canAmedas());
     var vals = t.querySelector('.compare-rows'); vals.textContent = '';
     d.sensors.forEach(function (s) { vals.appendChild(valueRow(s.name, s.color, fmtVal(d.lastValues[s.key], s), s.unit)); });
     drawMini(t.querySelector('.mini'), d);
     var foot = t.querySelector('.foot'); foot.textContent = '';
-    foot.appendChild(el('span', '', '記録 ' + (d.rowCount || 0).toLocaleString('ja-JP') + ' 件' + (d.memoCount ? '・メモ ' + d.memoCount.toLocaleString('ja-JP') : '')));
+    foot.appendChild(el('span', '', '記録 ' + (d.rowCount || 0).toLocaleString('ja-JP') + ' 件' + (isAmedas(d) ? '・10 分ごと' : '') + (d.memoCount ? '・メモ ' + d.memoCount.toLocaleString('ja-JP') : '')));
     foot.appendChild(el('span', '', d.startedAt ? '開始 ' + fmtTime(d.startedAt) : ''));
   }
   function updateSelection() {
@@ -739,7 +757,8 @@
     var axes = [];
     series.forEach(function (s, n) {
       var axis = null;
-      axes.forEach(function (members) { if (!axis && series[members[0]].unit === s.unit) axis = members; });
+      var axisOf = function (x) { return x.dir ? 'dir' : x.unit; };
+      axes.forEach(function (members) { if (!axis && axisOf(series[members[0]]) === axisOf(s)) axis = members; });
       if (axis) axis.push(n); else axes.push([n]);
     });
     return axes;
@@ -809,6 +828,23 @@
   }
   function seriesLabel(s) { return s.label || s.name + unitSuffix(s); }   // label: くらべるで端末の名前に付ける（ずらした秒数など）
   // 1 本の線を p の枠（top/bottom/left/right）に描く（上下に並べるときの 1 段）。戻り値は値 → y の関数（記録がなければ null）
+  // 風向: 点だけを打つ（線で結ばない）。いちばん新しい点は、ほかの線と同じ白ぬきの丸
+  function drawDots(ctx, s, vis, X, yAt, p, radius) {
+    var line = vis.line;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(p.left - 4, p.top - 5, p.right - p.left + 8, p.bottom - p.top + 10); ctx.clip();
+    ctx.fillStyle = s.color;
+    for (var i = 0; i < line.length; i++) {
+      if (!has(line[i][1])) continue;
+      ctx.beginPath(); ctx.arc(X(line[i][0]), yAt(line[i][1]), radius, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    if (vis.last) {
+      ctx.beginPath(); ctx.arc(X(vis.last[0]), yAt(vis.last[1]), radius + 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = s.color; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
+    }
+  }
   function drawPanel(ctx, s, vis, p, X) {
     var panelH = p.bottom - p.top;
     ctx.strokeStyle = '#9cb5c5'; ctx.lineWidth = 1.5;
@@ -822,16 +858,17 @@
       ctx.fillText('この時間の記録はありません', (p.left + p.right) / 2, (p.top + p.bottom) / 2);
       return null;
     }
-    var sc = niceScale(vis.lo, vis.hi, s.decimals, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす
+    var sc = s.dir ? DIR_SCALE : niceScale(vis.lo, vis.hi, s.decimals, panelH < 140 ? 3 : 5);   // 低いパネルは目盛りを減らす。風向は、いつも 北〜北
     var yAt = function (v) { return p.top + ((sc.yMax - v) / (sc.yMax - sc.yMin)) * panelH; };
     ctx.lineWidth = 1; ctx.strokeStyle = '#d9e8f1'; ctx.fillStyle = '#667b8c';
     ctx.font = (p.small ? 10 : 12) + 'px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (var i = 0; i <= sc.count; i++) {
       var tick = sc.yMin + i * sc.step, y = yAt(tick);
       ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.right, y); ctx.stroke();
-      ctx.fillText(tick.toFixed(tickDecimals(sc.step)), p.left - 9, y);
+      ctx.fillText(s.dir ? DIR_TICKS[i] : tick.toFixed(tickDecimals(sc.step)), p.left - 9, y);
     }
-    drawLine(ctx, {color: s.color}, vis, X, yAt, p, 0.28, 0.015, 3.2);   // 並べるときは、どれも実線
+    if (s.dir) drawDots(ctx, s, vis, X, yAt, p, 3.2);
+    else drawLine(ctx, {color: s.color}, vis, X, yAt, p, 0.28, 0.015, 3.2);   // 並べるときは、どれも実線
     return yAt;
   }
   // 何本かの線を 1 枚に重ねる。縦軸は単位ごとに 1 本（unitGroups）で、左・右・いちばん右（右の軸の外。p.axisWidth ずつ離す）の順に置く。
@@ -849,10 +886,13 @@
         side: a === 0 ? -1 : 1,   // 数字を書く側（-1: 軸の左 / 1: 軸の右）
         color: shared ? '#9cb5c5' : first.color,
         textColor: shared ? '#667b8c' : first.color,
-        scale: hi >= lo ? niceScale(lo, hi, first.decimals, 5) : null
+        dir: Boolean(first.dir),
+        scale: hi >= lo ? (first.dir ? {yMin: 0, yMax: 360, step: 90, count: 4} : niceScale(lo, hi, first.decimals, 5)) : null
       };
     });
-    var scaled = axes.filter(function (axis) { return axis.scale; });
+    // 風向の軸は、ほかに数字の軸があるときは別あつかい（目もりの本数をそろえると、360°より上まで伸びてしまう）。風向だけのときは、ふつうの軸として横線も引く
+    var dirOnly = axes.every(function (axis) { return !axis.scale || axis.dir; });
+    var scaled = axes.filter(function (axis) { return axis.scale && (dirOnly || !axis.dir); });
     var count = 0;
     scaled.forEach(function (axis) { count = Math.max(count, axis.scale.count); });
     scaled.forEach(function (axis) { var sc = axis.scale; if (sc.count < count) { sc.yMax += (count - sc.count) * sc.step; sc.count = count; } });   // 本数をそろえる（少ない軸は上を広げる）
@@ -870,10 +910,20 @@
       scaled.forEach(function (axis) {
         var sc = axis.scale;
         ctx.fillStyle = axis.textColor; ctx.textAlign = axis.side < 0 ? 'right' : 'left';
-        ctx.fillText((sc.yMin + i * sc.step).toFixed(tickDecimals(sc.step)), axis.x + axis.side * 9, y);
+        ctx.fillText(axis.dir ? DIR_TICKS[i] : (sc.yMin + i * sc.step).toFixed(tickDecimals(sc.step)), axis.x + axis.side * 9, y);
         if (axis.x > p.right) { ctx.strokeStyle = axis.color; ctx.beginPath(); ctx.moveTo(axis.x, y); ctx.lineTo(axis.x + 5, y); ctx.stroke(); }   // 横線の届かない外の軸には、短い目盛りを付ける
       });
     }
+    // 風向の軸（数字の軸といっしょのとき）: 北・東・南・西・北 を、その軸のそばに書く
+    if (!dirOnly) axes.forEach(function (axis) {
+      if (!axis.dir || !axis.scale) return;
+      ctx.fillStyle = axis.textColor; ctx.textAlign = axis.side < 0 ? 'right' : 'left'; ctx.strokeStyle = axis.color; ctx.lineWidth = 1;
+      for (var k = 0; k <= 4; k++) {
+        var dy = p.top + panelH - (k / 4) * panelH;
+        ctx.fillText(DIR_TICKS[k], axis.x + axis.side * 9, dy);
+        ctx.beginPath(); ctx.moveTo(axis.x, dy); ctx.lineTo(axis.x + axis.side * 5, dy); ctx.stroke();
+      }
+    });
     // 軸線（下は灰色。縦は軸ごとの色）
     ctx.lineWidth = 1.5; ctx.strokeStyle = '#9cb5c5';
     ctx.beginPath(); ctx.moveTo(p.left, p.bottom); ctx.lineTo(p.right, p.bottom); ctx.stroke();
@@ -887,7 +937,7 @@
     var drawName = function (n, x, y) {   // x は見本の左端
       var sy = y + (p.small ? 5 : 6);
       ctx.save();
-      ctx.strokeStyle = series[n].color; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.setLineDash(series[n].dash || []);
+      ctx.strokeStyle = series[n].color; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.setLineDash(series[n].dir ? [0.5, 7] : series[n].dash || []);
       ctx.beginPath(); ctx.moveTo(x + 1.5, sy); ctx.lineTo(x + sampleW - 1.5, sy); ctx.stroke();
       ctx.restore();
       ctx.textAlign = 'left'; ctx.fillStyle = series[n].color;
@@ -912,7 +962,11 @@
       if (axes[2]) drawNames(axes[2].members, axes[2].x + p.axisWidth - 4, p.top - 20, 'right');
     }
     // 線（塗りは重なると濁るので薄く）と最新の点
-    series.forEach(function (s, n) { if (yAts[n]) drawLine(ctx, s, vises[n], X, yAts[n], p, p.fill, 0.01, s.width || 3); });
+    series.forEach(function (s, n) {
+      if (!yAts[n]) return;
+      if (s.dir) drawDots(ctx, s, vises[n], X, yAts[n], p, 3);   // 風向は点
+      else drawLine(ctx, s, vises[n], X, yAts[n], p, p.fill, 0.01, s.width || 3);
+    });
     return yAts;
   }
   // series: [{name, unit, color, decimals, dash, width, pts: [[時刻（ミリ秒）, 値], ...]}]。pts は時刻の順
@@ -1118,12 +1172,14 @@
       var vis = visible(pts, x0, x0 + xr, 400);
       if (!vis.any) return;
       var lo = vis.lo, hi = vis.hi;
+      if (s.dir) { lo = 0; hi = 360; }   // 風向は、いつも 北〜北
       if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
       var pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
       var yAt = function (v) { return p.top + (hi - v) / (hi - lo) * (p.bottom - p.top); };
       var line = {color: s.color, dash: d.sensors.length > 1 ? DASHES[si % DASHES.length].map(function (n) { return n * 0.6; }) : []};
       var last = vis.last; vis.last = null;
-      drawLine(ctx, line, vis, X, yAt, p, d.sensors.length > 1 ? 0.08 : 0.26, 0.015, 2.2);
+      if (s.dir) drawDots(ctx, line, vis, X, yAt, p, 1.6);   // 風向は点
+      else drawLine(ctx, line, vis, X, yAt, p, d.sensors.length > 1 ? 0.08 : 0.26, 0.015, 2.2);
       if (last) {
         ctx.beginPath(); ctx.arc(X(last[0]), yAt(last[1]), 3.5, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff'; ctx.fill();
@@ -1348,7 +1404,7 @@
     var data = await api('GET', '/rooms/' + ROOM_ID + '/devices/' + deviceId + '/rows?from=' + from);
     if (!c) c = rowsCache[deviceId] = {rows: [], lastSeq: 0, session: data.device.session, resetSeq: data.device.resetSeq};
     data.rows.forEach(function (r) { if (r[0] > c.lastSeq) { c.rows.push(r); c.lastSeq = r[0]; } });
-    c.sensors = data.device.sensors; c.startedAt = data.device.startedAt; c.name = data.device.name;
+    c.sensors = markDir(data.device.sensors); c.startedAt = data.device.startedAt; c.name = data.device.name;
     return c;
   }
   function absTime(c, r) { return (c.startedAt || 0) + r[1]; }
@@ -1502,7 +1558,7 @@
   function seriesOf(c) {
     if (c._series && c._seriesLen === c.rows.length && c._seriesAt === c.startedAt) return c._series;
     c._series = c.sensors.map(function (s, si) {
-      return {key: s.key, name: s.name, unit: s.unit, color: s.color, decimals: s.decimals, dash: DASHES[si % DASHES.length],
+      return {key: s.key, name: s.name, unit: s.unit, dir: s.dir, color: s.color, decimals: s.decimals, dash: DASHES[si % DASHES.length],
         pts: c.rows.map(function (r) { return [absTime(c, r), r[2 + si]]; })};
     });
     c._seriesLen = c.rows.length; c._seriesAt = c.startedAt;
@@ -1560,7 +1616,7 @@
       [['最小', 'min'], ['平均', 'avg'], ['最大', 'max']].forEach(function (p) {
         var cell = el('div', 'mini-stat');
         cell.appendChild(el('span', '', p[0]));
-        cell.appendChild(el('strong', '', st ? fmtVal(st[p[1]], s) + s.unit : '—'));
+        cell.appendChild(el('strong', '', st && !s.dir ? fmtVal(st[p[1]], s) + s.unit : '—'));
         ms.appendChild(cell);
       });
       box.appendChild(ms);
@@ -1569,7 +1625,7 @@
     var rows = el('div', 'compare-rows');
     c.sensors.forEach(function (s, si) {
       var row = valueRow(s.name, s.color, fmtVal(last[s.key], s), s.unit), st = stats[si];
-      row.appendChild(el('div', 'stats', st ? '最小 ' + fmtVal(st.min, s) + s.unit + '　平均 ' + fmtVal(st.avg, s) + s.unit + '　最大 ' + fmtVal(st.max, s) + s.unit : '記録なし'));
+      row.appendChild(el('div', 'stats', s.dir ? (st ? '' : '記録なし') : st ? '最小 ' + fmtVal(st.min, s) + s.unit + '　平均 ' + fmtVal(st.avg, s) + s.unit + '　最大 ' + fmtVal(st.max, s) + s.unit : '記録なし'));
       rows.appendChild(row);
     });
     box.appendChild(rows);
@@ -1855,7 +1911,7 @@
         var name = c.name + (kinds ? ' ' + x.s.name : '');
         series.push({id: id, key: x.s.key, color: COLORS[i % COLORS.length], dash: DASHES[kind % DASHES.length], name: name, sensorName: x.s.name,
           shift: off ? '（' + (off > 0 ? '+' : '') + Math.round(off) + '秒）' : '',
-          unit: x.s.unit, decimals: x.s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, x.si, off)});
+          unit: x.s.unit, dir: x.s.dir, decimals: x.s.decimals, width: id === ov.moving ? 4 : 3, pts: ovPts(c, x.si, off)});
       });
     });
     // 並べる／重ねる（線が 2 本以上で、重ねられるときだけえらべる。重ねられないときは並べる）
@@ -1969,7 +2025,7 @@
   function fileSafe(n) { return n.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^\.+/, '_'); }
   function sheetSafe(n) { return n.replace(/[\\/:*?\[\]\u0000-\u001f]/g, '_').replace(/^'+|'+$/g, ''); }
   function csvOf(c) {
-    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.unit ? '(' + s.unit + ')' : ''); }));
+    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.dir ? '(°)' : s.unit ? '(' + s.unit + ')' : ''); }));
     var lines = [head].concat(c.rows.map(function (r) {
       return [r[0], fmtDateTime(absTime(c, r)), (r[1] / 1000).toFixed(1)].concat(c.sensors.map(function (s, si) { var v = r[2 + si]; return v === null || v === undefined ? '' : v; }));
     }));
@@ -2054,7 +2110,7 @@
   function xmlEsc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function colName(i) { var n = ''; i += 1; while (i > 0) { n = String.fromCharCode(65 + (i - 1) % 26) + n; i = Math.floor((i - 1) / 26); } return n; }
   function sheetXml(c) {
-    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.unit ? '(' + s.unit + ')' : ''); }));
+    var head = ['番号', '日時', '経過秒'].concat(c.sensors.map(function (s) { return s.name + (s.dir ? '(°)' : s.unit ? '(' + s.unit + ')' : ''); }));
     var out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
       '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>',
