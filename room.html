@@ -79,6 +79,7 @@
   .add-tile small { color: var(--muted); font-size: .76rem; font-weight: 800; }
   .add-tile[hidden] { display: none; }
   .badge.jma { color: #1d5b8f; background: #e2f0fb; }
+  .drop-btn { min-height: 26px; padding: 0 9px; font-size: .72rem; }
   .field select { padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; font-weight: 800; background: white; }
   .tile-head { display: flex; align-items: center; gap: 8px; font-size: 1.02rem; font-weight: 900; }
   .tile-head .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -468,7 +469,7 @@
   </div>
 </div>
 
-<!-- 作成者だけ: アメダス（気象庁）を、端末の 1 つとして足す -->
+<!-- 作成者と、参加している端末: アメダス（気象庁）を、端末の 1 つとして足す -->
 <div id="ov-amedas" class="ov" hidden>
   <div class="win">
     <div class="win-head"><span>アメダスを足す</span><span class="gap"></span><button id="amedas-close" class="btn" type="button">とじる</button></div>
@@ -600,7 +601,8 @@
       updateTile(t, d, i);
     });
     [].forEach.call(tiles.querySelectorAll('.tile'), function (t) { if (!seen[t.dataset.id]) { delete picked[t.dataset.id]; t.remove(); } });
-    // 作成者だけ: アメダス（気象庁）を端末として足すタイル。もう入っているときは出さない（1 つの測定室に 1 地点）
+    // 作成者と、参加している端末: アメダス（気象庁）を端末として足すタイル。もう入っているときは出さない（1 つの測定室に 1 地点）。
+    // 公開中の測定室を URL で見ているだけの人には出さない
     var add = $('amedas-add');
     if (!add) {
       add = el('button', 'add-tile'); add.id = 'amedas-add'; add.type = 'button';
@@ -608,7 +610,7 @@
       add.appendChild(el('small', '', '気象庁の雨・風・日照を、ならべて見る'));
       add.addEventListener('click', openAmedas);
     }
-    add.hidden = !isOwner() || devices.some(isAmedas);
+    add.hidden = !canAmedas() || devices.some(isAmedas);
     tiles.appendChild(add);   // いつも、いちばん後ろ
     $('empty-text').textContent = EMPTY_TEXT;
     $('empty').hidden = devices.length > 0;
@@ -623,6 +625,18 @@
     head.appendChild(el('span', 'name'));
     head.appendChild(el('span', 'badge', '作成'));
     head.appendChild(el('span', 'seen'));
+    // アメダスの端末だけ: 外すボタン（地点をえらび直すとき。作成者は、上の「退出」でも外せる）
+    var drop = el('button', 'btn drop-btn', '外す'); drop.type = 'button'; drop.hidden = true;
+    drop.addEventListener('click', function (e) {
+      e.stopPropagation();
+      arm(drop, 'もう一度押す', function () {
+        (async function () {
+          try { await api('DELETE', '/rooms/' + ROOM_ID + '/devices/' + d.deviceId); delete rowsCache[d.deviceId]; delete picked[d.deviceId]; await load(); toast('アメダスを外しました'); }
+          catch (err) { toast(err.message); }
+        })();
+      });
+    });
+    head.appendChild(drop);
     t.appendChild(head);
     t.appendChild(el('div', 'compare-rows'));
     t.appendChild(el('canvas', 'mini'));
@@ -632,6 +646,8 @@
   }
   // アメダスの端末（サーバーが、気象庁の値を 10 分ごとに入れている）
   function isAmedas(d) { return Boolean(d && d.kind === 'amedas'); }
+  // アメダスを足す・外すことができるか（作成者か、参加している端末。作った端末にさわれないことがあるので、参加している端末にも広げてある）
+  function canAmedas() { return isOwner() || Boolean(stored(MEMBER_KEY)); }
   // アメダスは 10 分ごとなので、30 分とどかなければ「止まっている」とみなす（ふつうの端末は 20 秒）
   function isStale(d) { return !d.lastSeen || Date.now() + serverOffset - d.lastSeen > (isAmedas(d) ? 30 * 60000 : STALE_MS); }
   function seenText(d) { return isAmedas(d) ? '10 分ごと' : d.lastSeen ? ago(d.lastSeen - serverOffset) : '未受信'; }   // アメダスは、となりに「気象庁」の札が出る
@@ -654,6 +670,7 @@
     t.classList.toggle('picked', Boolean(picked[d.deviceId]));
     t.querySelector('.pick').checked = Boolean(picked[d.deviceId]);
     t.querySelector('.seen').textContent = seenText(d);
+    t.querySelector('.drop-btn').hidden = !(isAmedas(d) && canAmedas());
     var vals = t.querySelector('.compare-rows'); vals.textContent = '';
     d.sensors.forEach(function (s) { vals.appendChild(valueRow(s.name, s.color, fmtVal(d.lastValues[s.key], s), s.unit)); });
     drawMini(t.querySelector('.mini'), d);
@@ -2211,7 +2228,7 @@
     if (!id) return;
     $('amedas-go').disabled = true; $('amedas-err').hidden = true;
     try {
-      await api('POST', '/rooms/' + ROOM_ID + '/amedas', {station: id}, {owner: true});
+      await api('POST', '/rooms/' + ROOM_ID + '/amedas', {station: id});   // 作成者の資格が無ければ、参加している端末の資格で
       try { localStorage.setItem(AMEDAS_KEY, JSON.stringify({pref: $('amedas-pref').value, id: id})); } catch (e) {}
       $('ov-amedas').hidden = true;
       await load();
